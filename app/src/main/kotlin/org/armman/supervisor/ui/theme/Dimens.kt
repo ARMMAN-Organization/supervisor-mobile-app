@@ -33,4 +33,46 @@ object Dimens {
   val CardAccentHeight = 6.dp
   val AvatarSize = 44.dp
   val SmallButtonHeight = 44.dp
+
+  // Dashboard-screen tokens (measured from screenshots — confirm at QA).
+  val IconButtonSize = 40.dp
+  val QuickActionIconSize = 56.dp
+  val TableRowHeight = 44.dp
+
+  // Assign Item screens (measured from screenshots — confirm at QA).
+  val DatePillRadius = 20.dp
+  val DatePillPaddingH = 20.dp
+  val DatePillPaddingV = 8.dp
+  val QuantityFieldWidth = 96.dp
+  val QuantityFieldHeight = 44.dp
+
+  /** Corner radius for outlined input boxes (dropdowns, date fields, quantity fields). */
+  val InputFieldRadius = 8.dp
+
+  // Landscape-compact header tokens: shrink the header's vertical footprint when the
+  // device is rotated to landscape, where screen height is scarce. Portrait is unaffected.
+  val ScreenPaddingCompact = 12.dp
+  val IconButtonSizeCompact = 32.dp
+
+  /** Smallest base-4 step — tight vertical padding (e.g. inside a pill badge). */
+  val TinySpacing = 4.dp
+
+  /** Radio-button icon size (Choose Language dialog). */
+  val RadioIconSize = 24.dp
+
+  /** Hairline divider width — the one sanctioned exception to the base-4 scale. */
+  val HairlineWidth = 1.dp
+
+  /** Caps and centers list-style content (e.g. Settings) on tablet instead of stretching full-bleed. */
+  val ContentMaxWidthTablet = 600.dp
+
+  // Login-screen tokens mirrored from the shared design spec (activity_login.xml).
+  val LoginHeaderHeight = 400.dp
+  val LoginLogoOuterSize = 150.dp
+  val LoginLogoInnerSize = 120.dp
+  val LoginCardMargin = 15.dp
+  val LoginCardOverlap = 50.dp
+  val LoginCardRadius = 15.dp
+  val LoginCardPadding = 20.dp
+  val LoginButtonMarginH = 60.dp
 }

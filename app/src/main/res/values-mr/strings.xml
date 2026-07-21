@@ -1,8 +1,152 @@
 <resources>
   <string name="app_name">आरोग्य सुपरवायझर</string>
-  <string name="home_title">सुपरवायझर मुख्यपृष्ठ</string>
-  <string name="home_subtitle">स्वागत आहे. तुमचे काम येथे दिसेल.</string>
-  <string name="sync_now">आता सिंक करा</string>
-  <string name="syncing">सिंक करत आहे…</string>
-  <string name="sync_complete">सिंक झाले</string>
+
+  <!-- Dashboard header -->
+  <string name="cd_profile_icon">प्रोफाइल</string>
+  <string name="cd_notifications_icon">सूचना</string>
+  <string name="cd_settings_icon">सेटिंग्ज</string>
+  <string name="location_selector_placeholder">स्थान निवडा</string>
+  <string name="location_selector_empty">कोणतेही स्थान उपलब्ध नाही</string>
+
+  <!-- KPI stat row -->
+  <string name="kpi_due_visit">नियोजित भेट</string>
+  <string name="kpi_mother">माता</string>
+  <string name="kpi_child">बालक</string>
+  <string name="kpi_monitor">देखरेख</string>
+
+  <!-- Quick actions -->
+  <string name="quick_action_items">वस्तू</string>
+  <string name="quick_action_meeting_training">बैठक आणि प्रशिक्षण</string>
+  <string name="quick_action_call_sheet">कॉल शीट</string>
+  <string name="quick_action_quick_response">त्वरित प्रतिसाद</string>
+
+  <!-- Summary cards -->
+  <string name="visit_summary_title">भेट सारांश</string>
+  <string name="registration_summary_title">नोंदणी सारांश</string>
+  <string name="risk_summary_title">जोखीम सारांश</string>
+  <string name="monitoring_summary_title">देखरेख सारांश</string>
+  <string name="current_month_label">चालू महिना</string>
+  <string name="table_header_detail">तपशील</string>
+  <string name="table_header_mother">माता</string>
+  <string name="table_header_child">बालक</string>
+  <string name="summary_row_total">एकूण</string>
+  <string name="summary_row_due">प्रलंबित</string>
+  <string name="summary_row_upcoming">आगामी</string>
+  <string name="summary_row_missed">चुकलेले</string>
+  <string name="summary_row_complete">पूर्ण</string>
+  <string name="summary_row_target">लक्ष्य</string>
+  <string name="summary_row_total_risk">एकूण जोखीम</string>
+
+  <!-- Stale Sakhi report -->
+  <string name="stale_sakhi_banner_title">सखीने गेल्या ७ किंवा अधिक दिवसांपासून डेटा अपलोड न केल्याचा अहवाल</string>
+  <string name="stale_sakhi_table_header_name">सखीचे नाव</string>
+  <string name="stale_sakhi_table_header_last_updated">शेवटचे अद्यतन</string>
+  <string name="stale_sakhi_table_header_days">दिवस</string>
+
+  <!-- Assign Item -->
+  <string name="assign_item_title">वस्तू नियुक्त करा</string>
+  <string name="assign_item_detail_title">सखीला वस्तू नियुक्त करा</string>
+  <string name="assign_item_empty_sakhis">या निवडीसाठी कोणतीही सखी उपलब्ध नाही</string>
+  <string name="assign_item_detail_empty_transactions">अद्याप कोणताही व्यवहार नाही</string>
+  <string name="assign_item_sakhi_name_label">सखीचे नाव : %1$s</string>
+  <string name="assign_item_project_label">प्रकल्प : %1$s</string>
+  <string name="assign_item_address_label">पत्ता : %1$s</string>
+  <string name="assign_item_transaction_type_label">व्यवहार प्रकार : %1$s</string>
+  <string name="assign_item_all_items_label">सर्व वस्तू :</string>
+  <string name="assign_item_qty_label">प्रमाण: %1$d</string>
+  <string name="cd_transaction_overflow_menu">अधिक पर्याय</string>
+  <string name="cd_add_transaction">व्यवहार जोडा</string>
+  <string name="assign_item_all_items_label_plain">सर्व वस्तू</string>
+  <string name="assign_item_quantity_hint">प्रमाण</string>
+  <string name="assign_item_error_load_sakhis">वस्तू लोड करण्यात अयशस्वी</string>
+  <string name="assign_item_error_load_detail">सखीचा तपशील लोड करण्यात अयशस्वी</string>
+  <string name="assign_item_error_delete_transaction">व्यवहार हटवण्यात अयशस्वी</string>
+
+  <!-- Transaction card menu + delete -->
+  <string name="action_edit">संपादित करा</string>
+  <string name="action_delete">हटवा</string>
+  <string name="action_cancel">रद्द करा</string>
+  <string name="delete_transaction_confirm_title">व्यवहार हटवायचा?</string>
+  <string name="delete_transaction_confirm_message">हा व्यवहार कायमचा हटवला जाईल.</string>
+
+  <!-- Add Item Transaction -->
+  <string name="add_item_transaction_title">वस्तू व्यवहार जोडा</string>
+  <string name="add_item_program_placeholder">प्रकल्प निवडा</string>
+  <string name="add_item_transaction_date_label">व्यवहार तारीख</string>
+  <string name="add_item_select_date">तारीख निवडा</string>
+  <string name="add_item_transaction_type_label">व्यवहार प्रकार</string>
+  <string name="add_item_select_transaction_type">व्यवहार प्रकार निवडा</string>
+  <string name="add_item_remarks_label">शेरा (ऐच्छिक)</string>
+  <string name="add_item_remarks_placeholder">शेरा प्रविष्ट करा</string>
+  <string name="add_item_submit">सबमिट करा</string>
+  <string name="add_item_error_date_required">कृपया व्यवहार तारीख निवडा</string>
+  <string name="add_item_error_type_required">कृपया व्यवहार प्रकार निवडा</string>
+  <string name="add_item_error_no_items">कृपया किमान एका वस्तूसाठी प्रमाण प्रविष्ट करा</string>
+  <string name="add_item_error_load_form">व्यवहार फॉर्म लोड करण्यात अयशस्वी</string>
+  <string name="add_item_error_submit">व्यवहार सबमिट करण्यात अयशस्वी</string>
+
+  <!-- Item categories -->
+  <string name="item_category_consumables">उपभोग्य वस्तू</string>
+  <string name="item_category_instruments">उपकरणे</string>
+
+  <!-- Transaction types -->
+  <string name="transaction_type_handover">हस्तांतरण</string>
+  <string name="transaction_type_returned">परत केले</string>
+  <string name="transaction_type_permanent_damaged">कायमचे नुकसान</string>
+  <string name="transaction_type_misplaced">हरवले</string>
+  <string name="transaction_type_consumed">वापरले</string>
+
+  <!-- Dashboard state -->
+  <string name="dashboard_error_generic">काहीतरी चुकले. कृपया पुन्हा प्रयत्न करा.</string>
+  <string name="retry">पुन्हा प्रयत्न करा</string>
+
+  <!-- Placeholder destinations -->
+  <string name="placeholder_coming_soon">लवकरच येत आहे</string>
+  <string name="cd_back">मागे</string>
+  <string name="profile_title">प्रोफाइल</string>
+  <string name="settings_title">सेटिंग्ज</string>
+  <string name="notifications_title">सूचना</string>
+
+  <!-- Settings screen -->
+  <string name="settings_section_sync">सिंक</string>
+  <string name="settings_section_general">सर्वसाधारण</string>
+  <string name="settings_section_share">शेअर करा</string>
+  <string name="settings_section_account">खाते</string>
+  <string name="settings_section_about">अ‍ॅप्लिकेशन विषयी</string>
+  <string name="settings_download_master_data">मास्टर डेटा डाउनलोड करा</string>
+  <string name="settings_download_beneficiary_data">लाभार्थी डेटा डाउनलोड करा</string>
+  <string name="settings_language_setup">भाषा सेटअप</string>
+  <string name="settings_change_password">पासवर्ड बदला</string>
+  <string name="settings_share_database_file">डेटाबेस फाइल शेअर करा</string>
+  <string name="settings_check_update">अद्यतन तपासा</string>
+  <string name="settings_version_label">आवृत्ती : %1$s</string>
+  <string name="settings_log_out">लॉग आउट</string>
+  <string name="settings_choose_language">भाषा निवडा</string>
+  <string name="settings_language_english">English</string>
+  <string name="settings_language_marathi">मराठी</string>
+  <string name="settings_apply_language">लागू करा</string>
+
+  <!-- Login screen -->
+  <string name="login_logo_content_description">आरोग्य सखी मॉनिटर लोगो</string>
+  <string name="login_title">आरोग्य सखी मॉनिटर</string>
+  <string name="login_heading">लॉगिन</string>
+  <string name="login_username_label">वापरकर्तानाव</string>
+  <string name="login_username_placeholder">तुमचे वापरकर्तानाव प्रविष्ट करा</string>
+  <string name="login_password_label">पासवर्ड</string>
+  <string name="login_password_placeholder">तुमचा पासवर्ड प्रविष्ट करा</string>
+  <string name="login_button">लॉगिन</string>
+  <string name="login_error_username_required">वापरकर्तानाव आवश्यक आहे</string>
+  <string name="login_error_password_required">पासवर्ड आवश्यक आहे</string>
+  <string name="login_error_invalid_credentials">अवैध वापरकर्तानाव किंवा पासवर्ड</string>
+  <string name="login_error_generic">काहीतरी चुकले. कृपया पुन्हा प्रयत्न करा.</string>
+  <string name="login_error_network">सर्व्हरशी संपर्क होऊ शकला नाही. कृपया तुमचे इंटरनेट कनेक्शन तपासा आणि पुन्हा प्रयत्न करा.</string>
+  <string name="login_error_wrong_role">हे खाते सुपरवायझर म्हणून सेट केलेले नाही. कृपया तुमच्या मॅनेजरशी संपर्क करा.</string>
+  <string name="login_error_offline_no_cache">इंटरनेट कनेक्शन नाही. ऑफलाइन लॉगिन करण्यासाठी कृपया आधी एकदा इंटरनेटसह लॉगिन करा.</string>
+  <string name="login_logout_success">तुम्ही यशस्वीरित्या लॉग आउट झाला आहात</string>
+  <string name="settings_logout_confirm_title">लॉग आउट करायचे?</string>
+  <string name="settings_logout_confirm_message">सुरू ठेवण्यासाठी तुम्हाला पुन्हा लॉगिन करावे लागेल.</string>
+  <string name="settings_logout_confirm_confirm">लॉग आउट</string>
+  <string name="settings_logout_confirm_cancel">रद्द करा</string>
+  <string name="cd_show_password">पासवर्ड दाखवा</string>
+  <string name="cd_hide_password">पासवर्ड लपवा</string>
 </resources>

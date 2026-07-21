@@ -1,5 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
   <uses-permission android:name="android.permission.INTERNET" />
+  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
   <application
     android:name=".SupervisorApplication"
     android:label="@string/app_name"
@@ -13,5 +14,14 @@
         <category android:name="android.intent.category.LAUNCHER" />
       </intent-filter>
     </activity>
+    <!-- Persists the chosen per-app locale across restarts (AppCompat 1.6+). -->
+    <service
+      android:name="androidx.appcompat.app.AppLocalesMetadataHolderService"
+      android:enabled="false"
+      android:exported="false">
+      <meta-data
+        android:name="autoStoreLocales"
+        android:value="true" />
+    </service>
   </application>
 </manifest>
