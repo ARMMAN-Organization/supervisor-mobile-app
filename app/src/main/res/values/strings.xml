@@ -5,4 +5,48 @@
   <string name="sync_now">Sync now</string>
   <string name="syncing">Syncing…</string>
   <string name="sync_complete">Synced</string>
+
+  <!-- Shared -->
+  <string name="cd_back">Back</string>
+  <string name="placeholder_coming_soon">Coming soon</string>
+
+  <!-- Login screen -->
+  <string name="login_logo_content_description">Arogya Sakhi Monitor logo</string>
+  <string name="login_title">Arogya Sakhi Monitor</string>
+  <string name="login_heading">Login</string>
+  <string name="login_username_label">Username</string>
+  <string name="login_username_placeholder">Enter your username</string>
+  <string name="login_password_label">Password</string>
+  <string name="login_password_placeholder">Enter your password</string>
+  <string name="login_button">LOGIN</string>
+  <string name="login_error_username_required">Username is required</string>
+  <string name="login_error_password_required">Password is required</string>
+  <string name="login_error_invalid_credentials">Invalid username or password</string>
+  <string name="login_error_generic">Something went wrong. Please try again.</string>
+  <string name="login_error_network">Couldn\'t reach the server. Check your connection and try again.</string>
+  <string name="login_error_wrong_role">This account isn\'t set up as a Supervisor. Please contact your Manager.</string>
+  <string name="login_error_offline_no_cache">No internet connection. Please connect once and log in before you can log in offline.</string>
+  <string name="login_logout_success">You have logged out successfully</string>
+  <string name="cd_show_password">Show password</string>
+  <string name="cd_hide_password">Hide password</string>
+
+  <!-- Settings screen (logout entry point) -->
+  <string name="settings_title">Settings</string>
+  <string name="settings_section_sync">Sync</string>
+  <string name="settings_section_general">General</string>
+  <string name="settings_section_share">Share</string>
+  <string name="settings_section_account">Account</string>
+  <string name="settings_section_about">About Application</string>
+  <string name="settings_download_master_data">Download Master Data</string>
+  <string name="settings_download_beneficiary_data">Download Beneficiary Data</string>
+  <string name="settings_language_setup">Language Setup</string>
+  <string name="settings_change_password">Change Password</string>
+  <string name="settings_share_database_file">Share Database file</string>
+  <string name="settings_check_update">Check Update</string>
+  <string name="settings_version_label">Version : %1$s</string>
+  <string name="settings_log_out">Log out</string>
+  <string name="settings_logout_confirm_title">Log out?</string>
+  <string name="settings_logout_confirm_message">You will need to log in again to continue.</string>
+  <string name="settings_logout_confirm_confirm">Log out</string>
+  <string name="settings_logout_confirm_cancel">Cancel</string>
 </resources>

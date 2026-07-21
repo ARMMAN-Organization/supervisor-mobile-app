@@ -33,4 +33,20 @@ object Dimens {
   val CardAccentHeight = 6.dp
   val AvatarSize = 44.dp
   val SmallButtonHeight = 44.dp
+
+  /** Hairline divider width — the one sanctioned exception to the base-4 scale. */
+  val HairlineWidth = 1.dp
+
+  /** Caps and centers list-style content (e.g. Settings) on tablet instead of stretching full-bleed. */
+  val ContentMaxWidthTablet = 600.dp
+
+  // Login-screen tokens mirrored from the shared design spec (activity_login.xml).
+  val LoginHeaderHeight = 400.dp
+  val LoginLogoOuterSize = 150.dp
+  val LoginLogoInnerSize = 120.dp
+  val LoginCardMargin = 15.dp
+  val LoginCardOverlap = 50.dp
+  val LoginCardRadius = 15.dp
+  val LoginCardPadding = 20.dp
+  val LoginButtonMarginH = 60.dp
 }
