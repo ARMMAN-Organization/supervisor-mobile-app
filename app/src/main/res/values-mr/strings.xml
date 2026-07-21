@@ -5,4 +5,48 @@
   <string name="sync_now">आता सिंक करा</string>
   <string name="syncing">सिंक करत आहे…</string>
   <string name="sync_complete">सिंक झाले</string>
+
+  <!-- Shared -->
+  <string name="cd_back">मागे</string>
+  <string name="placeholder_coming_soon">लवकरच येत आहे</string>
+
+  <!-- Login screen -->
+  <string name="login_logo_content_description">आरोग्य सखी मॉनिटर लोगो</string>
+  <string name="login_title">आरोग्य सखी मॉनिटर</string>
+  <string name="login_heading">लॉगिन</string>
+  <string name="login_username_label">वापरकर्तानाव</string>
+  <string name="login_username_placeholder">तुमचे वापरकर्तानाव प्रविष्ट करा</string>
+  <string name="login_password_label">पासवर्ड</string>
+  <string name="login_password_placeholder">तुमचा पासवर्ड प्रविष्ट करा</string>
+  <string name="login_button">लॉगिन</string>
+  <string name="login_error_username_required">वापरकर्तानाव आवश्यक आहे</string>
+  <string name="login_error_password_required">पासवर्ड आवश्यक आहे</string>
+  <string name="login_error_invalid_credentials">अवैध वापरकर्तानाव किंवा पासवर्ड</string>
+  <string name="login_error_generic">काहीतरी चुकले. कृपया पुन्हा प्रयत्न करा.</string>
+  <string name="login_error_network">सर्व्हरशी संपर्क होऊ शकला नाही. कृपया तुमचे इंटरनेट कनेक्शन तपासा आणि पुन्हा प्रयत्न करा.</string>
+  <string name="login_error_wrong_role">हे खाते सुपरवायझर म्हणून सेट केलेले नाही. कृपया तुमच्या मॅनेजरशी संपर्क करा.</string>
+  <string name="login_error_offline_no_cache">इंटरनेट कनेक्शन नाही. ऑफलाइन लॉगिन करण्यासाठी कृपया आधी एकदा इंटरनेटसह लॉगिन करा.</string>
+  <string name="login_logout_success">तुम्ही यशस्वीरित्या लॉग आउट झाला आहात</string>
+  <string name="cd_show_password">पासवर्ड दाखवा</string>
+  <string name="cd_hide_password">पासवर्ड लपवा</string>
+
+  <!-- Settings screen (logout entry point) -->
+  <string name="settings_title">सेटिंग्ज</string>
+  <string name="settings_section_sync">सिंक</string>
+  <string name="settings_section_general">सर्वसाधारण</string>
+  <string name="settings_section_share">शेअर करा</string>
+  <string name="settings_section_account">खाते</string>
+  <string name="settings_section_about">अ‍ॅप्लिकेशन विषयी</string>
+  <string name="settings_download_master_data">मास्टर डेटा डाउनलोड करा</string>
+  <string name="settings_download_beneficiary_data">लाभार्थी डेटा डाउनलोड करा</string>
+  <string name="settings_language_setup">भाषा सेटअप</string>
+  <string name="settings_change_password">पासवर्ड बदला</string>
+  <string name="settings_share_database_file">डेटाबेस फाइल शेअर करा</string>
+  <string name="settings_check_update">अद्यतन तपासा</string>
+  <string name="settings_version_label">आवृत्ती : %1$s</string>
+  <string name="settings_log_out">लॉग आउट</string>
+  <string name="settings_logout_confirm_title">लॉग आउट करायचे?</string>
+  <string name="settings_logout_confirm_message">सुरू ठेवण्यासाठी तुम्हाला पुन्हा लॉगिन करावे लागेल.</string>
+  <string name="settings_logout_confirm_confirm">लॉग आउट</string>
+  <string name="settings_logout_confirm_cancel">रद्द करा</string>
 </resources>
