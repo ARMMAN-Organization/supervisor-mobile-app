@@ -5,6 +5,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.armman.supervisor.data.auth.session.FakeSecureKeyValueStore
 import org.armman.supervisor.data.auth.session.OfflineCredentialCache
+import org.armman.supervisor.data.auth.session.SecureKeyValueStore
 import org.armman.supervisor.data.auth.session.SessionStore
 import org.armman.supervisor.data.connectivity.FakeConnectivityChecker
 import org.junit.Assert.assertEquals
@@ -244,7 +245,7 @@ class RemoteAuthRepositoryTest {
   @Test
   fun `logout does not throw even when session store throws`() = runTest {
     // Use a session store backed by a key-value store that throws on remove().
-    val throwingStore = object : org.armman.supervisor.data.auth.session.SecureKeyValueStore {
+    val throwingStore = object : SecureKeyValueStore {
       override fun getString(key: String): String? = null
       override fun putString(key: String, value: String) {}
       override fun remove(key: String) { throw RuntimeException("disk full") }

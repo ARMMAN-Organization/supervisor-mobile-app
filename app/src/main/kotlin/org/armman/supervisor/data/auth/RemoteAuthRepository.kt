@@ -9,6 +9,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 private const val REQUIRED_ROLE = "SUPERVISOR"
+private const val TAG = "RemoteAuthRepository"
 
 /**
  * Real [AuthRepository] backed by the auth-service API, with an offline fallback.
@@ -53,7 +54,7 @@ class RemoteAuthRepository @Inject constructor(
     } catch (e: Exception) {
       // Logout must never throw — the user must still land on the login screen.
       // Log the failure so it is visible in debug builds and crash-reporting tools.
-      Log.e("RemoteAuthRepository", "clearSession() failed during logout; session may not be cleared", e)
+      Log.e(TAG, "clearSession() failed during logout; session may not be cleared", e)
     }
   }
 
