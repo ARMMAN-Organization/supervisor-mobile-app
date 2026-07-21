@@ -7,12 +7,19 @@ object Dimens {
   val ScreenPadding = 24.dp
   val ItemSpacing = 16.dp
   val SmallSpacing = 8.dp
+  val ExtraSmallSpacing = 4.dp
   val ButtonHeight = 48.dp
   val CardRadius = 16.dp
   val TileRadius = 12.dp
   val TilePadding = 20.dp
   val SheetRadius = 40.dp
   val PillButtonPaddingH = 16.dp
+
+  /** Corner radius for compact inputs/banners (text fields, status banners). */
+  val SmallRadius = 8.dp
+
+  /** Inline icon size used alongside body/label text (e.g. status banner icons). */
+  val InlineIconSize = 20.dp
 
   // Tablet button proportions (taller pill, wider inner padding).
   val ButtonHeightTablet = 48.dp
@@ -34,7 +41,7 @@ object Dimens {
   val AvatarSize = 44.dp
   val SmallButtonHeight = 44.dp
 
-  /** Hairline divider width — the one sanctioned exception to the base-4 scale. */
+  /** Hairline divider width — sub-base-4 by design (any visible divider must render below 4dp). */
   val HairlineWidth = 1.dp
 
   /** Caps and centers list-style content (e.g. Settings) on tablet instead of stretching full-bleed. */

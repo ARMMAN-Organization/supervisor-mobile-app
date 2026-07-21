@@ -14,7 +14,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.AlertDialog
@@ -139,7 +138,7 @@ fun SettingsScreen(
           rows = listOf(
             GroupedListRowItem(
               label = stringResource(R.string.settings_version_label, viewModel.versionName),
-              icon = { Icon(Icons.Filled.PhoneAndroid, contentDescription = null) },
+              icon = { Icon(painterResource(R.drawable.ic_info), contentDescription = null) },
               showChevron = false,
               onClick = null,
             ),

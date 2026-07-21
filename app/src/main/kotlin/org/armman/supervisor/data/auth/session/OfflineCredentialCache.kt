@@ -169,8 +169,12 @@ class OfflineCredentialCache @Inject constructor(
 
   private fun deriveHash(password: CharArray, salt: ByteArray): ByteArray {
     val spec = PBEKeySpec(password, salt, ITERATIONS, KEY_LENGTH_BITS)
-    val factory = SecretKeyFactory.getInstance(PBKDF2_ALGORITHM)
-    return factory.generateSecret(spec).encoded
+    try {
+      val factory = SecretKeyFactory.getInstance(PBKDF2_ALGORITHM)
+      return factory.generateSecret(spec).encoded
+    } finally {
+      spec.clearPassword()
+    }
   }
 
   private fun encode(bytes: ByteArray): String = Base64.getEncoder().encodeToString(bytes)

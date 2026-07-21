@@ -17,6 +17,7 @@ import org.armman.supervisor.data.auth.session.SessionStore
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -215,7 +216,7 @@ class LoginViewModelTest {
 
     val errorRes = viewModel.uiState.value.loginError
     assertEquals(R.string.login_error_network, errorRes)
-    assert(errorRes != R.string.login_error_invalid_credentials)
+    assertNotEquals(R.string.login_error_invalid_credentials, errorRes)
   }
 
   @Test
@@ -228,7 +229,7 @@ class LoginViewModelTest {
 
     val errorRes = viewModel.uiState.value.loginError
     assertEquals(R.string.login_error_wrong_role, errorRes)
-    assert(errorRes != R.string.login_error_invalid_credentials)
+    assertNotEquals(R.string.login_error_invalid_credentials, errorRes)
   }
 
   @Test

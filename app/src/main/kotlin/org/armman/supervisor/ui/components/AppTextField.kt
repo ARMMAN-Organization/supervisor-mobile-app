@@ -14,7 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.unit.dp
+import org.armman.supervisor.ui.theme.Dimens
 import org.armman.supervisor.ui.theme.NeutralG100
 import org.armman.supervisor.ui.theme.NeutralG400
 import org.armman.supervisor.ui.theme.NeutralG50
@@ -47,7 +47,7 @@ fun AppTextField(
       text = label,
       style = MaterialTheme.typography.labelLarge,
       color = labelColor,
-      modifier = Modifier.padding(bottom = 4.dp),
+      modifier = Modifier.padding(bottom = Dimens.ExtraSmallSpacing),
     )
     OutlinedTextField(
       value = value,
@@ -60,7 +60,7 @@ fun AppTextField(
       keyboardActions = keyboardActions,
       visualTransformation = visualTransformation,
       trailingIcon = trailingIcon,
-      shape = RoundedCornerShape(8.dp),
+      shape = RoundedCornerShape(Dimens.SmallRadius),
       colors = if (filled) {
         OutlinedTextFieldDefaults.colors(
           unfocusedBorderColor = Color.Transparent,
@@ -84,7 +84,7 @@ fun AppTextField(
         text = errorText,
         style = MaterialTheme.typography.labelLarge,
         color = MaterialTheme.colorScheme.error,
-        modifier = Modifier.padding(top = 4.dp),
+        modifier = Modifier.padding(top = Dimens.ExtraSmallSpacing),
       )
     }
   }

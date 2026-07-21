@@ -1,7 +1,6 @@
 package org.armman.supervisor.data.auth.session
 
 import com.google.gson.Gson
-import com.google.gson.JsonSyntaxException
 import org.armman.supervisor.data.auth.UserSession
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -52,7 +51,10 @@ class SessionStore @Inject constructor(
     val json = store.getString(KEY_SESSION_JSON) ?: return null
     val persisted = try {
       gson.fromJson(json, PersistedSession::class.java)
-    } catch (e: JsonSyntaxException) {
+    } catch (e: Exception) {
+      // Gson can throw several unchecked exception types for malformed JSON
+      // (JsonSyntaxException, JsonParseException, IllegalStateException, ...) — a
+      // read of locally-cached data must never crash the app regardless of which one.
       null
     } ?: return null
     return UserSession(

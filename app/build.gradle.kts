@@ -15,8 +15,9 @@ val localProperties = Properties().apply {
   val file = rootProject.file("local.properties")
   if (file.exists()) file.inputStream().use { load(it) }
 }
-val apiBaseUrl: String = localProperties.getProperty("API_BASE_URL")
-  ?: "https://api.arogyasakhi.armman.org/api/v1/"
+// Retrofit requires the base URL to end with "/"; normalize in case a developer's override omits it.
+val apiBaseUrl: String = (localProperties.getProperty("API_BASE_URL")
+  ?: "https://api.arogyasakhi.armman.org/api/v1/").let { if (it.endsWith("/")) it else "$it/" }
 
 android {
   namespace = "org.armman.supervisor"

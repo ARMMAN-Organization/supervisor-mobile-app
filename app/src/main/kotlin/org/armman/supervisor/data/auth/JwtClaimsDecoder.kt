@@ -57,9 +57,14 @@ class JwtClaimsDecoder @Inject constructor() {
     return JwtClaims(subjectId = raw.subjectId.orEmpty())
   }
 
-  /** `Base64.getUrlDecoder()` requires padding; JWT segments omit it per RFC 7515. */
+  /** `Base64.getUrlDecoder()` requires padding; JWT segments omit it per RFC 7515. A remainder
+   * of 1 is not a valid base64 length (each char encodes 6 bits, so 1 leftover char can't
+   * complete a byte) — reject it here instead of padding garbage into "decodable" input. */
   private fun padBase64Url(segment: String): String {
     val remainder = segment.length % 4
+    if (remainder == 1) {
+      throw IllegalArgumentException("Invalid base64url length: ${segment.length}.")
+    }
     return if (remainder == 0) segment else segment + "=".repeat(4 - remainder)
   }
 }

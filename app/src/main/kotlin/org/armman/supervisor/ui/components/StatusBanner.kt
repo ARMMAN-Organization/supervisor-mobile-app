@@ -18,7 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.unit.dp
+import org.armman.supervisor.ui.theme.Dimens
 import org.armman.supervisor.ui.theme.ErrorSurface
 import org.armman.supervisor.ui.theme.RiskHigh
 import org.armman.supervisor.ui.theme.StatusSuccess
@@ -45,21 +45,21 @@ fun StatusBanner(
     verticalAlignment = Alignment.CenterVertically,
     modifier = modifier
       .fillMaxWidth()
-      .border(1.dp, variant.contentColor, RoundedCornerShape(8.dp))
-      .background(variant.containerColor, RoundedCornerShape(8.dp))
-      .padding(horizontal = 12.dp, vertical = 12.dp),
+      .border(Dimens.HairlineWidth, variant.contentColor, RoundedCornerShape(Dimens.SmallRadius))
+      .background(variant.containerColor, RoundedCornerShape(Dimens.SmallRadius))
+      .padding(horizontal = Dimens.ChipSpacing, vertical = Dimens.ChipSpacing),
   ) {
     Icon(
       imageVector = variant.icon,
       contentDescription = null,
       tint = variant.contentColor,
-      modifier = Modifier.size(20.dp),
+      modifier = Modifier.size(Dimens.InlineIconSize),
     )
     Text(
       text = message,
       style = MaterialTheme.typography.labelLarge,
       color = variant.contentColor,
-      modifier = Modifier.padding(start = 8.dp),
+      modifier = Modifier.padding(start = Dimens.SmallSpacing),
     )
   }
 }
