@@ -81,15 +81,27 @@ class SettingsViewModelTest {
   }
 
   @Test
-  fun `onLogoutConfirmed calls repository logout then the callback and hides dialog`() =
+  fun `onLogoutConfirmed calls repository logout and sets logoutCompleted`() =
     runTest(dispatcher) {
-      var callbackInvoked = false
       viewModel.onLogOutClicked()
-      viewModel.onLogoutConfirmed { callbackInvoked = true }
+      viewModel.onLogoutConfirmed()
       dispatcher.scheduler.advanceUntilIdle()
 
       assertEquals(1, repository.logoutCallCount)
-      assertTrue(callbackInvoked)
+      assertTrue(viewModel.uiState.value.logoutCompleted)
       assertFalse(viewModel.uiState.value.showLogoutConfirmation)
+    }
+
+  @Test
+  fun `onLogoutNavigated resets logoutCompleted to false`() =
+    runTest(dispatcher) {
+      viewModel.onLogOutClicked()
+      viewModel.onLogoutConfirmed()
+      dispatcher.scheduler.advanceUntilIdle()
+      assertTrue(viewModel.uiState.value.logoutCompleted)
+
+      viewModel.onLogoutNavigated()
+
+      assertFalse(viewModel.uiState.value.logoutCompleted)
     }
 }

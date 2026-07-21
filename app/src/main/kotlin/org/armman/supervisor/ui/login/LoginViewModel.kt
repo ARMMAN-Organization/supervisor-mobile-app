@@ -4,6 +4,7 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,6 +26,7 @@ data class LoginUiState(
   val username: String = "",
   val password: String = "",
   val isSubmitting: Boolean = false,
+  val isCheckingSession: Boolean = false,
   @StringRes val usernameError: Int? = null,
   @StringRes val passwordError: Int? = null,
   @StringRes val loginError: Int? = null,
@@ -37,10 +39,18 @@ class LoginViewModel @Inject constructor(
   private val sessionStore: SessionStore,
 ) : ViewModel() {
 
-  // A valid "stay logged in" session skips the form entirely — LoginScreen treats
-  // loginSucceeded the same whether it came from this check or a fresh submit.
-  private val _uiState = MutableStateFlow(LoginUiState(loginSucceeded = sessionStore.readSession() != null))
+  // Start in the "checking session" state to avoid reading EncryptedSharedPreferences on the
+  // main thread (which can block while the Android Keystore warms up on first launch).
+  private val _uiState = MutableStateFlow(LoginUiState(isCheckingSession = true))
   val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
+
+  init {
+    // Check for an existing "stay logged in" session off the main thread.
+    viewModelScope.launch(Dispatchers.IO) {
+      val hasSession = sessionStore.readSession() != null
+      _uiState.update { it.copy(isCheckingSession = false, loginSucceeded = hasSession) }
+    }
+  }
 
   fun onUsernameChanged(value: String) {
     _uiState.update { it.copy(username = value, usernameError = null, loginError = null) }
@@ -90,6 +100,7 @@ class LoginViewModel @Inject constructor(
     LoginFailureReason.NETWORK_ERROR -> R.string.login_error_network
     LoginFailureReason.WRONG_ROLE -> R.string.login_error_wrong_role
     LoginFailureReason.OFFLINE_NO_CACHE -> R.string.login_error_offline_no_cache
+    LoginFailureReason.OFFLINE_SESSION_EXPIRED -> R.string.login_error_offline_session_expired
     LoginFailureReason.UNKNOWN -> R.string.login_error_generic
   }
 }

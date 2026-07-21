@@ -26,6 +26,7 @@
   <string name="login_error_network">सर्व्हरशी संपर्क होऊ शकला नाही. कृपया तुमचे इंटरनेट कनेक्शन तपासा आणि पुन्हा प्रयत्न करा.</string>
   <string name="login_error_wrong_role">हे खाते सुपरवायझर म्हणून सेट केलेले नाही. कृपया तुमच्या मॅनेजरशी संपर्क करा.</string>
   <string name="login_error_offline_no_cache">इंटरनेट कनेक्शन नाही. ऑफलाइन लॉगिन करण्यासाठी कृपया आधी एकदा इंटरनेटसह लॉगिन करा.</string>
+  <string name="login_error_offline_session_expired">तुमचे ऑफलाइन सत्र कालबाह्य झाले आहे. कृपया इंटरनेटशी जोडून पुन्हा लॉगिन करा.</string>
   <string name="login_logout_success">तुम्ही यशस्वीरित्या लॉग आउट झाला आहात</string>
   <string name="cd_show_password">पासवर्ड दाखवा</string>
   <string name="cd_hide_password">पासवर्ड लपवा</string>

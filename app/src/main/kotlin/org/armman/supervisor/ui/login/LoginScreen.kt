@@ -2,6 +2,7 @@ package org.armman.supervisor.ui.login
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -23,6 +24,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -55,6 +57,7 @@ import org.armman.supervisor.ui.components.StatusBanner
 import org.armman.supervisor.ui.components.StatusBannerVariant
 import org.armman.supervisor.ui.theme.DashboardHeaderGreen
 import org.armman.supervisor.ui.theme.Dimens
+import org.armman.supervisor.ui.theme.Primary
 import org.armman.supervisor.ui.theme.White
 
 /**
@@ -82,27 +85,35 @@ fun LoginScreen(
   }
 
   Surface(color = White, modifier = Modifier.fillMaxSize()) {
-    BoxWithConstraints(modifier = Modifier.fillMaxSize().imePadding()) {
-      val isTablet = maxWidth >= Dimens.TabletMinWidthDp.dp
+    if (state.isCheckingSession) {
+      // Avoid reading EncryptedSharedPreferences result on the main thread; show a spinner
+      // while the async session check runs in the background.
+      Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        CircularProgressIndicator(color = Primary)
+      }
+    } else {
+      BoxWithConstraints(modifier = Modifier.fillMaxSize().imePadding()) {
+        val isTablet = maxWidth >= Dimens.TabletMinWidthDp.dp
 
-      Column(
-        modifier = Modifier
-          .fillMaxWidth()
-          .verticalScroll(rememberScrollState()),
-      ) {
-        LoginHeader()
-        LoginCard(
-          state = state,
-          showLogoutBanner = showLogoutBanner,
-          onUsernameChanged = viewModel::onUsernameChanged,
-          onPasswordChanged = viewModel::onPasswordChanged,
-          onLoginClicked = viewModel::onLoginClicked,
+        Column(
           modifier = Modifier
-            .align(Alignment.CenterHorizontally)
-            .offset(y = -Dimens.LoginCardOverlap)
-            .widthIn(max = if (isTablet) Dimens.ContentMaxWidthTablet else Dp.Unspecified)
-            .padding(horizontal = Dimens.LoginCardMargin),
-        )
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState()),
+        ) {
+          LoginHeader()
+          LoginCard(
+            state = state,
+            showLogoutBanner = showLogoutBanner,
+            onUsernameChanged = viewModel::onUsernameChanged,
+            onPasswordChanged = viewModel::onPasswordChanged,
+            onLoginClicked = viewModel::onLoginClicked,
+            modifier = Modifier
+              .align(Alignment.CenterHorizontally)
+              .offset(y = -Dimens.LoginCardOverlap)
+              .widthIn(max = if (isTablet) Dimens.ContentMaxWidthTablet else Dp.Unspecified)
+              .padding(horizontal = Dimens.LoginCardMargin),
+          )
+        }
       }
     }
   }

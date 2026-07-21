@@ -24,6 +24,7 @@ enum class SettingsAction {
 
 data class SettingsUiState(
   val showLogoutConfirmation: Boolean = false,
+  val logoutCompleted: Boolean = false,
 )
 
 @HiltViewModel
@@ -53,11 +54,16 @@ class SettingsViewModel @Inject constructor(
     _uiState.update { it.copy(showLogoutConfirmation = false) }
   }
 
-  fun onLogoutConfirmed(onLoggedOut: () -> Unit) {
+  fun onLogoutConfirmed() {
     _uiState.update { it.copy(showLogoutConfirmation = false) }
     viewModelScope.launch {
       authRepository.logout()
-      onLoggedOut()
+      _uiState.update { it.copy(logoutCompleted = true) }
     }
+  }
+
+  /** Reset the one-shot logout flag after the screen has navigated away. */
+  fun onLogoutNavigated() {
+    _uiState.update { it.copy(logoutCompleted = false) }
   }
 }

@@ -26,6 +26,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -59,6 +60,13 @@ fun SettingsScreen(
   val scope = rememberCoroutineScope()
   val comingSoonMessage = stringResource(R.string.placeholder_coming_soon)
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+  LaunchedEffect(uiState.logoutCompleted) {
+    if (uiState.logoutCompleted) {
+      viewModel.onLogoutNavigated()
+      onLoggedOut()
+    }
+  }
 
   fun onAction(action: SettingsAction) {
     viewModel.onActionTapped(action)
@@ -152,7 +160,7 @@ fun SettingsScreen(
 
   if (uiState.showLogoutConfirmation) {
     LogoutConfirmationDialog(
-      onConfirm = { viewModel.onLogoutConfirmed(onLoggedOut) },
+      onConfirm = viewModel::onLogoutConfirmed,
       onDismiss = viewModel::onLogoutConfirmDismissed,
     )
   }

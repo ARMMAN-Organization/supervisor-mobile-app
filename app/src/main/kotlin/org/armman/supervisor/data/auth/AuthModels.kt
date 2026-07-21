@@ -52,6 +52,9 @@ enum class LoginFailureReason {
   /** Request never reached the server, or timed out, while connectivity appeared available. */
   NETWORK_ERROR,
 
+  /** The cached offline session's access token has expired; the user must log in online to refresh it. */
+  OFFLINE_SESSION_EXPIRED,
+
   /** Anything else: 5xx, malformed response body, unexpected exception. */
   UNKNOWN,
 }

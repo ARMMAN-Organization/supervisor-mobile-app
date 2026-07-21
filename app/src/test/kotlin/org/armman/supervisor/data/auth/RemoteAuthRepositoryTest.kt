@@ -41,14 +41,17 @@ class RemoteAuthRepositoryTest {
     }
   }
 
-  private fun successResponse(roles: List<String> = listOf("SUPERVISOR")) = Response.success(
+  private fun successResponse(
+    roles: List<String> = listOf("SUPERVISOR"),
+    expiresIn: Long = 900L,
+  ) = Response.success(
     LoginResponseDto(
       success = true,
       message = "OK",
       data = LoginResponseData(
         accessToken = fakeAccessToken(),
         refreshToken = "refresh-token",
-        expiresIn = 900L,
+        expiresIn = expiresIn,
         roles = roles,
         projectId = "project-1",
         geographyUnitId = "geo-1",
@@ -236,5 +239,39 @@ class RemoteAuthRepositoryTest {
     repository.logout()
 
     assertNull(sessionStore.readSession())
+  }
+
+  @Test
+  fun `logout does not throw even when session store throws`() = runTest {
+    // Use a session store backed by a key-value store that throws on remove().
+    val throwingStore = object : org.armman.supervisor.data.auth.session.SecureKeyValueStore {
+      override fun getString(key: String): String? = null
+      override fun putString(key: String, value: String) {}
+      override fun remove(key: String) { throw RuntimeException("disk full") }
+    }
+    val throwingSessionStore = SessionStore(throwingStore)
+    val repositoryWithThrowingStore = RemoteAuthRepository(
+      authApi = authApi,
+      jwtClaimsDecoder = JwtClaimsDecoder(),
+      sessionStore = throwingSessionStore,
+      offlineCredentialCache = offlineCredentialCache,
+      connectivityChecker = connectivityChecker,
+    )
+
+    // Must not throw despite the session store failing.
+    repositoryWithThrowingStore.logout()
+  }
+
+  @Test
+  fun `offline login with expired cached token returns OFFLINE_SESSION_EXPIRED`() = runTest {
+    // Log in online with a session that is already expired (expiresIn = -3600).
+    authApi.response = successResponse(expiresIn = -3600L)
+    repository.login(LoginRequest(username = "super01", password = "Super@123"))
+    // Simulate going offline.
+    connectivityChecker.online = false
+
+    val result = repository.login(LoginRequest(username = "super01", password = "Super@123"))
+
+    assertEquals(LoginResult.Failure(LoginFailureReason.OFFLINE_SESSION_EXPIRED), result)
   }
 }

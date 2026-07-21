@@ -1,5 +1,6 @@
 package org.armman.supervisor.data.auth
 
+import android.util.Log
 import org.armman.supervisor.data.auth.session.OfflineCredentialCache
 import org.armman.supervisor.data.auth.session.SessionStore
 import org.armman.supervisor.data.connectivity.ConnectivityChecker
@@ -51,6 +52,8 @@ class RemoteAuthRepository @Inject constructor(
       sessionStore.clearSession()
     } catch (e: Exception) {
       // Logout must never throw — the user must still land on the login screen.
+      // Log the failure so it is visible in debug builds and crash-reporting tools.
+      Log.e("RemoteAuthRepository", "clearSession() failed during logout; session may not be cleared", e)
     }
   }
 
@@ -101,6 +104,12 @@ class RemoteAuthRepository @Inject constructor(
       } else {
         LoginResult.Failure(LoginFailureReason.OFFLINE_NO_CACHE)
       }
+    }
+    // Reject a restored session whose access token has already expired — any API call
+    // made with it would receive a 401.  The user must reconnect and log in online to
+    // refresh the token.
+    if (restoredSession.accessTokenExpiresAtEpochSeconds < System.currentTimeMillis() / 1000L) {
+      return LoginResult.Failure(LoginFailureReason.OFFLINE_SESSION_EXPIRED)
     }
     // Restore "stay logged in" too, so a second offline relaunch skips the form again.
     sessionStore.saveSession(restoredSession)

@@ -68,11 +68,13 @@ class LoginViewModelTest {
   }
 
   @Test
-  fun `initial state is empty with no errors when no session saved`() {
+  fun `initial state is empty with no errors when no session saved`() = runTest(dispatcher) {
+    dispatcher.scheduler.advanceUntilIdle()
     val state = viewModel.uiState.value
     assertEquals("", state.username)
     assertEquals("", state.password)
     assertFalse(state.isSubmitting)
+    assertFalse(state.isCheckingSession)
     assertNull(state.usernameError)
     assertNull(state.passwordError)
     assertNull(state.loginError)
@@ -80,13 +82,35 @@ class LoginViewModelTest {
   }
 
   @Test
-  fun `already-logged-in session on init sets loginSucceeded immediately`() {
-    sessionStore.saveSession(fakeSession())
-    val vmWithSession = LoginViewModel(repository, sessionStore)
-
-    assertTrue(vmWithSession.uiState.value.loginSucceeded)
-    assertEquals(0, repository.loginCallCount)
+  fun `initial state has isCheckingSession true before session check runs`() {
+    // Session check is async; before the coroutine runs, the spinner should show.
+    assertTrue(viewModel.uiState.value.isCheckingSession)
+    assertFalse(viewModel.uiState.value.loginSucceeded)
   }
+
+  @Test
+  fun `isCheckingSession becomes false and loginSucceeded false when no session exists`() =
+    runTest(dispatcher) {
+      dispatcher.scheduler.advanceUntilIdle()
+
+      val state = viewModel.uiState.value
+      assertFalse(state.isCheckingSession)
+      assertFalse(state.loginSucceeded)
+    }
+
+  @Test
+  fun `isCheckingSession becomes false and loginSucceeded is true when session exists`() =
+    runTest(dispatcher) {
+      sessionStore.saveSession(fakeSession())
+      val vmWithSession = LoginViewModel(repository, sessionStore)
+
+      dispatcher.scheduler.advanceUntilIdle()
+
+      val state = vmWithSession.uiState.value
+      assertFalse(state.isCheckingSession)
+      assertTrue(state.loginSucceeded)
+      assertEquals(0, repository.loginCallCount)
+    }
 
   @Test
   fun `blank username blocks submit with field error`() = runTest(dispatcher) {
@@ -301,6 +325,17 @@ class LoginViewModelTest {
     viewModel.onLoginHandled()
 
     assertFalse(viewModel.uiState.value.loginSucceeded)
+  }
+
+  @Test
+  fun `offline expired session shows a distinct session-expired message`() = runTest(dispatcher) {
+    repository.result = LoginResult.Failure(LoginFailureReason.OFFLINE_SESSION_EXPIRED)
+    viewModel.onUsernameChanged("super01")
+    viewModel.onPasswordChanged("Super@123")
+    viewModel.onLoginClicked()
+    dispatcher.scheduler.advanceUntilIdle()
+
+    assertEquals(R.string.login_error_offline_session_expired, viewModel.uiState.value.loginError)
   }
 
   @Test

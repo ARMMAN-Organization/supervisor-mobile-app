@@ -26,6 +26,7 @@
   <string name="login_error_network">Couldn\'t reach the server. Check your connection and try again.</string>
   <string name="login_error_wrong_role">This account isn\'t set up as a Supervisor. Please contact your Manager.</string>
   <string name="login_error_offline_no_cache">No internet connection. Please connect once and log in before you can log in offline.</string>
+  <string name="login_error_offline_session_expired">Your offline session has expired. Please connect to the internet and log in again.</string>
   <string name="login_logout_success">You have logged out successfully</string>
   <string name="cd_show_password">Show password</string>
   <string name="cd_hide_password">Hide password</string>
