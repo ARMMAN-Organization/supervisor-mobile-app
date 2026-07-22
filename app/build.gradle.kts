@@ -57,7 +57,8 @@ dependencies {
 
   implementation(platform(libs.compose.bom))
   implementation(libs.compose.material3)
-  // Icons for settings rows / password visibility toggle where no ic_* design asset exists yet.
+  // Icons for settings rows / password visibility toggle and design-system placeholders
+  // (settings/profile/download/group/rocket) where no ic_* design asset exists yet — see ui/dashboard.
   implementation(libs.compose.material.icons.extended)
   implementation(libs.compose.ui)
   implementation(libs.compose.ui.tooling.preview)
@@ -72,6 +73,14 @@ dependencies {
   implementation(libs.okhttp.logging)
   implementation(libs.coroutines.android)
   implementation(libs.androidx.security.crypto)
+
+  // Local encrypted store for data not yet backed by a real API (e.g. inventory transactions) —
+  // see AssignItemRepositoryImpl. Encrypted via SQLCipher's Room SupportFactory on-device only;
+  // unit tests use a plain (unencrypted) Room in-memory database, see FakeDatabaseModule.
+  implementation(libs.androidx.room.runtime)
+  implementation(libs.androidx.room.ktx)
+  kapt(libs.androidx.room.compiler)
+  implementation(libs.sqlcipher.android)
 
   testImplementation(libs.junit)
   testImplementation(libs.coroutines.test)

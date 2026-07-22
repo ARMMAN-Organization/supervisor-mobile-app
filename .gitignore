@@ -9,3 +9,5 @@ captures/
 *.keystore
 !debug.keystore
 *.pdf
+run-mobile.local.sh
+run-tab.local.sh

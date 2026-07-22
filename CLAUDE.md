@@ -83,11 +83,17 @@ These tables are shared with `sakhi-mobile-app`; keep the two in sync.
 
 ### Colors (`Color.kt`)
 
+> **Parity note:** `Primary`/`Secondary`/`PrimarySurface` were rebranded to teal/green
+> (#014342 / #77E7B7) in supervisor-mobile-app only, per explicit request. sakhi-mobile-app
+> has NOT been updated — the two apps are temporarily out of sync on brand color until
+> sakhi-mobile-app gets the same change.
+
 | Token | Hex | Use |
 |---|---|---|
-| `Primary` | #7C4DFF | brand lavender: buttons, active tabs, links |
+| `Primary` | #014342 | brand teal: buttons, active tabs, links (supervisor-mobile-app only — sakhi-mobile-app still on #7C4DFF, see note below) |
+| `Secondary` | #77E7B7 | accent green |
 | `BackgroundLavender` | #F1EDF9 | screen background behind headers |
-| `PrimarySurface` | #EDE7FB | selected chips, highlight badges ("N days remaining") |
+| `PrimarySurface` | #E3F5EE | selected chips, highlight badges ("N days remaining") |
 | `RiskHigh` / error | #D32F2F | high risk, error states |
 | `RiskModerate` | #F57C00 | moderate risk |
 | `RiskMild` / warning | #FBC02D | mild risk (dark text on it) |

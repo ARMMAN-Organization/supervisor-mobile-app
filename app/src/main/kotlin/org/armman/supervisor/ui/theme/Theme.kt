@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 private val ArogyaColors = lightColorScheme(
   primary = Primary,
   onPrimary = White,
+  secondary = Secondary,
   background = BackgroundLavender,
   error = RiskHigh,
 )
