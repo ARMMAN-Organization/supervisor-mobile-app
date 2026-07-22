@@ -1,12 +1,14 @@
 package org.armman.supervisor.ui.settings
 
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -21,8 +23,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.window.Dialog
-import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import org.armman.supervisor.R
 import org.armman.supervisor.ui.components.PrimaryButton
@@ -50,7 +52,7 @@ internal fun LanguageDialog(
 
   Dialog(onDismissRequest = onDismiss) {
     Surface(shape = RoundedCornerShape(Dimens.CardRadius), color = White) {
-      Column(modifier = Modifier.padding(Dimens.ScreenPadding)) {
+      Column(modifier = Modifier.padding(Dimens.ScreenPadding).selectableGroup()) {
         Text(
           text = stringResource(R.string.settings_choose_language),
           style = SerifTitle,
@@ -87,7 +89,7 @@ private fun LanguageOption(
     verticalAlignment = Alignment.CenterVertically,
     modifier = Modifier
       .fillMaxWidth()
-      .clickable(onClick = onClick)
+      .selectable(selected = selected, onClick = onClick, role = Role.RadioButton)
       .padding(top = Dimens.ItemSpacing),
   ) {
     Image(
