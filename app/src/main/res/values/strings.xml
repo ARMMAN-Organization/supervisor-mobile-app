@@ -126,6 +126,13 @@
   <string name="settings_language_marathi">Marathi</string>
   <string name="settings_apply_language">Apply</string>
 
+  <!-- Legacy Home screen (pending removal — superseded by the dashboard) -->
+  <string name="home_title">Supervisor Home</string>
+  <string name="home_subtitle">Welcome. Your work will appear here.</string>
+  <string name="sync_now">Sync now</string>
+  <string name="syncing">Syncing…</string>
+  <string name="sync_complete">Synced</string>
+
   <!-- Login screen -->
   <string name="login_logo_content_description">Arogya Sakhi Monitor logo</string>
   <string name="login_title">Arogya Sakhi Monitor</string>

@@ -33,3 +33,10 @@ val RiskHighSurface = Color(0xFFFCE9E9)
 
 // Soft shadow tint for cards/bars (black at ~15% opacity, per design shadows).
 val ShadowTint = Color(0x26000000)
+
+// Light red wash for error banners (e.g. login failure) — slightly lighter than RiskHighSurface.
+val ErrorSurface = Color(0xFFFDF2F2)
+
+// Dark teal used for the Login screen header/heading/labels/button — matches the Dashboard
+// header color so both screens share the same brand green.
+val DashboardHeaderGreen = Color(0xFF1E4B3E)

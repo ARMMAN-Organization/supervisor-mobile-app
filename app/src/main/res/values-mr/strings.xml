@@ -126,6 +126,13 @@
   <string name="settings_language_marathi">मराठी</string>
   <string name="settings_apply_language">लागू करा</string>
 
+  <!-- Legacy Home screen (pending removal — superseded by the dashboard) -->
+  <string name="home_title">सुपरवायझर मुख्यपृष्ठ</string>
+  <string name="home_subtitle">स्वागत आहे. तुमचे काम येथे दिसेल.</string>
+  <string name="sync_now">आता सिंक करा</string>
+  <string name="syncing">सिंक करत आहे…</string>
+  <string name="sync_complete">सिंक झाले</string>
+
   <!-- Login screen -->
   <string name="login_logo_content_description">आरोग्य सखी मॉनिटर लोगो</string>
   <string name="login_title">आरोग्य सखी मॉनिटर</string>
