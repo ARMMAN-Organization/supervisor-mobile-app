@@ -25,6 +25,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -35,6 +36,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
@@ -61,7 +64,20 @@ fun SettingsScreen(
 
   fun onAction(action: SettingsAction) {
     viewModel.onActionTapped(action)
-    scope.launch { snackbarHostState.showSnackbar(comingSoonMessage) }
+    if (action != SettingsAction.LANGUAGE_SETUP) {
+      scope.launch { snackbarHostState.showSnackbar(comingSoonMessage) }
+    }
+  }
+
+  // One-shot: apply the chosen locale app-wide (persisted by autoStoreLocales).
+  // Keyed on the whole request (including its id) so a repeat selection of the
+  // same language — or one made right after the activity recreate that
+  // setApplicationLocales itself triggers — is still treated as a new event.
+  LaunchedEffect(uiState.languageRequest) {
+    uiState.languageRequest?.let { request ->
+      AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(request.tag))
+      viewModel.onLanguageApplied()
+    }
   }
 
   Scaffold(
@@ -153,6 +169,13 @@ fun SettingsScreen(
     LogoutConfirmationDialog(
       onConfirm = { viewModel.onLogoutConfirmed(onLoggedOut) },
       onDismiss = viewModel::onLogoutConfirmDismissed,
+    )
+  }
+
+  if (uiState.showLanguageDialog) {
+    LanguageDialog(
+      onSelected = viewModel::onLanguageSelected,
+      onDismiss = viewModel::onDismissLanguageDialog,
     )
   }
 }

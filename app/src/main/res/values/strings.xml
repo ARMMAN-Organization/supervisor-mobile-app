@@ -1,14 +1,137 @@
 <resources>
   <string name="app_name">Arogya Supervisor</string>
+
+  <!-- Dashboard header -->
+  <string name="cd_profile_icon">Profile</string>
+  <string name="cd_notifications_icon">Notifications</string>
+  <string name="cd_settings_icon">Settings</string>
+  <string name="location_selector_placeholder">Select Location</string>
+  <string name="location_selector_empty">No locations available</string>
+
+  <!-- KPI stat row -->
+  <string name="kpi_due_visit">Due Visit</string>
+  <string name="kpi_mother">Mother</string>
+  <string name="kpi_child">Child</string>
+  <string name="kpi_monitor">Monitor</string>
+
+  <!-- Quick actions -->
+  <string name="quick_action_items">Items</string>
+  <string name="quick_action_meeting_training">Meeting &amp; Training</string>
+  <string name="quick_action_call_sheet">Call Sheet</string>
+  <string name="quick_action_quick_response">Quick Response</string>
+
+  <!-- Summary cards -->
+  <string name="visit_summary_title">Visit Summary</string>
+  <string name="registration_summary_title">Registration Summary</string>
+  <string name="risk_summary_title">Risk Summary</string>
+  <string name="monitoring_summary_title">Monitoring Summary</string>
+  <string name="current_month_label">Current Month</string>
+  <string name="table_header_detail">Detail</string>
+  <string name="table_header_mother">Mother</string>
+  <string name="table_header_child">Child</string>
+  <string name="summary_row_total">Total</string>
+  <string name="summary_row_due">Due</string>
+  <string name="summary_row_upcoming">Upcoming</string>
+  <string name="summary_row_missed">Missed</string>
+  <string name="summary_row_complete">Complete</string>
+  <string name="summary_row_target">Target</string>
+  <string name="summary_row_total_risk">Total Risk</string>
+
+  <!-- Stale Sakhi report -->
+  <string name="stale_sakhi_banner_title">Sakhi Not Uploaded Data In Last 7 Or More Days Report</string>
+  <string name="stale_sakhi_table_header_name">Sakhi Name</string>
+  <string name="stale_sakhi_table_header_last_updated">Last Updated</string>
+  <string name="stale_sakhi_table_header_days">Days</string>
+
+  <!-- Assign Item -->
+  <string name="assign_item_title">Assign Item</string>
+  <string name="assign_item_detail_title">Assign Item to Sakhi</string>
+  <string name="assign_item_empty_sakhis">No Sakhis available for this selection</string>
+  <string name="assign_item_detail_empty_transactions">No transactions yet</string>
+  <string name="assign_item_sakhi_name_label">Sakhi Name : %1$s</string>
+  <string name="assign_item_project_label">Project : %1$s</string>
+  <string name="assign_item_address_label">Address : %1$s</string>
+  <string name="assign_item_transaction_type_label">Transaction Type : %1$s</string>
+  <string name="assign_item_all_items_label">All Items :</string>
+  <string name="assign_item_qty_label">Qty: %1$d</string>
+  <string name="cd_transaction_overflow_menu">More options</string>
+  <string name="cd_add_transaction">Add transaction</string>
+  <string name="assign_item_all_items_label_plain">All Items</string>
+  <string name="assign_item_quantity_hint">Quantity</string>
+  <string name="assign_item_error_load_sakhis">Failed to load items</string>
+  <string name="assign_item_error_load_detail">Failed to load Sakhi detail</string>
+  <string name="assign_item_error_delete_transaction">Failed to delete transaction</string>
+
+  <!-- Transaction card menu + delete -->
+  <string name="action_edit">Edit</string>
+  <string name="action_delete">Delete</string>
+  <string name="action_cancel">Cancel</string>
+  <string name="delete_transaction_confirm_title">Delete transaction?</string>
+  <string name="delete_transaction_confirm_message">This transaction will be permanently removed.</string>
+
+  <!-- Add Item Transaction -->
+  <string name="add_item_transaction_title">Add Item Transaction</string>
+  <string name="add_item_program_placeholder">Select Program</string>
+  <string name="add_item_transaction_date_label">Transaction Date</string>
+  <string name="add_item_select_date">Select Date</string>
+  <string name="add_item_transaction_type_label">Transaction Type</string>
+  <string name="add_item_select_transaction_type">Select Transaction Type</string>
+  <string name="add_item_remarks_label">Remarks (optional)</string>
+  <string name="add_item_remarks_placeholder">Enter remarks</string>
+  <string name="add_item_submit">Submit</string>
+  <string name="add_item_error_date_required">Please select a transaction date</string>
+  <string name="add_item_error_type_required">Please select a transaction type</string>
+  <string name="add_item_error_no_items">Please enter a quantity for at least one item</string>
+  <string name="add_item_error_load_form">Failed to load transaction form</string>
+  <string name="add_item_error_submit">Failed to submit transaction</string>
+
+  <!-- Item categories -->
+  <string name="item_category_consumables">Consumables</string>
+  <string name="item_category_instruments">Instruments</string>
+
+  <!-- Transaction types -->
+  <string name="transaction_type_handover">Hand Over</string>
+  <string name="transaction_type_returned">Returned</string>
+  <string name="transaction_type_permanent_damaged">Permanent Damaged</string>
+  <string name="transaction_type_misplaced">Misplaced</string>
+  <string name="transaction_type_consumed">Consumed</string>
+
+  <!-- Dashboard state -->
+  <string name="dashboard_error_generic">Something went wrong. Please try again.</string>
+  <string name="retry">Retry</string>
+
+  <!-- Placeholder destinations -->
+  <string name="placeholder_coming_soon">Coming soon</string>
+  <string name="cd_back">Back</string>
+  <string name="profile_title">Profile</string>
+  <string name="settings_title">Settings</string>
+  <string name="notifications_title">Notifications</string>
+
+  <!-- Settings screen -->
+  <string name="settings_section_sync">Sync</string>
+  <string name="settings_section_general">General</string>
+  <string name="settings_section_share">Share</string>
+  <string name="settings_section_account">Account</string>
+  <string name="settings_section_about">About Application</string>
+  <string name="settings_download_master_data">Download Master Data</string>
+  <string name="settings_download_beneficiary_data">Download Beneficiary Data</string>
+  <string name="settings_language_setup">Language Setup</string>
+  <string name="settings_change_password">Change Password</string>
+  <string name="settings_share_database_file">Share Database file</string>
+  <string name="settings_check_update">Check Update</string>
+  <string name="settings_version_label">Version : %1$s</string>
+  <string name="settings_log_out">Log out</string>
+  <string name="settings_choose_language">Choose Language</string>
+  <string name="settings_language_english">English</string>
+  <string name="settings_language_marathi">Marathi</string>
+  <string name="settings_apply_language">Apply</string>
+
+  <!-- Legacy Home screen (pending removal — superseded by the dashboard) -->
   <string name="home_title">Supervisor Home</string>
   <string name="home_subtitle">Welcome. Your work will appear here.</string>
   <string name="sync_now">Sync now</string>
   <string name="syncing">Syncing…</string>
   <string name="sync_complete">Synced</string>
-
-  <!-- Shared -->
-  <string name="cd_back">Back</string>
-  <string name="placeholder_coming_soon">Coming soon</string>
 
   <!-- Login screen -->
   <string name="login_logo_content_description">Arogya Sakhi Monitor logo</string>
@@ -27,26 +150,10 @@
   <string name="login_error_wrong_role">This account isn\'t set up as a Supervisor. Please contact your Manager.</string>
   <string name="login_error_offline_no_cache">No internet connection. Please connect once and log in before you can log in offline.</string>
   <string name="login_logout_success">You have logged out successfully</string>
-  <string name="cd_show_password">Show password</string>
-  <string name="cd_hide_password">Hide password</string>
-
-  <!-- Settings screen (logout entry point) -->
-  <string name="settings_title">Settings</string>
-  <string name="settings_section_sync">Sync</string>
-  <string name="settings_section_general">General</string>
-  <string name="settings_section_share">Share</string>
-  <string name="settings_section_account">Account</string>
-  <string name="settings_section_about">About Application</string>
-  <string name="settings_download_master_data">Download Master Data</string>
-  <string name="settings_download_beneficiary_data">Download Beneficiary Data</string>
-  <string name="settings_language_setup">Language Setup</string>
-  <string name="settings_change_password">Change Password</string>
-  <string name="settings_share_database_file">Share Database file</string>
-  <string name="settings_check_update">Check Update</string>
-  <string name="settings_version_label">Version : %1$s</string>
-  <string name="settings_log_out">Log out</string>
   <string name="settings_logout_confirm_title">Log out?</string>
   <string name="settings_logout_confirm_message">You will need to log in again to continue.</string>
   <string name="settings_logout_confirm_confirm">Log out</string>
   <string name="settings_logout_confirm_cancel">Cancel</string>
+  <string name="cd_show_password">Show password</string>
+  <string name="cd_hide_password">Hide password</string>
 </resources>

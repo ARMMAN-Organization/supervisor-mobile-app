@@ -41,6 +41,32 @@ object Dimens {
   val AvatarSize = 44.dp
   val SmallButtonHeight = 44.dp
 
+  // Dashboard-screen tokens (measured from screenshots — confirm at QA).
+  val IconButtonSize = 40.dp
+  val QuickActionIconSize = 56.dp
+  val TableRowHeight = 44.dp
+
+  // Assign Item screens (measured from screenshots — confirm at QA).
+  val DatePillRadius = 20.dp
+  val DatePillPaddingH = 20.dp
+  val DatePillPaddingV = 8.dp
+  val QuantityFieldWidth = 96.dp
+  val QuantityFieldHeight = 44.dp
+
+  /** Corner radius for outlined input boxes (dropdowns, date fields, quantity fields). */
+  val InputFieldRadius = 8.dp
+
+  // Landscape-compact header tokens: shrink the header's vertical footprint when the
+  // device is rotated to landscape, where screen height is scarce. Portrait is unaffected.
+  val ScreenPaddingCompact = 12.dp
+  val IconButtonSizeCompact = 32.dp
+
+  /** Smallest base-4 step — tight vertical padding (e.g. inside a pill badge). */
+  val TinySpacing = 4.dp
+
+  /** Radio-button icon size (Choose Language dialog). */
+  val RadioIconSize = 24.dp
+
   /** Hairline divider width — sub-base-4 by design (any visible divider must render below 4dp). */
   val HairlineWidth = 1.dp
 

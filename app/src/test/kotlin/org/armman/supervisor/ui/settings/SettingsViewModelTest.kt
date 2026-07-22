@@ -92,4 +92,73 @@ class SettingsViewModelTest {
       assertTrue(callbackInvoked)
       assertFalse(viewModel.uiState.value.showLogoutConfirmation)
     }
+
+  @Test
+  fun `onActionTapped LANGUAGE_SETUP opens the language dialog`() {
+    viewModel.onActionTapped(SettingsAction.LANGUAGE_SETUP)
+
+    assertTrue(viewModel.uiState.value.showLanguageDialog)
+  }
+
+  @Test
+  fun `onActionTapped for other actions does not open the language dialog`() {
+    SettingsAction.entries
+      .filter { it != SettingsAction.LANGUAGE_SETUP }
+      .forEach { action -> viewModel.onActionTapped(action) }
+
+    assertFalse(viewModel.uiState.value.showLanguageDialog)
+  }
+
+  @Test
+  fun `language selection emits the right tag and resets after applying`() {
+    viewModel.onActionTapped(SettingsAction.LANGUAGE_SETUP)
+    assertTrue(viewModel.uiState.value.showLanguageDialog)
+
+    viewModel.onLanguageSelected(AppLanguage.MARATHI)
+    var state = viewModel.uiState.value
+    assertFalse(state.showLanguageDialog)
+    assertEquals("mr", state.languageRequest?.tag)
+
+    viewModel.onLanguageApplied()
+    assertEquals(null, viewModel.uiState.value.languageRequest)
+
+    viewModel.onLanguageSelected(AppLanguage.ENGLISH)
+    assertEquals("en", viewModel.uiState.value.languageRequest?.tag)
+  }
+
+  @Test
+  fun `selecting the same language twice still emits a request each time with a new id`() {
+    viewModel.onLanguageSelected(AppLanguage.MARATHI)
+    val firstRequest = viewModel.uiState.value.languageRequest
+    assertEquals("mr", firstRequest?.tag)
+    viewModel.onLanguageApplied()
+
+    viewModel.onActionTapped(SettingsAction.LANGUAGE_SETUP)
+    viewModel.onLanguageSelected(AppLanguage.MARATHI)
+    val secondRequest = viewModel.uiState.value.languageRequest
+    assertEquals("mr", secondRequest?.tag)
+    // Distinct request id even though the tag repeats — this is what lets the
+    // screen's LaunchedEffect(uiState.languageRequest) re-fire every time,
+    // including immediately after the activity recreate a locale change
+    // itself triggers.
+    assertTrue(secondRequest != null && firstRequest != null && secondRequest.requestId != firstRequest.requestId)
+  }
+
+  @Test
+  fun `dialog can be dismissed without selection`() {
+    viewModel.onActionTapped(SettingsAction.LANGUAGE_SETUP)
+    viewModel.onDismissLanguageDialog()
+
+    val state = viewModel.uiState.value
+    assertFalse(state.showLanguageDialog)
+    assertEquals(null, state.languageRequest)
+  }
+
+  @Test
+  fun `onLanguageApplied when already null is a no-op`() {
+    viewModel.onLanguageApplied()
+
+    assertEquals(null, viewModel.uiState.value.languageRequest)
+    assertFalse(viewModel.uiState.value.showLanguageDialog)
+  }
 }

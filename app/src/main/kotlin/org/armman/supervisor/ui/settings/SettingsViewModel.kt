@@ -22,9 +22,24 @@ enum class SettingsAction {
   CHECK_UPDATE,
 }
 
+/** Supported app languages with their BCP-47 tags. */
+enum class AppLanguage(val tag: String) { ENGLISH("en"), MARATHI("mr") }
+
+/**
+ * [languageRequest] is a one-shot signal consumed by the screen: it applies the
+ * locale change via AppCompat, then calls [SettingsViewModel.onLanguageApplied].
+ * A monotonically increasing request id (not just the tag) is required so a
+ * repeat selection of the SAME language — or a selection made right after an
+ * activity recreate from a prior locale change — is still observed as a new
+ * event by `LaunchedEffect`, which only re-fires on an actual key change.
+ */
 data class SettingsUiState(
   val showLogoutConfirmation: Boolean = false,
+  val showLanguageDialog: Boolean = false,
+  val languageRequest: LanguageRequest? = null,
 )
+
+data class LanguageRequest(val tag: String, val requestId: Int)
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
@@ -34,14 +49,39 @@ class SettingsViewModel @Inject constructor(
 
   private val _uiState = MutableStateFlow(SettingsUiState())
   val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
+  private var languageRequestCounter = 0
 
   /**
-   * Every action currently just surfaces a "Coming soon" message (shown by the screen itself).
-   * This hook exists so each action gets a real, deliberate implementation later instead of the
-   * screen silently growing behavior with no ViewModel entry point.
+   * Every action other than [SettingsAction.LANGUAGE_SETUP] currently just surfaces a
+   * "Coming soon" message (shown by the screen itself). This hook exists so each action
+   * gets a real, deliberate implementation later instead of the screen silently growing
+   * behavior with no ViewModel entry point.
    */
   fun onActionTapped(action: SettingsAction) {
-    // Intentionally no-op — see class doc.
+    when (action) {
+      SettingsAction.LANGUAGE_SETUP -> _uiState.update { it.copy(showLanguageDialog = true) }
+      else -> { /* no-op — see function doc. */ }
+    }
+  }
+
+  fun onDismissLanguageDialog() {
+    _uiState.update { it.copy(showLanguageDialog = false) }
+  }
+
+  /** Emits the one-shot locale request; the screen applies it via AppCompat. */
+  fun onLanguageSelected(language: AppLanguage) {
+    languageRequestCounter++
+    _uiState.update {
+      it.copy(
+        showLanguageDialog = false,
+        languageRequest = LanguageRequest(language.tag, languageRequestCounter),
+      )
+    }
+  }
+
+  /** Reset after the screen has applied the locale. */
+  fun onLanguageApplied() {
+    _uiState.update { it.copy(languageRequest = null) }
   }
 
   /** Tapping "Log out" opens a confirmation dialog rather than logging out immediately. */
