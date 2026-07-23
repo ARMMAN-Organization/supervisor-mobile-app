@@ -1,0 +1,4 @@
+#!/bin/bash
+# Copy to run-mobile.local.sh (gitignored) and fill in your own device.
+SERIAL=your-device-serial
+ADB=/path/to/platform-tools/adb
