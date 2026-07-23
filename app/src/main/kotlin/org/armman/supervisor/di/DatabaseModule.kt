@@ -13,6 +13,7 @@ import net.sqlcipher.database.SQLiteDatabase
 import net.sqlcipher.database.SupportFactory
 import org.armman.supervisor.data.auth.session.SecureKeyValueStore
 import org.armman.supervisor.data.local.AppDatabase
+import org.armman.supervisor.data.local.CallLogDao
 import org.armman.supervisor.data.local.SupervisorEventDao
 import org.armman.supervisor.data.local.TransactionDao
 import java.security.SecureRandom
@@ -57,6 +58,9 @@ object DatabaseModule {
 
   @Provides
   fun provideSupervisorEventDao(database: AppDatabase): SupervisorEventDao = database.supervisorEventDao()
+
+  @Provides
+  fun provideCallLogDao(database: AppDatabase): CallLogDao = database.callLogDao()
 
   private fun generatePassphrase(): String {
     val bytes = ByteArray(PASSPHRASE_BYTES)

@@ -97,6 +97,65 @@
   <string name="transaction_type_misplaced">Misplaced</string>
   <string name="transaction_type_consumed">Consumed</string>
 
+  <!-- Call Sheet -->
+  <string name="call_sheet_title">Call Sheet</string>
+  <string name="call_sheet_empty_sakhis">No Sakhis available for this selection</string>
+  <string name="call_sheet_error_load">Failed to load call sheet</string>
+  <string name="cd_call_sakhi">Call Sakhi</string>
+  <string name="call_sheet_stat_visit_due">Visit Due</string>
+  <string name="call_sheet_stat_visit_3_days_expire">Visit 3 Days to expire</string>
+  <string name="call_sheet_stat_followup_pending">Followup Pending</string>
+  <string name="call_sheet_stat_closure_form_pending">Closure Form Pending</string>
+  <string name="call_sheet_stat_missed_visit">Missed Visit</string>
+  <string name="call_sheet_stat_high_risk_anc">High Risk ANC</string>
+  <string name="call_sheet_stat_high_risk_pnc">High Risk PNC</string>
+  <string name="call_sheet_stat_last_sync_date">Last Data Sync Date:</string>
+  <string name="call_sheet_stat_column_info">Info</string>
+  <string name="call_sheet_stat_column_updated">Updated</string>
+  <string name="call_sheet_stat_column_count">Count</string>
+
+  <!-- Call History -->
+  <string name="call_history_empty">No calls logged yet</string>
+  <string name="call_history_error_load">Failed to load call history</string>
+  <string name="call_history_responder_label">Responder: %1$s</string>
+
+  <!-- Call Outcome -->
+  <string name="call_outcome_connected_label">Call Connected</string>
+  <string name="call_outcome_connected_yes">Yes</string>
+  <string name="call_outcome_connected_no">No</string>
+  <string name="call_outcome_success_label">Success Outcome</string>
+  <string name="call_outcome_failure_label">Failure Outcome</string>
+  <string name="call_outcome_select_reason">Select Reason</string>
+  <string name="call_outcome_responder_label">Call Responder</string>
+  <string name="call_outcome_duration_label">Call Duration (minutes)</string>
+  <string name="call_outcome_notes_label">Discussion Notes (optional)</string>
+  <string name="call_outcome_follow_up_label">Follow-up Action (optional)</string>
+  <string name="call_outcome_submit">Submit</string>
+  <string name="call_outcome_error_connected_required">Please select whether the call connected</string>
+  <string name="call_outcome_error_success_outcome_required">Please select a success outcome</string>
+  <string name="call_outcome_error_failure_reason_required">Please select a failure reason</string>
+  <string name="call_outcome_error_responder_required">Please select who answered the call</string>
+  <string name="call_outcome_error_duration_invalid">Please enter a valid call duration</string>
+  <string name="call_outcome_error_submit">Failed to submit call log</string>
+
+  <!-- Success outcomes -->
+  <string name="success_outcome_picked_up_talked">Picked up the call and talked</string>
+  <string name="success_outcome_picked_up_no_one_talking">Picked up the call but no one was talking</string>
+  <string name="success_outcome_picked_up_cut_midway">Picked up the call and cut the call midway</string>
+  <string name="success_outcome_call_back">Call back</string>
+
+  <!-- Failure reasons -->
+  <string name="failure_reason_not_picked_up">Call not picked up</string>
+  <string name="failure_reason_ringing">Ringing</string>
+  <string name="failure_reason_phone_off">Phone off</string>
+  <string name="failure_reason_out_of_network">Out of network area</string>
+
+  <!-- Call responders -->
+  <string name="call_responder_relative">Relative</string>
+  <string name="call_responder_husband">Husband</string>
+  <string name="call_responder_sakhi">Sakhi</string>
+  <string name="call_responder_person_who_does_not_know_woman">Person who does not know women</string>
+
   <!-- Dashboard state -->
   <string name="dashboard_error_generic">Something went wrong. Please try again.</string>
   <string name="retry">Retry</string>

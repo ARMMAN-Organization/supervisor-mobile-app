@@ -12,6 +12,9 @@ import org.armman.supervisor.R
 import org.armman.supervisor.ui.assignitem.AddItemTransactionScreen
 import org.armman.supervisor.ui.assignitem.AssignItemDetailScreen
 import org.armman.supervisor.ui.assignitem.AssignItemScreen
+import org.armman.supervisor.ui.callsheet.CallHistoryScreen
+import org.armman.supervisor.ui.callsheet.CallOutcomeScreen
+import org.armman.supervisor.ui.callsheet.CallSheetScreen
 import org.armman.supervisor.ui.components.PlaceholderScreen
 import org.armman.supervisor.ui.dashboard.DashboardScreen
 import org.armman.supervisor.ui.login.LoginScreen
@@ -30,6 +33,9 @@ object Routes {
     "add_item_transaction/{$ASSIGN_ITEM_DETAIL_SAKHI_ID_ARG}?$ADD_ITEM_TRANSACTION_EDIT_ID_ARG={$ADD_ITEM_TRANSACTION_EDIT_ID_ARG}"
   const val MEETING_TRAINING = "meeting_training"
   const val CALL_SHEET = "call_sheet"
+  const val CALL_SHEET_SAKHI_ID_ARG = "sakhiId"
+  const val CALL_HISTORY = "call_history/{$CALL_SHEET_SAKHI_ID_ARG}"
+  const val CALL_OUTCOME = "call_outcome/{$CALL_SHEET_SAKHI_ID_ARG}"
   const val QUICK_RESPONSE = "quick_response"
   const val PROFILE = "profile"
   const val SETTINGS = "settings"
@@ -39,6 +45,10 @@ object Routes {
 
   fun addItemTransaction(sakhiId: String, editTransactionId: String? = null) =
     "add_item_transaction/$sakhiId" + if (editTransactionId != null) "?$ADD_ITEM_TRANSACTION_EDIT_ID_ARG=$editTransactionId" else ""
+
+  fun callHistory(sakhiId: String) = "call_history/$sakhiId"
+
+  fun callOutcome(sakhiId: String) = "call_outcome/$sakhiId"
 }
 
 /** Top-level navigation graph for the Supervisor app. */
@@ -101,7 +111,29 @@ fun AppNavHost() {
       PlaceholderStub(navController, R.string.quick_action_meeting_training)
     }
     composable(Routes.CALL_SHEET) {
-      PlaceholderStub(navController, R.string.quick_action_call_sheet)
+      CallSheetScreen(
+        onBack = { navController.popBackStack() },
+        onSakhiSelected = { sakhi -> navController.navigate(Routes.callHistory(sakhi.id)) },
+      )
+    }
+    composable(
+      Routes.CALL_HISTORY,
+      arguments = listOf(navArgument(Routes.CALL_SHEET_SAKHI_ID_ARG) { type = NavType.StringType }),
+    ) { backStackEntry ->
+      val sakhiId = backStackEntry.arguments?.getString(Routes.CALL_SHEET_SAKHI_ID_ARG).orEmpty()
+      CallHistoryScreen(
+        onBack = { navController.popBackStack() },
+        onCallClick = { navController.navigate(Routes.callOutcome(sakhiId)) },
+      )
+    }
+    composable(
+      Routes.CALL_OUTCOME,
+      arguments = listOf(navArgument(Routes.CALL_SHEET_SAKHI_ID_ARG) { type = NavType.StringType }),
+    ) {
+      CallOutcomeScreen(
+        onBack = { navController.popBackStack() },
+        onSubmitted = { navController.popBackStack() },
+      )
     }
     composable(Routes.QUICK_RESPONSE) {
       PlaceholderStub(navController, R.string.quick_action_quick_response)
