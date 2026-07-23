@@ -90,6 +90,60 @@
   <string name="item_category_consumables">Consumables</string>
   <string name="item_category_instruments">Instruments</string>
 
+  <!-- Meeting & Training -->
+  <string name="meeting_training_title">Meeting &amp; Training</string>
+  <string name="meeting_training_new_meeting">New Meeting</string>
+  <string name="meeting_training_new_training">New Training</string>
+  <string name="meeting_training_tab_scheduled">Scheduled</string>
+  <string name="meeting_training_tab_completed">Completed</string>
+  <string name="meeting_training_project_label">Project</string>
+  <string name="meeting_training_all_projects">All projects</string>
+  <string name="meeting_training_gathering_type_label">Gathering Type</string>
+  <string name="meeting_training_chip_meeting">Meeting</string>
+  <string name="meeting_training_chip_training">Training</string>
+  <string name="meeting_training_empty_events">No events for this selection</string>
+  <string name="meeting_training_error_load">Failed to load Meeting &amp; Training data</string>
+  <string name="meeting_training_error_submit">Failed to save changes</string>
+  <string name="meeting_training_attended_count">%1$d/%2$d</string>
+  <string name="meeting_training_date_range">%1$s - %2$s</string>
+
+  <string name="schedule_meeting_title">New Meeting</string>
+  <string name="schedule_meeting_project_placeholder">Select Project</string>
+  <string name="schedule_meeting_date_label">Meeting Date</string>
+  <string name="schedule_meeting_start_placeholder">Today</string>
+  <string name="schedule_meeting_end_placeholder">End Date</string>
+  <string name="schedule_meeting_remarks_label">Remarks (optional)</string>
+  <string name="schedule_meeting_submit">Schedule Meeting</string>
+  <string name="schedule_meeting_error_project_required">Please select a project</string>
+  <string name="schedule_meeting_error_start_date_required">Please select a meeting date</string>
+  <string name="schedule_meeting_error_invalid_range">End date cannot be before start date</string>
+  <string name="schedule_meeting_added">Meeting Added</string>
+
+  <string name="meeting_detail_title">Meeting Details</string>
+  <string name="meeting_detail_start_date">Start Date</string>
+  <string name="meeting_detail_end_date">End Date</string>
+  <string name="meeting_detail_sakhi_attended">Sakhi Attended</string>
+  <string name="meeting_detail_attendance_button">Attendance</string>
+  <string name="meeting_detail_pictures_label">Pictures</string>
+  <string name="meeting_detail_complete_button">Complete this meeting</string>
+  <string name="meeting_detail_action_cancel">Cancel</string>
+  <string name="meeting_detail_action_reschedule">Reschedule</string>
+  <string name="meeting_detail_complete_dialog_title">Complete and Close</string>
+  <string name="meeting_detail_complete_dialog_message">Are you sure you want to complete this meeting? You can\'t edit anything or add images afterwards.</string>
+  <string name="meeting_detail_complete_no_photo">Add at least one picture before completing this meeting</string>
+  <string name="meeting_detail_complete_confirm">OK</string>
+  <string name="cd_add_photo">Add photo</string>
+
+  <string name="reschedule_meeting_title">Reschedule Meeting</string>
+  <string name="reschedule_meeting_new_date_label">Reschedule date</string>
+  <string name="reschedule_meeting_submit">Reschedule</string>
+  <string name="reschedule_meeting_error_invalid_range">End date cannot be before start date</string>
+
+  <string name="attendance_title">Attendance</string>
+  <string name="attendance_mark_all_present">Mark All Present</string>
+  <string name="attendance_save">Save</string>
+  <string name="attendance_error_load">Failed to load attendance roster</string>
+
   <!-- Transaction types -->
   <string name="transaction_type_handover">Hand Over</string>
   <string name="transaction_type_returned">Returned</string>

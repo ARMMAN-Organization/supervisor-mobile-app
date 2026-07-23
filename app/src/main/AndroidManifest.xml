@@ -23,5 +23,16 @@
         android:name="autoStoreLocales"
         android:value="true" />
     </service>
+    <!-- Exposes app-private event photo files to the camera app via a content:// Uri
+         (never a raw file:// Uri — that throws FileUriExposedException on modern Android). -->
+    <provider
+      android:name="androidx.core.content.FileProvider"
+      android:authorities="${applicationId}.fileprovider"
+      android:exported="false"
+      android:grantUriPermissions="true">
+      <meta-data
+        android:name="android.support.FILE_PROVIDER_PATHS"
+        android:resource="@xml/file_paths" />
+    </provider>
   </application>
 </manifest>

@@ -18,6 +18,11 @@ import org.armman.supervisor.ui.callsheet.CallSheetScreen
 import org.armman.supervisor.ui.components.PlaceholderScreen
 import org.armman.supervisor.ui.dashboard.DashboardScreen
 import org.armman.supervisor.ui.login.LoginScreen
+import org.armman.supervisor.ui.meetingtraining.AttendanceScreen
+import org.armman.supervisor.ui.meetingtraining.MeetingDetailScreen
+import org.armman.supervisor.ui.meetingtraining.MeetingTrainingScreen
+import org.armman.supervisor.ui.meetingtraining.RescheduleMeetingScreen
+import org.armman.supervisor.ui.meetingtraining.ScheduleMeetingScreen
 import org.armman.supervisor.ui.settings.SettingsScreen
 
 object Routes {
@@ -32,6 +37,11 @@ object Routes {
   const val ADD_ITEM_TRANSACTION =
     "add_item_transaction/{$ASSIGN_ITEM_DETAIL_SAKHI_ID_ARG}?$ADD_ITEM_TRANSACTION_EDIT_ID_ARG={$ADD_ITEM_TRANSACTION_EDIT_ID_ARG}"
   const val MEETING_TRAINING = "meeting_training"
+  const val MEETING_DETAIL_EVENT_ID_ARG = "eventId"
+  const val SCHEDULE_MEETING = "schedule_meeting"
+  const val MEETING_DETAIL = "meeting_detail/{$MEETING_DETAIL_EVENT_ID_ARG}"
+  const val RESCHEDULE_MEETING = "reschedule_meeting/{$MEETING_DETAIL_EVENT_ID_ARG}"
+  const val MEETING_ATTENDANCE = "meeting_attendance/{$MEETING_DETAIL_EVENT_ID_ARG}"
   const val CALL_SHEET = "call_sheet"
   const val CALL_SHEET_SAKHI_ID_ARG = "sakhiId"
   const val CALL_HISTORY = "call_history/{$CALL_SHEET_SAKHI_ID_ARG}"
@@ -49,6 +59,12 @@ object Routes {
   fun callHistory(sakhiId: String) = "call_history/$sakhiId"
 
   fun callOutcome(sakhiId: String) = "call_outcome/$sakhiId"
+
+  fun meetingDetail(eventId: String) = "meeting_detail/$eventId"
+
+  fun rescheduleMeeting(eventId: String) = "reschedule_meeting/$eventId"
+
+  fun meetingAttendance(eventId: String) = "meeting_attendance/$eventId"
 }
 
 /** Top-level navigation graph for the Supervisor app. */
@@ -108,7 +124,47 @@ fun AppNavHost() {
       )
     }
     composable(Routes.MEETING_TRAINING) {
-      PlaceholderStub(navController, R.string.quick_action_meeting_training)
+      MeetingTrainingScreen(
+        onBack = { navController.popBackStack() },
+        onNewMeeting = { navController.navigate(Routes.SCHEDULE_MEETING) },
+        onNewTraining = { /* Training is not yet implemented */ },
+        onEventSelected = { eventId -> navController.navigate(Routes.meetingDetail(eventId)) },
+      )
+    }
+    composable(Routes.SCHEDULE_MEETING) {
+      ScheduleMeetingScreen(
+        onBack = { navController.popBackStack() },
+        onSubmitted = { navController.popBackStack() },
+      )
+    }
+    composable(
+      Routes.MEETING_DETAIL,
+      arguments = listOf(navArgument(Routes.MEETING_DETAIL_EVENT_ID_ARG) { type = NavType.StringType }),
+    ) { backStackEntry ->
+      val eventId = backStackEntry.arguments?.getString(Routes.MEETING_DETAIL_EVENT_ID_ARG).orEmpty()
+      MeetingDetailScreen(
+        onBack = { navController.popBackStack() },
+        onReschedule = { navController.navigate(Routes.rescheduleMeeting(eventId)) },
+        onAttendance = { navController.navigate(Routes.meetingAttendance(eventId)) },
+      )
+    }
+    composable(
+      Routes.RESCHEDULE_MEETING,
+      arguments = listOf(navArgument(Routes.MEETING_DETAIL_EVENT_ID_ARG) { type = NavType.StringType }),
+    ) {
+      RescheduleMeetingScreen(
+        onBack = { navController.popBackStack() },
+        onSubmitted = { navController.popBackStack() },
+      )
+    }
+    composable(
+      Routes.MEETING_ATTENDANCE,
+      arguments = listOf(navArgument(Routes.MEETING_DETAIL_EVENT_ID_ARG) { type = NavType.StringType }),
+    ) {
+      AttendanceScreen(
+        onBack = { navController.popBackStack() },
+        onSaved = { navController.popBackStack() },
+      )
     }
     composable(Routes.CALL_SHEET) {
       CallSheetScreen(
