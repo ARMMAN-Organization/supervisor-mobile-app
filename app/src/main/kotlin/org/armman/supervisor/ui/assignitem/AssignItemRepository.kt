@@ -21,7 +21,11 @@ interface AssignItemRepository {
   /** Creates a new transaction for the Sakhi; returns the created entry (with its assigned id). */
   suspend fun submitTransaction(submission: TransactionSubmission): TransactionEntry
 
-  /** Replaces the transaction identified by [transactionId] with the given [submission]. */
+  /**
+   * Replaces the transaction identified by [transactionId] with the given [submission]. Fails if
+   * [transactionId] doesn't belong to [submission]'s sakhi, so a stale/mismatched id can't
+   * overwrite another Sakhi's transaction.
+   */
   suspend fun updateTransaction(transactionId: String, submission: TransactionSubmission): TransactionEntry
 
   suspend fun deleteTransaction(sakhiId: String, transactionId: String)

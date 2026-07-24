@@ -63,7 +63,10 @@ private class FakeTransactionDao : TransactionDao {
   }
 
   override suspend fun replaceWithItems(entity: TransactionEntity, items: List<TransactionItemEntity>) {
-    check(transactions.containsKey(entity.id)) { "Unknown transaction id: ${entity.id}" }
+    val existing = transactions[entity.id] ?: error("Unknown transaction id: ${entity.id}")
+    check(existing.sakhiId == entity.sakhiId) {
+      "Transaction ${entity.id} does not belong to sakhi ${entity.sakhiId}"
+    }
     transactions[entity.id] = entity
     deleteItemsForTransaction(entity.id)
     if (items.isNotEmpty()) insertItems(items)
@@ -241,6 +244,34 @@ class AssignItemRepositoryImplTest {
     assertEquals(TransactionType.MISPLACED, transactions.first().transactionType)
     assertEquals("23 Jul 2026", transactions.first().date)
     assertEquals("Pencil", transactions.first().items.first().itemName)
+  }
+
+  @Test(expected = IllegalStateException::class)
+  fun `updateTransaction with a transaction id belonging to a different sakhi throws`() = runTest {
+    val sakhi1Txn = repository.submitTransaction(
+      TransactionSubmission(
+        sakhiId = "sakhi-1",
+        projectId = "loc-1",
+        transactionType = TransactionType.CONSUMED,
+        transactionDate = "10 Oct 2025",
+        remarks = null,
+        items = listOf(TransactionItemQuantity("item-1", 20)),
+      ),
+    )
+
+    // Submission claims sakhi-2, but the transaction id actually belongs to sakhi-1 — must not
+    // silently reassign/overwrite another sakhi's transaction.
+    repository.updateTransaction(
+      sakhi1Txn.id,
+      TransactionSubmission(
+        sakhiId = "sakhi-2",
+        projectId = "loc-1",
+        transactionType = TransactionType.MISPLACED,
+        transactionDate = "23 Jul 2026",
+        remarks = null,
+        items = listOf(TransactionItemQuantity("item-3", 2)),
+      ),
+    )
   }
 
   @Test(expected = IllegalStateException::class)

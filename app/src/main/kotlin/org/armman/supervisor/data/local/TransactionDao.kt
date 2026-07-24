@@ -52,7 +52,10 @@ interface TransactionDao {
 
   @Transaction
   suspend fun replaceWithItems(entity: TransactionEntity, items: List<TransactionItemEntity>) {
-    check(getById(entity.id) != null) { "Unknown transaction id: ${entity.id}" }
+    val existing = getById(entity.id)?.transaction ?: error("Unknown transaction id: ${entity.id}")
+    check(existing.sakhiId == entity.sakhiId) {
+      "Transaction ${entity.id} does not belong to sakhi ${entity.sakhiId}"
+    }
     updateTransaction(entity)
     deleteItemsForTransaction(entity.id)
     if (items.isNotEmpty()) insertItems(items)

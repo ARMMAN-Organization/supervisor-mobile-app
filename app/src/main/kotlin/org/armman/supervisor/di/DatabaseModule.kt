@@ -11,6 +11,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import net.sqlcipher.database.SQLiteDatabase
 import net.sqlcipher.database.SupportFactory
+import org.armman.supervisor.BuildConfig
 import org.armman.supervisor.data.auth.session.SecureKeyValueStore
 import org.armman.supervisor.data.local.AppDatabase
 import org.armman.supervisor.data.local.SupervisorEventDao
@@ -41,15 +42,18 @@ object DatabaseModule {
       secureStore.putString(PASSPHRASE_KEY, it)
     }
     val factory = SupportFactory(SQLiteDatabase.getBytes(passphrase.toCharArray()))
-    return Room.databaseBuilder(context, AppDatabase::class.java, DATABASE_NAME)
+    val builder = Room.databaseBuilder(context, AppDatabase::class.java, DATABASE_NAME)
       .openHelperFactory(factory)
       // Pre-launch local store standing in for a real API; safe to drop and recreate on schema change.
       .fallbackToDestructiveMigration()
+    if (BuildConfig.DEBUG) {
       // Runs exactly once, when the database file is first created — the correct place for seed
       // data, since a runtime "is the table empty" check would resurrect the seed after a user
       // deletes their only transaction (see AssignItemRepositoryImplTest for the regression case).
-      .addCallback(SeedDataCallback)
-      .build()
+      // Debug-only: real supervisors must never see this fake row in a production build.
+      builder.addCallback(SeedDataCallback)
+    }
+    return builder.build()
   }
 
   @Provides
