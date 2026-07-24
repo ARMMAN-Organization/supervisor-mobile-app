@@ -81,6 +81,8 @@
   <string name="add_item_error_date_required">Please select a transaction date</string>
   <string name="add_item_error_type_required">Please select a transaction type</string>
   <string name="add_item_error_no_items">Please enter a quantity for at least one item</string>
+  <string name="edit_item_transaction_title">Edit Item Transaction</string>
+  <string name="edit_item_submit">Save</string>
   <string name="add_item_error_load_form">Failed to load transaction form</string>
   <string name="add_item_error_submit">Failed to submit transaction</string>
 
