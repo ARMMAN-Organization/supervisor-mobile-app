@@ -71,7 +71,6 @@
 
   <!-- Add Item Transaction -->
   <string name="add_item_transaction_title">Add Item Transaction</string>
-  <string name="add_item_program_placeholder">Select Program</string>
   <string name="add_item_transaction_date_label">Transaction Date</string>
   <string name="add_item_select_date">Select Date</string>
   <string name="add_item_transaction_type_label">Transaction Type</string>
