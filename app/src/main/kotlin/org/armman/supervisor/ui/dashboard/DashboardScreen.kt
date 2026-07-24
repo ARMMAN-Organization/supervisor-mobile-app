@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -97,22 +98,27 @@ private fun SuccessContent(
       color = White,
       modifier = Modifier.fillMaxSize(),
     ) {
-      Column(
-        modifier = Modifier
-          .fillMaxSize()
-          .verticalScroll(rememberScrollState())
-          .padding(bottom = Dimens.ScreenPadding),
-      ) {
-        DashboardQuickActions(
-          onNavigate = onNavigate,
-          isTablet = isTablet,
-          modifier = Modifier.padding(horizontal = Dimens.ScreenPadding, vertical = Dimens.SmallSpacing),
-        )
-        SummarySections(data = state.data)
-        DashboardStaleSakhiCard(
-          entries = state.data.staleSakhis,
-          modifier = Modifier.padding(horizontal = Dimens.ScreenPadding, vertical = Dimens.SmallSpacing),
-        )
+      Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+          modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(bottom = Dimens.ScreenPadding),
+        ) {
+          DashboardQuickActions(
+            onNavigate = onNavigate,
+            isTablet = isTablet,
+            modifier = Modifier.padding(horizontal = Dimens.ScreenPadding, vertical = Dimens.SmallSpacing),
+          )
+          SummarySections(data = state.data)
+          DashboardStaleSakhiCard(
+            entries = state.data.staleSakhis,
+            modifier = Modifier.padding(horizontal = Dimens.ScreenPadding, vertical = Dimens.SmallSpacing),
+          )
+        }
+        if (state.isRefreshing) {
+          LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        }
       }
     }
   }

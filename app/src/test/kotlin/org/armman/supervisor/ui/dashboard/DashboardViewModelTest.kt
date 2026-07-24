@@ -192,6 +192,36 @@ class DashboardViewModelTest {
   }
 
   @Test
+  fun `location selection sets isRefreshing true while in flight then false on success`() = runTest(dispatcher) {
+    val repo = TestRepository(delaysMs = mapOf("loc-2" to 1_000L), dataFactory = ::sampleData)
+    val viewModel = DashboardViewModel(repo)
+    dispatcher.scheduler.advanceUntilIdle()
+    assertTrue(!(viewModel.uiState.value as DashboardUiState.Success).isRefreshing)
+
+    viewModel.onLocationSelected("loc-2")
+    val midFlight = viewModel.uiState.value as DashboardUiState.Success
+    assertTrue(midFlight.isRefreshing)
+    assertEquals("loc-2", midFlight.selectedLocationId)
+
+    dispatcher.scheduler.advanceUntilIdle()
+    val settled = viewModel.uiState.value as DashboardUiState.Success
+    assertTrue(!settled.isRefreshing)
+  }
+
+  @Test
+  fun `location selection failure does not leave a stale isRefreshing Success behind`() = runTest(dispatcher) {
+    val repo = TestRepository(dataFactory = ::sampleData)
+    val viewModel = DashboardViewModel(repo)
+    dispatcher.scheduler.advanceUntilIdle()
+
+    repo.failNextCalls(true)
+    viewModel.onLocationSelected("loc-2")
+    dispatcher.scheduler.advanceUntilIdle()
+
+    assertTrue(viewModel.uiState.value is DashboardUiState.Error)
+  }
+
+  @Test
   fun `rapid double location selection resolves to the last one requested`() = runTest(dispatcher) {
     val repo = TestRepository(
       delaysMs = mapOf("loc-1" to 1_000L),

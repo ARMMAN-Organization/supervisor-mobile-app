@@ -17,10 +17,10 @@ import org.armman.supervisor.R
 import org.armman.supervisor.ui.components.ActionItem
 import org.armman.supervisor.ui.components.QuickActionGrid
 import org.armman.supervisor.ui.navigation.Routes
-import org.armman.supervisor.ui.theme.DashboardActionSurface
 import org.armman.supervisor.ui.theme.DashboardHeaderGreen
 import org.armman.supervisor.ui.theme.Dimens
 import org.armman.supervisor.ui.theme.NeutralG400
+import org.armman.supervisor.ui.theme.PrimarySurface
 import org.armman.supervisor.ui.theme.White
 import org.armman.supervisor.ui.theme.softShadow
 
@@ -53,7 +53,7 @@ fun DashboardQuickActions(onNavigate: (String) -> Unit, isTablet: Boolean, modif
     QuickActionGrid(
       actions = actions,
       isTablet = isTablet,
-      iconSurfaceColor = DashboardActionSurface,
+      iconSurfaceColor = PrimarySurface,
       labelColor = NeutralG400,
       modifier = Modifier.padding(Dimens.TilePadding),
     )

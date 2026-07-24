@@ -43,5 +43,4 @@ val ShadowTint = Color(0x26000000)
 // header/heading/labels/button so both screens share the same brand green.
 val DashboardHeaderGreen = Color(0xFF1E4B3E)
 val DashboardKpiGreen = Color(0xFF4ADE80)
-val DashboardActionSurface = Color(0xFFE3F5EE)
 val DashboardPillNeutral = Color(0xFFC9D6E3)
