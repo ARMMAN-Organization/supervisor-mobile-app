@@ -9,6 +9,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import org.armman.supervisor.R
+import org.armman.supervisor.ui.assignitem.AddItemTransactionScreen
+import org.armman.supervisor.ui.assignitem.AssignItemDetailScreen
+import org.armman.supervisor.ui.assignitem.AssignItemScreen
 import org.armman.supervisor.ui.components.PlaceholderScreen
 import org.armman.supervisor.ui.dashboard.DashboardScreen
 import org.armman.supervisor.ui.login.LoginScreen
@@ -20,12 +23,22 @@ object Routes {
   const val LOGIN_ROUTE = "$LOGIN?$LOGIN_LOGGED_OUT_ARG={$LOGIN_LOGGED_OUT_ARG}"
   const val DASHBOARD = "dashboard"
   const val ITEMS = "items"
+  const val ASSIGN_ITEM_DETAIL_SAKHI_ID_ARG = "sakhiId"
+  const val ADD_ITEM_TRANSACTION_EDIT_ID_ARG = "editTransactionId"
+  const val ASSIGN_ITEM_DETAIL = "assign_item_detail/{$ASSIGN_ITEM_DETAIL_SAKHI_ID_ARG}"
+  const val ADD_ITEM_TRANSACTION =
+    "add_item_transaction/{$ASSIGN_ITEM_DETAIL_SAKHI_ID_ARG}?$ADD_ITEM_TRANSACTION_EDIT_ID_ARG={$ADD_ITEM_TRANSACTION_EDIT_ID_ARG}"
   const val MEETING_TRAINING = "meeting_training"
   const val CALL_SHEET = "call_sheet"
   const val QUICK_RESPONSE = "quick_response"
   const val PROFILE = "profile"
   const val SETTINGS = "settings"
   const val NOTIFICATIONS = "notifications"
+
+  fun assignItemDetail(sakhiId: String) = "assign_item_detail/$sakhiId"
+
+  fun addItemTransaction(sakhiId: String, editTransactionId: String? = null) =
+    "add_item_transaction/$sakhiId" + if (editTransactionId != null) "?$ADD_ITEM_TRANSACTION_EDIT_ID_ARG=$editTransactionId" else ""
 }
 
 /** Top-level navigation graph for the Supervisor app. */
@@ -50,7 +63,39 @@ fun AppNavHost() {
       DashboardScreen(onNavigate = { route -> navController.navigate(route) })
     }
     composable(Routes.ITEMS) {
-      PlaceholderStub(navController, R.string.quick_action_items)
+      AssignItemScreen(
+        onBack = { navController.popBackStack() },
+        onSakhiSelected = { sakhi -> navController.navigate(Routes.assignItemDetail(sakhi.id)) },
+      )
+    }
+    composable(
+      Routes.ASSIGN_ITEM_DETAIL,
+      arguments = listOf(navArgument(Routes.ASSIGN_ITEM_DETAIL_SAKHI_ID_ARG) { type = NavType.StringType }),
+    ) { backStackEntry ->
+      val sakhiId = backStackEntry.arguments?.getString(Routes.ASSIGN_ITEM_DETAIL_SAKHI_ID_ARG).orEmpty()
+      AssignItemDetailScreen(
+        onBack = { navController.popBackStack() },
+        onAddTransaction = { navController.navigate(Routes.addItemTransaction(sakhiId)) },
+        onEditTransaction = { transactionId ->
+          navController.navigate(Routes.addItemTransaction(sakhiId, transactionId))
+        },
+      )
+    }
+    composable(
+      Routes.ADD_ITEM_TRANSACTION,
+      arguments = listOf(
+        navArgument(Routes.ASSIGN_ITEM_DETAIL_SAKHI_ID_ARG) { type = NavType.StringType },
+        navArgument(Routes.ADD_ITEM_TRANSACTION_EDIT_ID_ARG) {
+          type = NavType.StringType
+          nullable = true
+          defaultValue = null
+        },
+      ),
+    ) {
+      AddItemTransactionScreen(
+        onBack = { navController.popBackStack() },
+        onSubmitted = { navController.popBackStack() },
+      )
     }
     composable(Routes.MEETING_TRAINING) {
       PlaceholderStub(navController, R.string.quick_action_meeting_training)

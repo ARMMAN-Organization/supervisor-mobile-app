@@ -67,7 +67,7 @@ class LoginViewModel @Inject constructor(
       // Leading/trailing whitespace is trimmed (accidental autocorrect/copy-paste); case is
       // preserved — the real auth-service does an exact, case-sensitive username match.
       val result = authRepository.login(
-        LoginRequest(username = state.username.trim(), password = state.password),
+        LoginRequest(username = state.username.trim(), password = state.password.trim()),
       )
       when (result) {
         is LoginResult.Success ->
