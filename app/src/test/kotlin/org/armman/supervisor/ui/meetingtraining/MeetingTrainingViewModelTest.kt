@@ -65,19 +65,30 @@ class MeetingTrainingViewModelTest {
     override suspend fun addPhoto(eventId: String, filePath: String) = error("not used")
 
     override suspend fun completeMeeting(eventId: String) = error("not used")
+
+    override suspend fun getAllPhotoFilePaths(): List<String> = emptyList()
+  }
+
+  private class FakePhotoCleanup : EventPhotoCleanup {
+    var deleteCallCount = 0
+      private set
+
+    override suspend fun deleteUnreferenced(referencedFilePaths: Set<String>) {
+      deleteCallCount++
+    }
   }
 
   // --- Positive ---
 
   @Test
   fun `initial state is Loading`() {
-    val viewModel = MeetingTrainingViewModel(TestRepository())
+    val viewModel = MeetingTrainingViewModel(TestRepository(), FakePhotoCleanup())
     assertEquals(MeetingTrainingUiState.Loading, viewModel.uiState.value)
   }
 
   @Test
   fun `initial fetch reaches Success on the SCHEDULED tab with both event types selected`() = runTest(dispatcher) {
-    val viewModel = MeetingTrainingViewModel(TestRepository())
+    val viewModel = MeetingTrainingViewModel(TestRepository(), FakePhotoCleanup())
     dispatcher.scheduler.advanceUntilIdle()
 
     val state = viewModel.uiState.value as MeetingTrainingUiState.Success
@@ -87,9 +98,19 @@ class MeetingTrainingViewModelTest {
   }
 
   @Test
+  fun `orphaned photo cleanup runs once on init`() = runTest(dispatcher) {
+    val photoCleanup = FakePhotoCleanup()
+    MeetingTrainingViewModel(TestRepository(), photoCleanup)
+    dispatcher.scheduler.advanceUntilIdle()
+
+    assertEquals(1, photoCleanup.deleteCallCount)
+  }
+
+  @Test
   fun `switching to COMPLETED tab reloads to the completed list`() = runTest(dispatcher) {
     val viewModel = MeetingTrainingViewModel(
       TestRepository(completedEvents = listOf(MeetingEntry("event-2", EventType.MEETING, "Zone A", "1 Jan 2026", "1 Jan 2026", "", 2L))),
+      FakePhotoCleanup(),
     )
     dispatcher.scheduler.advanceUntilIdle()
 
@@ -103,7 +124,7 @@ class MeetingTrainingViewModelTest {
 
   @Test
   fun `toggling off Meeting chip filters meeting events out`() = runTest(dispatcher) {
-    val viewModel = MeetingTrainingViewModel(TestRepository())
+    val viewModel = MeetingTrainingViewModel(TestRepository(), FakePhotoCleanup())
     dispatcher.scheduler.advanceUntilIdle()
 
     viewModel.onEventTypeToggled(EventType.MEETING)
@@ -117,7 +138,7 @@ class MeetingTrainingViewModelTest {
   @Test
   fun `retry after error re-fetches and can reach Success`() = runTest(dispatcher) {
     val repo = TestRepository(shouldFail = true)
-    val viewModel = MeetingTrainingViewModel(repo)
+    val viewModel = MeetingTrainingViewModel(repo, FakePhotoCleanup())
     dispatcher.scheduler.advanceUntilIdle()
     assertTrue(viewModel.uiState.value is MeetingTrainingUiState.Error)
 
@@ -132,7 +153,7 @@ class MeetingTrainingViewModelTest {
 
   @Test
   fun `initial fetch failure moves to Error`() = runTest(dispatcher) {
-    val viewModel = MeetingTrainingViewModel(TestRepository(shouldFail = true))
+    val viewModel = MeetingTrainingViewModel(TestRepository(shouldFail = true), FakePhotoCleanup())
     dispatcher.scheduler.advanceUntilIdle()
 
     assertTrue(viewModel.uiState.value is MeetingTrainingUiState.Error)
@@ -142,7 +163,7 @@ class MeetingTrainingViewModelTest {
 
   @Test
   fun `zero events for the current filter combination is an empty Success, not an error`() = runTest(dispatcher) {
-    val viewModel = MeetingTrainingViewModel(TestRepository(scheduledEvents = emptyList()))
+    val viewModel = MeetingTrainingViewModel(TestRepository(scheduledEvents = emptyList()), FakePhotoCleanup())
     dispatcher.scheduler.advanceUntilIdle()
 
     val state = viewModel.uiState.value as MeetingTrainingUiState.Success
@@ -150,8 +171,22 @@ class MeetingTrainingViewModelTest {
   }
 
   @Test
+  fun `photo cleanup failure does not affect the events list`() = runTest(dispatcher) {
+    val failingCleanup = object : EventPhotoCleanup {
+      override suspend fun deleteUnreferenced(referencedFilePaths: Set<String>) {
+        error("disk error")
+      }
+    }
+    val viewModel = MeetingTrainingViewModel(TestRepository(), failingCleanup)
+    dispatcher.scheduler.advanceUntilIdle()
+
+    val state = viewModel.uiState.value as MeetingTrainingUiState.Success
+    assertEquals(1, state.events.size)
+  }
+
+  @Test
   fun `toggling both chips off shows an empty list without crashing`() = runTest(dispatcher) {
-    val viewModel = MeetingTrainingViewModel(TestRepository())
+    val viewModel = MeetingTrainingViewModel(TestRepository(), FakePhotoCleanup())
     dispatcher.scheduler.advanceUntilIdle()
 
     viewModel.onEventTypeToggled(EventType.MEETING)

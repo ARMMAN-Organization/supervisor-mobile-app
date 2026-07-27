@@ -83,6 +83,8 @@ class MeetingDetailViewModelTest {
       completeCallCount++
       detail = detail.copy(status = EventStatus.COMPLETED)
     }
+
+    override suspend fun getAllPhotoFilePaths(): List<String> = error("not used")
   }
 
   private fun readyState(viewModel: MeetingDetailViewModel): MeetingDetailUiState.Success {

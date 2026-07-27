@@ -48,6 +48,9 @@ private class FakeSupervisorEventDao : SupervisorEventDao {
     photosByEvent.getOrPut(photo.eventId) { mutableListOf() }.add(photo)
   }
 
+  override suspend fun getAllPhotoFilePaths(): List<String> =
+    photosByEvent.values.flatten().map { it.filePath }
+
   override suspend fun deleteEvent(entity: SupervisorEventEntity) {
     events.remove(entity.id)
     attendanceByEvent.remove(entity.id)

@@ -72,6 +72,8 @@ class RescheduleMeetingViewModelTest {
     override suspend fun addPhoto(eventId: String, filePath: String) = error("not used")
 
     override suspend fun completeMeeting(eventId: String) = error("not used")
+
+    override suspend fun getAllPhotoFilePaths(): List<String> = error("not used")
   }
 
   private fun readyState(viewModel: RescheduleMeetingViewModel): RescheduleMeetingUiState.Success {

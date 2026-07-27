@@ -37,6 +37,7 @@ sealed interface MeetingTrainingUiState {
 @HiltViewModel
 class MeetingTrainingViewModel @Inject constructor(
   private val repository: MeetingTrainingRepository,
+  private val photoCleanup: EventPhotoCleanup,
 ) : ViewModel() {
   private val _uiState = MutableStateFlow<MeetingTrainingUiState>(MeetingTrainingUiState.Loading)
   val uiState: StateFlow<MeetingTrainingUiState> = _uiState.asStateFlow()
@@ -45,6 +46,23 @@ class MeetingTrainingViewModel @Inject constructor(
 
   init {
     loadInitial()
+    cleanupOrphanedPhotos()
+  }
+
+  /** Opportunistic, best-effort cleanup of event photo files that are no longer referenced by
+   * any Room row (e.g. a capture that never made it into [MeetingTrainingRepository.addPhoto]).
+   * Runs once per screen load, off the list-loading path so a failure here never blocks it. */
+  private fun cleanupOrphanedPhotos() {
+    viewModelScope.launch {
+      try {
+        val referenced = repository.getAllPhotoFilePaths().toSet()
+        photoCleanup.deleteUnreferenced(referenced)
+      } catch (e: CancellationException) {
+        throw e
+      } catch (e: Exception) {
+        // Best-effort: a cleanup failure must never surface to the user or block the screen.
+      }
+    }
   }
 
   fun onRetry() {

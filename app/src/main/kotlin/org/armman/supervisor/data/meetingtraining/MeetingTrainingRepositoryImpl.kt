@@ -101,6 +101,8 @@ class MeetingTrainingRepositoryImpl @Inject constructor(
 
   override suspend fun completeMeeting(eventId: String) = eventDao.completeEvent(eventId)
 
+  override suspend fun getAllPhotoFilePaths(): List<String> = eventDao.getAllPhotoFilePaths()
+
   private fun SupervisorEventWithDetails.toEntry(): MeetingEntry = MeetingEntry(
     id = event.id,
     eventType = EventType.valueOf(event.eventType),

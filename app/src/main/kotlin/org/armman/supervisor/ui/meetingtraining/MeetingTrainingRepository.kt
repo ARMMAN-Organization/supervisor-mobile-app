@@ -16,4 +16,8 @@ interface MeetingTrainingRepository {
   suspend fun saveAttendance(eventId: String, attendance: List<AttendanceEntry>)
   suspend fun addPhoto(eventId: String, filePath: String)
   suspend fun completeMeeting(eventId: String)
+
+  /** Every event photo file path currently referenced by a Room row — the set
+   * [EventPhotoCleanup.deleteUnreferenced] must preserve. */
+  suspend fun getAllPhotoFilePaths(): List<String>
 }
