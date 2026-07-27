@@ -28,14 +28,34 @@ android {
     minSdk = 29
     targetSdk = 34
     versionCode = 1
-    versionName = "0.1.0"
+    versionName = "1.0.0"
     buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
+  }
+
+  // Per-developer release signing, same gitignored-override pattern as API_BASE_URL above: set
+  // RELEASE_KEYSTORE_(FILE|PASSWORD|KEY_ALIAS|KEY_PASSWORD) in local.properties to sign a local
+  // release build (e.g. for install-and-test on a device). Absent in CI/other checkouts, so
+  // assembleRelease still succeeds there — just produces an unsigned APK until CI wires its own
+  // secrets-backed signing config.
+  val releaseKeystoreFile = localProperties.getProperty("RELEASE_KEYSTORE_FILE")
+  signingConfigs {
+    if (releaseKeystoreFile != null) {
+      create("release") {
+        storeFile = rootProject.file(releaseKeystoreFile)
+        storePassword = localProperties.getProperty("RELEASE_KEYSTORE_PASSWORD")
+        keyAlias = localProperties.getProperty("RELEASE_KEY_ALIAS")
+        keyPassword = localProperties.getProperty("RELEASE_KEY_PASSWORD")
+      }
+    }
   }
 
   buildTypes {
     release {
       isMinifyEnabled = true
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+      if (releaseKeystoreFile != null) {
+        signingConfig = signingConfigs.getByName("release")
+      }
     }
   }
   buildFeatures { compose = true; buildConfig = true }
