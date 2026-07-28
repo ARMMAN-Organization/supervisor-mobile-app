@@ -96,6 +96,11 @@ class MeetingTrainingRepositoryImpl @Inject constructor(
     eventDao.saveAttendance(eventId, rows)
   }
 
+  override suspend fun getSavedAttendance(eventId: String): List<AttendanceEntry> {
+    val details = eventDao.getById(eventId) ?: error("Unknown event id: $eventId")
+    return details.attendance.map { AttendanceEntry(it.sakhiId, it.sakhiName, present = it.attendanceStatus == "PRESENT") }
+  }
+
   override suspend fun addPhoto(eventId: String, filePath: String) =
     eventDao.addPhoto(eventId, filePath, System.currentTimeMillis())
 

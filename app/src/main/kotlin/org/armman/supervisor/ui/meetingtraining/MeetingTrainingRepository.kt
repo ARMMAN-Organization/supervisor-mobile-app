@@ -14,6 +14,10 @@ interface MeetingTrainingRepository {
   suspend fun rescheduleMeeting(eventId: String, newStartDate: String, newEndDate: String)
   suspend fun cancelMeeting(eventId: String)
   suspend fun saveAttendance(eventId: String, attendance: List<AttendanceEntry>)
+
+  /** Per-Sakhi attendance previously saved for this event via [saveAttendance], empty if none yet. */
+  suspend fun getSavedAttendance(eventId: String): List<AttendanceEntry>
+
   suspend fun addPhoto(eventId: String, filePath: String)
   suspend fun completeMeeting(eventId: String)
 

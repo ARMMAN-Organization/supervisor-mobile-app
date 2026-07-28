@@ -40,6 +40,7 @@ class AttendanceViewModelTest {
       "event-1", EventType.MEETING, "Zone A", "22 Jul 2026", "22 Jul 2026", "",
       EventStatus.SCHEDULED, attendedCount = 0, totalRosterCount = 1, photoPaths = emptyList(),
     ),
+    private val existingAttendance: List<AttendanceEntry> = emptyList(),
     private var shouldFail: Boolean = false,
   ) : MeetingTrainingRepository {
     var lastSavedAttendance: List<AttendanceEntry>? = null
@@ -59,6 +60,8 @@ class AttendanceViewModelTest {
     override suspend fun getEvents(status: EventStatus): List<MeetingEntry> = error("not used")
 
     override suspend fun getEventDetail(eventId: String): MeetingDetail = detail
+
+    override suspend fun getSavedAttendance(eventId: String): List<AttendanceEntry> = existingAttendance
 
     override suspend fun scheduleMeeting(request: ScheduleMeetingRequest): MeetingEntry = error("not used")
 
@@ -86,12 +89,30 @@ class AttendanceViewModelTest {
   // --- Positive ---
 
   @Test
-  fun `initial load populates roster all absent by default`() = runTest(dispatcher) {
+  fun `initial load populates roster all absent when nothing was saved yet`() = runTest(dispatcher) {
     val viewModel = AttendanceViewModel(TestRepository(), savedStateHandle())
     val state = readyState(viewModel)
 
     assertEquals(1, state.roster.size)
     assertTrue(state.roster.none { it.present })
+  }
+
+  @Test
+  fun `reopening after a previous save restores the saved presence instead of resetting to absent`() = runTest(dispatcher) {
+    val roster = listOf(AttendanceRosterEntry("sakhi-1", "Sushil"), AttendanceRosterEntry("sakhi-2", "Asha"))
+    val repo = TestRepository(
+      roster = roster,
+      existingAttendance = listOf(
+        AttendanceEntry("sakhi-1", "Sushil", present = true),
+        AttendanceEntry("sakhi-2", "Asha", present = false),
+      ),
+    )
+    val viewModel = AttendanceViewModel(repo, savedStateHandle())
+    val state = readyState(viewModel)
+
+    assertEquals(1, state.presentCount)
+    assertTrue(state.roster.single { it.sakhiId == "sakhi-1" }.present)
+    assertTrue(state.roster.single { it.sakhiId == "sakhi-2" }.present.not())
   }
 
   @Test

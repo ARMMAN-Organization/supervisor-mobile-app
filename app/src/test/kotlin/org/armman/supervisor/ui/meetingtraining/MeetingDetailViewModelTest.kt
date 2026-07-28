@@ -64,6 +64,8 @@ class MeetingDetailViewModelTest {
       return detail
     }
 
+    override suspend fun getSavedAttendance(eventId: String): List<AttendanceEntry> = error("not used")
+
     override suspend fun scheduleMeeting(request: ScheduleMeetingRequest): MeetingEntry = error("not used")
 
     override suspend fun rescheduleMeeting(eventId: String, newStartDate: String, newEndDate: String) = error("not used")

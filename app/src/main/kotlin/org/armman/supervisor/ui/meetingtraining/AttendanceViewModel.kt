@@ -83,8 +83,9 @@ class AttendanceViewModel @Inject constructor(
     viewModelScope.launch {
       try {
         val detail = repository.getEventDetail(eventId)
+        val savedPresence = repository.getSavedAttendance(eventId).associate { it.sakhiId to it.present }
         val roster = repository.getSakhiRoster(projectIdFor(detail)).map { rosterEntry ->
-          AttendanceEntry(rosterEntry.sakhiId, rosterEntry.sakhiName, present = false)
+          AttendanceEntry(rosterEntry.sakhiId, rosterEntry.sakhiName, present = savedPresence[rosterEntry.sakhiId] ?: false)
         }
         _uiState.value = AttendanceUiState.Success(
           roster = roster,

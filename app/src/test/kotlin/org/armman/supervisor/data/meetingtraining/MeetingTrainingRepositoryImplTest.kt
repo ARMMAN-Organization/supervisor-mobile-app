@@ -111,6 +111,25 @@ class MeetingTrainingRepositoryImplTest {
   }
 
   @Test
+  fun `getSavedAttendance returns each Sakhi's saved presence, not just the aggregate count`() = runTest {
+    val id = scheduleSample()
+    val roster = repository.getSakhiRoster("loc-1")
+    val attendance = roster.mapIndexed { index, entry -> AttendanceEntry(entry.sakhiId, entry.sakhiName, present = index == 0) }
+
+    repository.saveAttendance(id, attendance)
+    val saved = repository.getSavedAttendance(id)
+
+    assertEquals(attendance.toSet(), saved.toSet())
+  }
+
+  @Test
+  fun `getSavedAttendance is empty before any attendance has been saved`() = runTest {
+    val id = scheduleSample()
+
+    assertTrue(repository.getSavedAttendance(id).isEmpty())
+  }
+
+  @Test
   fun `addPhoto then completeMeeting transitions status to COMPLETED`() = runTest {
     val id = scheduleSample()
     repository.addPhoto(id, "/data/event_photos/1.jpg")

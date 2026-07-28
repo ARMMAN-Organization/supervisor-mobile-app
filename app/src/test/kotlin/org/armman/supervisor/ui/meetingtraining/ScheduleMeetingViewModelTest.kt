@@ -49,6 +49,8 @@ class ScheduleMeetingViewModelTest {
 
     override suspend fun getEventDetail(eventId: String): MeetingDetail = error("not used")
 
+    override suspend fun getSavedAttendance(eventId: String): List<AttendanceEntry> = error("not used")
+
     override suspend fun scheduleMeeting(request: ScheduleMeetingRequest): MeetingEntry {
       if (shouldFail) error("schedule failed")
       scheduleCallCount++
