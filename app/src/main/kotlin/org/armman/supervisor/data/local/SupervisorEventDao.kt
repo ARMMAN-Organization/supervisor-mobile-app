@@ -43,6 +43,12 @@ interface SupervisorEventDao {
   @Insert
   suspend fun insertPhoto(photo: EventPhotoEntity)
 
+  /** Every photo file path still referenced by an event — the set of files
+   * `EventPhotoCleanup.deleteUnreferenced` must never delete, since events/photo rows are never
+   * deleted (soft-cancel only). */
+  @Query("SELECT filePath FROM event_photos")
+  suspend fun getAllPhotoFilePaths(): List<String>
+
   @Delete
   suspend fun deleteEvent(entity: SupervisorEventEntity)
 

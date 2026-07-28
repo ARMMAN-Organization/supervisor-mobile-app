@@ -90,12 +90,125 @@
   <string name="item_category_consumables">Consumables</string>
   <string name="item_category_instruments">Instruments</string>
 
+  <!-- Meeting & Training -->
+  <string name="meeting_training_title">Meeting &amp; Training</string>
+  <string name="meeting_training_new_meeting">New Meeting</string>
+  <string name="meeting_training_new_training">New Training</string>
+  <string name="meeting_training_tab_scheduled">Scheduled</string>
+  <string name="meeting_training_tab_completed">Completed</string>
+  <string name="meeting_training_project_label">Project</string>
+  <string name="meeting_training_all_projects">All projects</string>
+  <string name="meeting_training_gathering_type_label">Gathering Type</string>
+  <string name="meeting_training_chip_meeting">Meeting</string>
+  <string name="meeting_training_chip_training">Training</string>
+  <string name="meeting_training_empty_events">No events for this selection</string>
+  <string name="meeting_training_error_load">Failed to load Meeting &amp; Training data</string>
+  <string name="meeting_training_error_submit">Failed to save changes</string>
+  <string name="meeting_training_attended_count">%1$d/%2$d</string>
+  <string name="meeting_training_date_range">%1$s - %2$s</string>
+
+  <string name="schedule_meeting_title">New Meeting</string>
+  <string name="schedule_meeting_project_placeholder">Select Project</string>
+  <string name="schedule_meeting_date_label">Meeting Date</string>
+  <string name="schedule_meeting_start_placeholder">Today</string>
+  <string name="schedule_meeting_end_placeholder">End Date</string>
+  <string name="schedule_meeting_remarks_label">Remarks (optional)</string>
+  <string name="schedule_meeting_submit">Schedule Meeting</string>
+  <string name="schedule_meeting_error_project_required">Please select a project</string>
+  <string name="schedule_meeting_error_start_date_required">Please select a meeting date</string>
+  <string name="schedule_meeting_error_invalid_range">End date cannot be before start date</string>
+  <string name="schedule_meeting_added">Meeting Added</string>
+
+  <string name="meeting_detail_title">Meeting Details</string>
+  <string name="meeting_detail_start_date">Start Date</string>
+  <string name="meeting_detail_end_date">End Date</string>
+  <string name="meeting_detail_sakhi_attended">Sakhi Attended</string>
+  <string name="meeting_detail_attendance_button">Attendance</string>
+  <string name="meeting_detail_pictures_label">Pictures</string>
+  <string name="meeting_detail_complete_button">Complete this meeting</string>
+  <string name="meeting_detail_action_cancel">Cancel</string>
+  <string name="meeting_detail_action_reschedule">Reschedule</string>
+  <string name="meeting_detail_complete_dialog_title">Complete and Close</string>
+  <string name="meeting_detail_complete_dialog_message">Are you sure you want to complete this meeting? You can\'t edit anything or add images afterwards.</string>
+  <string name="meeting_detail_complete_no_photo">Add at least one picture before completing this meeting</string>
+  <string name="meeting_detail_complete_confirm">OK</string>
+  <string name="cd_add_photo">Add photo</string>
+
+  <string name="reschedule_meeting_title">Reschedule Meeting</string>
+  <string name="reschedule_meeting_new_date_label">Reschedule date</string>
+  <string name="reschedule_meeting_submit">Reschedule</string>
+  <string name="reschedule_meeting_error_invalid_range">End date cannot be before start date</string>
+
+  <string name="attendance_title">Attendance</string>
+  <string name="attendance_mark_all_present">Mark All Present</string>
+  <string name="attendance_save">Save</string>
+  <string name="attendance_error_load">Failed to load attendance roster</string>
+
   <!-- Transaction types -->
   <string name="transaction_type_handover">Hand Over</string>
   <string name="transaction_type_returned">Returned</string>
   <string name="transaction_type_permanent_damaged">Permanent Damaged</string>
   <string name="transaction_type_misplaced">Misplaced</string>
   <string name="transaction_type_consumed">Consumed</string>
+
+  <!-- Call Sheet -->
+  <string name="call_sheet_title">Call Sheet</string>
+  <string name="call_sheet_empty_sakhis">No Sakhis available for this selection</string>
+  <string name="call_sheet_error_load">Failed to load call sheet</string>
+  <string name="cd_call_sakhi">Call Sakhi</string>
+  <string name="call_sheet_stat_visit_due">Visit Due</string>
+  <string name="call_sheet_stat_visit_3_days_expire">Visit 3 Days to expire</string>
+  <string name="call_sheet_stat_followup_pending">Followup Pending</string>
+  <string name="call_sheet_stat_closure_form_pending">Closure Form Pending</string>
+  <string name="call_sheet_stat_missed_visit">Missed Visit</string>
+  <string name="call_sheet_stat_high_risk_anc">High Risk ANC</string>
+  <string name="call_sheet_stat_high_risk_pnc">High Risk PNC</string>
+  <string name="call_sheet_stat_last_sync_date">Last Data Sync Date:</string>
+  <string name="call_sheet_stat_column_info">Info</string>
+  <string name="call_sheet_stat_column_updated">Updated</string>
+  <string name="call_sheet_stat_column_count">Count</string>
+
+  <!-- Call History -->
+  <string name="call_history_empty">No calls logged yet</string>
+  <string name="call_history_error_load">Failed to load call history</string>
+  <string name="call_history_responder_label">Responder: %1$s</string>
+
+  <!-- Call Outcome -->
+  <string name="call_outcome_connected_label">Call Connected</string>
+  <string name="call_outcome_connected_yes">Yes</string>
+  <string name="call_outcome_connected_no">No</string>
+  <string name="call_outcome_success_label">Success Outcome</string>
+  <string name="call_outcome_failure_label">Failure Outcome</string>
+  <string name="call_outcome_select_reason">Select Reason</string>
+  <string name="call_outcome_responder_label">Call Responder</string>
+  <string name="call_outcome_duration_label">Call Duration (minutes)</string>
+  <string name="call_outcome_notes_label">Discussion Notes (optional)</string>
+  <string name="call_outcome_follow_up_label">Follow-up Action (optional)</string>
+  <string name="call_outcome_submit">Submit</string>
+  <string name="call_outcome_error_connected_required">Please select whether the call connected</string>
+  <string name="call_outcome_error_success_outcome_required">Please select a success outcome</string>
+  <string name="call_outcome_error_failure_reason_required">Please select a failure reason</string>
+  <string name="call_outcome_error_responder_required">Please select who answered the call</string>
+  <string name="call_outcome_error_duration_invalid">Please enter a valid call duration</string>
+  <string name="call_outcome_error_submit">Failed to submit call log</string>
+
+  <!-- Success outcomes -->
+  <string name="success_outcome_picked_up_talked">Picked up the call and talked</string>
+  <string name="success_outcome_picked_up_no_one_talking">Picked up the call but no one was talking</string>
+  <string name="success_outcome_picked_up_cut_midway">Picked up the call and cut the call midway</string>
+  <string name="success_outcome_call_back">Call back</string>
+
+  <!-- Failure reasons -->
+  <string name="failure_reason_not_picked_up">Call not picked up</string>
+  <string name="failure_reason_ringing">Ringing</string>
+  <string name="failure_reason_phone_off">Phone off</string>
+  <string name="failure_reason_out_of_network">Out of network area</string>
+
+  <!-- Call responders -->
+  <string name="call_responder_relative">Relative</string>
+  <string name="call_responder_husband">Husband</string>
+  <string name="call_responder_sakhi">Sakhi</string>
+  <string name="call_responder_person_who_does_not_know_woman">Person who does not know women</string>
 
   <!-- Dashboard state -->
   <string name="dashboard_error_generic">Something went wrong. Please try again.</string>

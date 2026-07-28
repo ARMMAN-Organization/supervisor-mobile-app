@@ -90,12 +90,125 @@
   <string name="item_category_consumables">उपभोग्य वस्तू</string>
   <string name="item_category_instruments">उपकरणे</string>
 
+  <!-- Meeting & Training -->
+  <string name="meeting_training_title">बैठक आणि प्रशिक्षण</string>
+  <string name="meeting_training_new_meeting">नवीन बैठक</string>
+  <string name="meeting_training_new_training">नवीन प्रशिक्षण</string>
+  <string name="meeting_training_tab_scheduled">नियोजित</string>
+  <string name="meeting_training_tab_completed">पूर्ण</string>
+  <string name="meeting_training_project_label">प्रकल्प</string>
+  <string name="meeting_training_all_projects">सर्व प्रकल्प</string>
+  <string name="meeting_training_gathering_type_label">सभेचा प्रकार</string>
+  <string name="meeting_training_chip_meeting">बैठक</string>
+  <string name="meeting_training_chip_training">प्रशिक्षण</string>
+  <string name="meeting_training_empty_events">या निवडीसाठी कोणतेही कार्यक्रम नाहीत</string>
+  <string name="meeting_training_error_load">बैठक आणि प्रशिक्षण डेटा लोड करण्यात अयशस्वी</string>
+  <string name="meeting_training_error_submit">बदल जतन करण्यात अयशस्वी</string>
+  <string name="meeting_training_attended_count">%1$d/%2$d</string>
+  <string name="meeting_training_date_range">%1$s - %2$s</string>
+
+  <string name="schedule_meeting_title">नवीन बैठक</string>
+  <string name="schedule_meeting_project_placeholder">प्रकल्प निवडा</string>
+  <string name="schedule_meeting_date_label">बैठकीची तारीख</string>
+  <string name="schedule_meeting_start_placeholder">आज</string>
+  <string name="schedule_meeting_end_placeholder">शेवटची तारीख</string>
+  <string name="schedule_meeting_remarks_label">शेरा (ऐच्छिक)</string>
+  <string name="schedule_meeting_submit">बैठक नियोजित करा</string>
+  <string name="schedule_meeting_error_project_required">कृपया प्रकल्प निवडा</string>
+  <string name="schedule_meeting_error_start_date_required">कृपया बैठकीची तारीख निवडा</string>
+  <string name="schedule_meeting_error_invalid_range">शेवटची तारीख सुरुवातीच्या तारखेपूर्वी असू शकत नाही</string>
+  <string name="schedule_meeting_added">बैठक जोडली</string>
+
+  <string name="meeting_detail_title">बैठकीचा तपशील</string>
+  <string name="meeting_detail_start_date">सुरुवातीची तारीख</string>
+  <string name="meeting_detail_end_date">शेवटची तारीख</string>
+  <string name="meeting_detail_sakhi_attended">सखी उपस्थित</string>
+  <string name="meeting_detail_attendance_button">उपस्थिती</string>
+  <string name="meeting_detail_pictures_label">चित्रे</string>
+  <string name="meeting_detail_complete_button">ही बैठक पूर्ण करा</string>
+  <string name="meeting_detail_action_cancel">रद्द करा</string>
+  <string name="meeting_detail_action_reschedule">पुन्हा वेळापत्रक करा</string>
+  <string name="meeting_detail_complete_dialog_title">पूर्ण करा आणि बंद करा</string>
+  <string name="meeting_detail_complete_dialog_message">तुम्हाला ही बैठक पूर्ण करायची खात्री आहे का? त्यानंतर तुम्ही काहीही संपादित करू शकणार नाही किंवा प्रतिमा जोडू शकणार नाही.</string>
+  <string name="meeting_detail_complete_no_photo">ही बैठक पूर्ण करण्यापूर्वी किमान एक चित्र जोडा</string>
+  <string name="meeting_detail_complete_confirm">ठीक आहे</string>
+  <string name="cd_add_photo">चित्र जोडा</string>
+
+  <string name="reschedule_meeting_title">बैठक पुन्हा वेळापत्रक करा</string>
+  <string name="reschedule_meeting_new_date_label">पुन्हा वेळापत्रक तारीख</string>
+  <string name="reschedule_meeting_submit">पुन्हा वेळापत्रक करा</string>
+  <string name="reschedule_meeting_error_invalid_range">शेवटची तारीख सुरुवातीच्या तारखेपूर्वी असू शकत नाही</string>
+
+  <string name="attendance_title">उपस्थिती</string>
+  <string name="attendance_mark_all_present">सर्व उपस्थित म्हणून चिन्हांकित करा</string>
+  <string name="attendance_save">जतन करा</string>
+  <string name="attendance_error_load">उपस्थिती यादी लोड करण्यात अयशस्वी</string>
+
   <!-- Transaction types -->
   <string name="transaction_type_handover">हस्तांतरण</string>
   <string name="transaction_type_returned">परत केले</string>
   <string name="transaction_type_permanent_damaged">कायमचे नुकसान</string>
   <string name="transaction_type_misplaced">हरवले</string>
   <string name="transaction_type_consumed">वापरले</string>
+
+  <!-- Call Sheet -->
+  <string name="call_sheet_title">कॉल शीट</string>
+  <string name="call_sheet_empty_sakhis">या निवडीसाठी कोणतीही सखी उपलब्ध नाही</string>
+  <string name="call_sheet_error_load">कॉल शीट लोड करण्यात अयशस्वी</string>
+  <string name="cd_call_sakhi">सखीला कॉल करा</string>
+  <string name="call_sheet_stat_visit_due">नियोजित भेट</string>
+  <string name="call_sheet_stat_visit_3_days_expire">भेट ३ दिवसात संपणार</string>
+  <string name="call_sheet_stat_followup_pending">पाठपुरावा प्रलंबित</string>
+  <string name="call_sheet_stat_closure_form_pending">समाप्ती फॉर्म प्रलंबित</string>
+  <string name="call_sheet_stat_missed_visit">चुकलेली भेट</string>
+  <string name="call_sheet_stat_high_risk_anc">उच्च जोखीम ANC</string>
+  <string name="call_sheet_stat_high_risk_pnc">उच्च जोखीम PNC</string>
+  <string name="call_sheet_stat_last_sync_date">शेवटची डेटा सिंक तारीख:</string>
+  <string name="call_sheet_stat_column_info">माहिती</string>
+  <string name="call_sheet_stat_column_updated">अद्यतनित</string>
+  <string name="call_sheet_stat_column_count">संख्या</string>
+
+  <!-- Call History -->
+  <string name="call_history_empty">अद्याप कोणताही कॉल नोंदवलेला नाही</string>
+  <string name="call_history_error_load">कॉल इतिहास लोड करण्यात अयशस्वी</string>
+  <string name="call_history_responder_label">प्रतिसादकर्ता: %1$s</string>
+
+  <!-- Call Outcome -->
+  <string name="call_outcome_connected_label">कॉल कनेक्ट झाला</string>
+  <string name="call_outcome_connected_yes">होय</string>
+  <string name="call_outcome_connected_no">नाही</string>
+  <string name="call_outcome_success_label">यशस्वी निकाल</string>
+  <string name="call_outcome_failure_label">अयशस्वी कारण</string>
+  <string name="call_outcome_select_reason">कारण निवडा</string>
+  <string name="call_outcome_responder_label">कॉल प्रतिसादकर्ता</string>
+  <string name="call_outcome_duration_label">कॉल कालावधी (मिनिटे)</string>
+  <string name="call_outcome_notes_label">चर्चा टिपा (ऐच्छिक)</string>
+  <string name="call_outcome_follow_up_label">पाठपुरावा कृती (ऐच्छिक)</string>
+  <string name="call_outcome_submit">सबमिट करा</string>
+  <string name="call_outcome_error_connected_required">कृपया कॉल कनेक्ट झाला की नाही ते निवडा</string>
+  <string name="call_outcome_error_success_outcome_required">कृपया यशस्वी निकाल निवडा</string>
+  <string name="call_outcome_error_failure_reason_required">कृपया अयशस्वी कारण निवडा</string>
+  <string name="call_outcome_error_responder_required">कृपया कॉलला कोणी प्रतिसाद दिला ते निवडा</string>
+  <string name="call_outcome_error_duration_invalid">कृपया वैध कॉल कालावधी प्रविष्ट करा</string>
+  <string name="call_outcome_error_submit">कॉल लॉग सबमिट करण्यात अयशस्वी</string>
+
+  <!-- Success outcomes -->
+  <string name="success_outcome_picked_up_talked">कॉल उचलला आणि बोलणे झाले</string>
+  <string name="success_outcome_picked_up_no_one_talking">कॉल उचलला पण कोणीही बोलले नाही</string>
+  <string name="success_outcome_picked_up_cut_midway">कॉल उचलला आणि मध्येच कट झाला</string>
+  <string name="success_outcome_call_back">परत कॉल करा</string>
+
+  <!-- Failure reasons -->
+  <string name="failure_reason_not_picked_up">कॉल उचलला नाही</string>
+  <string name="failure_reason_ringing">रिंग होत आहे</string>
+  <string name="failure_reason_phone_off">फोन बंद आहे</string>
+  <string name="failure_reason_out_of_network">नेटवर्क क्षेत्राबाहेर</string>
+
+  <!-- Call responders -->
+  <string name="call_responder_relative">नातेवाईक</string>
+  <string name="call_responder_husband">पती</string>
+  <string name="call_responder_sakhi">सखी</string>
+  <string name="call_responder_person_who_does_not_know_woman">महिलेला ओळखत नसलेली व्यक्ती</string>
 
   <!-- Dashboard state -->
   <string name="dashboard_error_generic">काहीतरी चुकले. कृपया पुन्हा प्रयत्न करा.</string>
