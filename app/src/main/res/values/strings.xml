@@ -139,10 +139,55 @@
   <string name="reschedule_meeting_submit">Reschedule</string>
   <string name="reschedule_meeting_error_invalid_range">End date cannot be before start date</string>
 
+  <string name="schedule_training_title">New Training</string>
+  <string name="schedule_training_project_placeholder">Select Project</string>
+  <string name="schedule_training_date_label">Training Date</string>
+  <string name="schedule_training_start_placeholder">Today</string>
+  <string name="schedule_training_end_placeholder">Select End Date</string>
+  <string name="schedule_training_pre_post_marks_label">Pre and post Marks applicable?</string>
+  <string name="schedule_training_remarks_label">Remarks (optional)</string>
+  <string name="schedule_training_submit">Schedule Training</string>
+  <string name="schedule_training_error_start_date_required">Please select a training date</string>
+  <string name="schedule_training_added">Training Added</string>
+
+  <string name="training_detail_title">Training Detail</string>
+  <string name="training_detail_complete_button">Complete this training</string>
+  <string name="training_detail_complete_dialog_title">Complete this training</string>
+  <string name="training_detail_complete_dialog_message">Are you sure you want to complete this Training? You can\'t edit anything or add images afterwards.</string>
+  <string name="training_detail_pre_marks_button">Pre Marks</string>
+  <string name="training_detail_post_marks_button">Post Marks</string>
+
+  <string name="meeting_detail_add_topics_button">Add Topics</string>
+  <string name="meeting_detail_gathering_dates_label">Gathering Dates</string>
+  <string name="meeting_detail_gathering_topics">Topics: %1$s</string>
+  <string name="meeting_training_attended_count_status">%1$d / %2$d</string>
+  <string name="status_completed">Completed</string>
+  <string name="status_pending">Pending</string>
+
+  <string name="add_training_topics_title">Add Training Topics</string>
+  <string name="add_training_topics_date_label">Date</string>
+  <string name="add_training_topics_date_placeholder">Select Date</string>
+  <string name="add_training_topics_label">Topics</string>
+  <string name="action_save">Save</string>
+
   <string name="attendance_title">Attendance</string>
   <string name="attendance_mark_all_present">Mark All Present</string>
   <string name="attendance_save">Save</string>
   <string name="attendance_error_load">Failed to load attendance roster</string>
+
+  <string name="marks_title_pre">Pre Marks</string>
+  <string name="marks_title_post">Post Marks</string>
+  <string name="marks_topic_label">Training Topic</string>
+  <string name="marks_topic_placeholder">Select Topic</string>
+  <string name="marks_save">Save</string>
+  <string name="marks_complete_and_close">Complete and close</string>
+  <string name="marks_complete_dialog_title">Complete and Close</string>
+  <string name="marks_complete_dialog_message_pre">Are you sure you want to complete all this pre marks? You can\'t edit pre marks by any topic afterwards.</string>
+  <string name="marks_complete_dialog_message_post">Are you sure you want to complete all this post marks? You can\'t edit post marks by any topic afterwards.</string>
+  <string name="marks_error_load">Failed to load marks</string>
+  <string name="marks_error_submit">Failed to save marks</string>
+  <string name="marks_error_invalid_value">Marks must be a non-negative number</string>
+  <string name="marks_error_topic_required">Please select a training topic</string>
 
   <!-- Transaction types -->
   <string name="transaction_type_handover">Hand Over</string>

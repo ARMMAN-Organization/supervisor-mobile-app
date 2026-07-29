@@ -139,9 +139,54 @@
   <string name="reschedule_meeting_submit">पुन्हा वेळापत्रक करा</string>
   <string name="reschedule_meeting_error_invalid_range">शेवटची तारीख सुरुवातीच्या तारखेपूर्वी असू शकत नाही</string>
 
+  <string name="schedule_training_title">नवीन प्रशिक्षण</string>
+  <string name="schedule_training_project_placeholder">प्रकल्प निवडा</string>
+  <string name="schedule_training_date_label">प्रशिक्षणाची तारीख</string>
+  <string name="schedule_training_start_placeholder">आज</string>
+  <string name="schedule_training_end_placeholder">शेवटची तारीख निवडा</string>
+  <string name="schedule_training_pre_post_marks_label">पूर्व आणि नंतरचे गुण लागू आहेत का?</string>
+  <string name="schedule_training_remarks_label">शेरा (ऐच्छिक)</string>
+  <string name="schedule_training_submit">प्रशिक्षण नियोजित करा</string>
+  <string name="schedule_training_error_start_date_required">कृपया प्रशिक्षणाची तारीख निवडा</string>
+  <string name="schedule_training_added">प्रशिक्षण जोडले</string>
+
+  <string name="training_detail_title">प्रशिक्षणाचा तपशील</string>
+  <string name="training_detail_complete_button">हे प्रशिक्षण पूर्ण करा</string>
+  <string name="training_detail_complete_dialog_title">हे प्रशिक्षण पूर्ण करा</string>
+  <string name="training_detail_complete_dialog_message">तुम्हाला हे प्रशिक्षण पूर्ण करायची खात्री आहे का? त्यानंतर तुम्ही काहीही संपादित करू शकणार नाही किंवा प्रतिमा जोडू शकणार नाही.</string>
+  <string name="training_detail_pre_marks_button">पूर्व गुण</string>
+  <string name="training_detail_post_marks_button">नंतरचे गुण</string>
+
+  <string name="meeting_detail_add_topics_button">विषय जोडा</string>
+  <string name="meeting_detail_gathering_dates_label">जमाव तारखा</string>
+  <string name="meeting_detail_gathering_topics">विषय: %1$s</string>
+  <string name="meeting_training_attended_count_status">%1$d / %2$d</string>
+  <string name="status_completed">पूर्ण झाले</string>
+  <string name="status_pending">प्रलंबित</string>
+
+  <string name="add_training_topics_title">प्रशिक्षण विषय जोडा</string>
+  <string name="add_training_topics_date_label">तारीख</string>
+  <string name="add_training_topics_date_placeholder">तारीख निवडा</string>
+  <string name="add_training_topics_label">विषय</string>
+  <string name="action_save">जतन करा</string>
+
   <string name="attendance_title">उपस्थिती</string>
   <string name="attendance_mark_all_present">सर्व उपस्थित म्हणून चिन्हांकित करा</string>
   <string name="attendance_save">जतन करा</string>
+
+  <string name="marks_title_pre">पूर्व गुण</string>
+  <string name="marks_title_post">नंतरचे गुण</string>
+  <string name="marks_topic_label">प्रशिक्षण विषय</string>
+  <string name="marks_topic_placeholder">विषय निवडा</string>
+  <string name="marks_save">जतन करा</string>
+  <string name="marks_complete_and_close">पूर्ण करा आणि बंद करा</string>
+  <string name="marks_complete_dialog_title">पूर्ण करा आणि बंद करा</string>
+  <string name="marks_complete_dialog_message_pre">तुम्हाला हे सर्व पूर्व गुण पूर्ण करायची खात्री आहे का? त्यानंतर तुम्ही कोणत्याही विषयाचे पूर्व गुण संपादित करू शकणार नाही.</string>
+  <string name="marks_complete_dialog_message_post">तुम्हाला हे सर्व नंतरचे गुण पूर्ण करायची खात्री आहे का? त्यानंतर तुम्ही कोणत्याही विषयाचे नंतरचे गुण संपादित करू शकणार नाही.</string>
+  <string name="marks_error_load">गुण लोड करण्यात अयशस्वी</string>
+  <string name="marks_error_submit">गुण जतन करण्यात अयशस्वी</string>
+  <string name="marks_error_invalid_value">गुण ऋण नसलेली संख्या असणे आवश्यक आहे</string>
+  <string name="marks_error_topic_required">कृपया प्रशिक्षण विषय निवडा</string>
   <string name="attendance_error_load">उपस्थिती यादी लोड करण्यात अयशस्वी</string>
 
   <!-- Transaction types -->

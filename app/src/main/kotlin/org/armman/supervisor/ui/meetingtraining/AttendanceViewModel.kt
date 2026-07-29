@@ -40,6 +40,10 @@ class AttendanceViewModel @Inject constructor(
 ) : ViewModel() {
   private val eventId: String = checkNotNull(savedStateHandle[Routes.MEETING_DETAIL_EVENT_ID_ARG])
 
+  /** Set only for Training's per-Gathering-Date attendance; null for Meeting's single per-event
+   * attendance, which keeps its original behavior unchanged. */
+  private val gatheringId: String? = savedStateHandle[Routes.GATHERING_ID_ARG]
+
   private val _uiState = MutableStateFlow<AttendanceUiState>(AttendanceUiState.Loading)
   val uiState: StateFlow<AttendanceUiState> = _uiState.asStateFlow()
 
@@ -68,7 +72,12 @@ class AttendanceViewModel @Inject constructor(
     _uiState.value = state.copy(isSaving = true)
     viewModelScope.launch {
       try {
-        repository.saveAttendance(eventId, state.roster)
+        val gathering = gatheringId
+        if (gathering != null) {
+          repository.saveGatheringAttendance(eventId, gathering, state.roster)
+        } else {
+          repository.saveAttendance(eventId, state.roster)
+        }
         _uiState.value = state.copy(isSaving = false, saved = true)
       } catch (e: CancellationException) {
         throw e
@@ -83,9 +92,11 @@ class AttendanceViewModel @Inject constructor(
     viewModelScope.launch {
       try {
         val detail = repository.getEventDetail(eventId)
-        val savedPresence = repository.getSavedAttendance(eventId).associate { it.sakhiId to it.present }
-        val roster = repository.getSakhiRoster(projectIdFor(detail)).map { rosterEntry ->
-          AttendanceEntry(rosterEntry.sakhiId, rosterEntry.sakhiName, present = savedPresence[rosterEntry.sakhiId] ?: false)
+        val gathering = gatheringId
+        val roster = if (gathering != null) {
+          loadGatheringRoster(detail, gathering)
+        } else {
+          loadMeetingRoster(detail)
         }
         _uiState.value = AttendanceUiState.Success(
           roster = roster,
@@ -98,6 +109,24 @@ class AttendanceViewModel @Inject constructor(
       } catch (e: Exception) {
         _uiState.value = AttendanceUiState.Error(R.string.meeting_training_error_load, e.message)
       }
+    }
+  }
+
+  /** Merges the project roster with any attendance already saved for this gathering, so
+   * reopening the screen shows prior selections instead of resetting everyone to absent. */
+  private suspend fun loadGatheringRoster(detail: MeetingDetail, gatheringId: String): List<AttendanceEntry> {
+    val saved = repository.getGatheringAttendanceRoster(gatheringId).associateBy { it.sakhiId }
+    return repository.getSakhiRoster(projectIdFor(detail)).map { rosterEntry ->
+      saved[rosterEntry.sakhiId] ?: AttendanceEntry(rosterEntry.sakhiId, rosterEntry.sakhiName, present = false)
+    }
+  }
+
+  /** Merges the project roster with any attendance already saved for this Meeting, so
+   * reopening the screen shows prior selections instead of resetting everyone to absent. */
+  private suspend fun loadMeetingRoster(detail: MeetingDetail): List<AttendanceEntry> {
+    val saved = repository.getSavedAttendance(eventId).associateBy { it.sakhiId }
+    return repository.getSakhiRoster(projectIdFor(detail)).map { rosterEntry ->
+      saved[rosterEntry.sakhiId] ?: AttendanceEntry(rosterEntry.sakhiId, rosterEntry.sakhiName, present = false)
     }
   }
 

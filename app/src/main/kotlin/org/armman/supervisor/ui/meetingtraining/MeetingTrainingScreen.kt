@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.armman.supervisor.R
 import org.armman.supervisor.model.LocationOption
@@ -45,6 +46,11 @@ fun MeetingTrainingScreen(
   viewModel: MeetingTrainingViewModel = hiltViewModel(),
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+  LifecycleResumeEffect(Unit) {
+    viewModel.refresh()
+    onPauseOrDispose { /* no-op */ }
+  }
 
   Scaffold(
     modifier = modifier,

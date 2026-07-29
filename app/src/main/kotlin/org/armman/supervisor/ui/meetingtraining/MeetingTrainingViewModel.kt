@@ -69,6 +69,13 @@ class MeetingTrainingViewModel @Inject constructor(
     loadInitial()
   }
 
+  /** Reload the current tab/filters after returning from Schedule Meeting/Training, without
+   * flashing back to Loading if the list is already showing. */
+  fun refresh() {
+    val current = _uiState.value as? MeetingTrainingUiState.Success ?: return loadInitial()
+    fetchEvents(current)
+  }
+
   fun onTabSelected(tab: MeetingTrainingTab) {
     val current = _uiState.value as? MeetingTrainingUiState.Success ?: return
     fetchEvents(current.copy(tab = tab))

@@ -8,6 +8,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.armman.supervisor.data.local.EventStatus
+import org.armman.supervisor.data.local.MarksType
 import org.armman.supervisor.model.LocationOption
 import org.armman.supervisor.ui.navigation.Routes
 import org.junit.After
@@ -87,6 +88,25 @@ class MeetingDetailViewModelTest {
     }
 
     override suspend fun getAllPhotoFilePaths(): List<String> = error("not used")
+
+    override suspend fun scheduleTraining(request: ScheduleTrainingRequest): MeetingEntry = error("not used")
+
+    override suspend fun getTrainingTopicsCatalog(): List<TrainingTopic> = error("not used")
+
+
+    override suspend fun addGathering(eventId: String, topicNames: List<String>, date: String): String = error("not used")
+
+    override suspend fun saveGatheringAttendance(eventId: String, gatheringId: String, attendance: List<AttendanceEntry>) = error("not used")
+
+    override suspend fun getGatheringAttendanceRoster(gatheringId: String): List<AttendanceEntry> = error("not used")
+
+    override suspend fun getTopicsForGathering(gatheringId: String): List<TrainingTopic> = error("not used")
+
+    override suspend fun getMarks(topicId: String, marksType: MarksType): List<MarksEntry> = error("not used")
+
+    override suspend fun saveMarks(eventId: String, topicId: String, marksType: MarksType, entries: List<MarksEntry>) = error("not used")
+
+    override suspend fun completeMarks(eventId: String, topicId: String, marksType: MarksType) = error("not used")
   }
 
   private fun readyState(viewModel: MeetingDetailViewModel): MeetingDetailUiState.Success {
@@ -103,6 +123,45 @@ class MeetingDetailViewModelTest {
 
     assertEquals("Zone A", state.detail.projectName)
     assertEquals(0, state.detail.attendedCount)
+  }
+
+  @Test
+  fun `refresh after data is already showing does not flash back to Loading`() = runTest(dispatcher) {
+    val viewModel = MeetingDetailViewModel(TestRepository(), savedStateHandle())
+    readyState(viewModel)
+
+    viewModel.refresh()
+
+    assertTrue(viewModel.uiState.value is MeetingDetailUiState.Success)
+    dispatcher.scheduler.advanceUntilIdle()
+    assertTrue(viewModel.uiState.value is MeetingDetailUiState.Success)
+  }
+
+  @Test
+  fun `a resume-triggered refresh racing an in-flight guarded action does not lose the action's result`() =
+    runTest(dispatcher) {
+      val viewModel = MeetingDetailViewModel(TestRepository(), savedStateHandle())
+      readyState(viewModel)
+
+      // Simulates: onAddPhoto launches its guarded reload, then the camera activity returns and
+      // LifecycleResumeEffect fires refresh() before the guarded action's own reload has settled.
+      viewModel.onAddPhoto("/data/1.jpg")
+      viewModel.refresh()
+      dispatcher.scheduler.advanceUntilIdle()
+
+      val state = viewModel.uiState.value as MeetingDetailUiState.Success
+      assertEquals(listOf("/data/1.jpg"), state.detail.photoPaths)
+      assertTrue(!state.isActionInProgress)
+    }
+
+  @Test
+  fun `adding a photo does not flash back to Loading before the reload completes`() = runTest(dispatcher) {
+    val viewModel = MeetingDetailViewModel(TestRepository(), savedStateHandle())
+    readyState(viewModel)
+
+    viewModel.onAddPhoto("/data/1.jpg")
+
+    assertTrue(viewModel.uiState.value is MeetingDetailUiState.Success)
   }
 
   @Test

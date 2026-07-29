@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -41,17 +42,28 @@ class MeetingDetailViewModel @Inject constructor(
   private val _uiState = MutableStateFlow<MeetingDetailUiState>(MeetingDetailUiState.Loading)
   val uiState: StateFlow<MeetingDetailUiState> = _uiState.asStateFlow()
 
+  /** The in-flight mutating action (add photo/cancel/complete), if any. Never cancelled by a
+   * plain [refresh] — a resume racing an action must not abort the action's own mutation. */
+  private var actionJob: Job? = null
+
+  /** The in-flight read-only reload from [load]. Safe to cancel/replace freely since it never
+   * mutates data — superseding it just means one fewer redundant read. */
+  private var refreshJob: Job? = null
+
   init {
-    load()
+    load(showLoading = true)
   }
 
   fun onRetry() {
-    load()
+    load(showLoading = true)
   }
 
-  /** Reload after returning from Attendance/Reschedule/photo capture. */
+  /** Reload after returning from Attendance/Reschedule/photo capture. Skips the Loading state
+   * when data is already showing, so a resume-triggered refresh doesn't flash the spinner. A
+   * no-op while an action is in flight — the action's own completion already triggers a reload. */
   fun refresh() {
-    load()
+    if (actionJob?.isActive == true) return
+    load(showLoading = _uiState.value !is MeetingDetailUiState.Success)
   }
 
   fun onAddPhoto(filePath: String) = runGuardedAction { repository.addPhoto(eventId, filePath) }
@@ -73,10 +85,12 @@ class MeetingDetailViewModel @Inject constructor(
     if (state.isActionInProgress || state.detail.status != EventStatus.SCHEDULED) return
 
     _uiState.value = state.copy(isActionInProgress = true, completeBlockedNoPhoto = false)
-    viewModelScope.launch {
+    refreshJob?.cancel()
+    actionJob = viewModelScope.launch {
       try {
         action()
-        load()
+        val detail = repository.getEventDetail(eventId)
+        _uiState.value = MeetingDetailUiState.Success(detail)
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {
@@ -85,9 +99,10 @@ class MeetingDetailViewModel @Inject constructor(
     }
   }
 
-  private fun load() {
-    _uiState.value = MeetingDetailUiState.Loading
-    viewModelScope.launch {
+  private fun load(showLoading: Boolean) {
+    if (showLoading) _uiState.value = MeetingDetailUiState.Loading
+    refreshJob?.cancel()
+    refreshJob = viewModelScope.launch {
       try {
         val detail = repository.getEventDetail(eventId)
         _uiState.value = MeetingDetailUiState.Success(detail)
