@@ -338,6 +338,18 @@ class MeetingTrainingRepositoryImplTest {
   }
 
   @Test
+  fun `saveMarks with a mark above 100 throws`() = runTest {
+    val id = scheduleTrainingSample()
+    val gatheringId = repository.addGathering(id, listOf("Topic A"), "27 Jul 2026")
+    val topicId = repository.getTopicsForGathering(gatheringId).single().id
+    val entries = repository.getSakhiRoster("loc-1").map { MarksEntry(it.sakhiId, it.sakhiName, marks = 954) }
+
+    assertThrows(IllegalStateException::class.java) {
+      runTest { repository.saveMarks(id, topicId, MarksType.PRE, entries) }
+    }
+  }
+
+  @Test
   fun `saveMarks on an already-completed topic marksType throws`() = runTest {
     val id = scheduleTrainingSample()
     val gatheringId = repository.addGathering(id, listOf("Topic A"), "27 Jul 2026")

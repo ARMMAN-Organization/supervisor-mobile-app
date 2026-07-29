@@ -173,6 +173,7 @@ interface SupervisorEventDao {
   suspend fun saveMarks(eventId: String, topicId: String, marksType: String, rows: List<EventMarksEntity>) {
     requireScheduled(eventId)
     requireGatheringTopicNotCompleted(topicId, marksType)
+    check(rows.all { it.marks in MARKS_RANGE }) { "Marks for topic $topicId must be in $MARKS_RANGE" }
     deleteMarksForTopic(topicId, marksType)
     if (rows.isNotEmpty()) insertMarks(rows)
   }
@@ -192,6 +193,10 @@ interface SupervisorEventDao {
     }
     check(details.photos.isNotEmpty()) { "Cannot complete event $eventId without at least one photo" }
     updateEvent(details.event.copy(status = EventStatus.COMPLETED.name))
+  }
+
+  companion object {
+    val MARKS_RANGE = 0..100
   }
 }
 

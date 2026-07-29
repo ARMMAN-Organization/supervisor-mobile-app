@@ -159,6 +159,7 @@ private fun SuccessContent(
             GatheringCard(
               gathering = gathering,
               enabled = isEditable,
+              marksApplicable = state.detail.prePostMarksApplicable,
               onAttendance = { onGatheringAttendance(gathering.gatheringId) },
               onPreMarks = { onGatheringMarks(gathering.gatheringId, MarksType.PRE) },
               onPostMarks = { onGatheringMarks(gathering.gatheringId, MarksType.POST) },
@@ -234,6 +235,7 @@ private fun SuccessContent(
 private fun GatheringCard(
   gathering: GatheringSummary,
   enabled: Boolean,
+  marksApplicable: Boolean,
   onAttendance: () -> Unit,
   onPreMarks: () -> Unit,
   onPostMarks: () -> Unit,
@@ -266,20 +268,22 @@ private fun GatheringCard(
         enabled = enabled,
         onClick = onAttendance,
       )
-      GatheringStatusRow(
-        label = stringResource(R.string.training_detail_pre_marks_button),
-        statusText = stringResource(if (allPreCompleted) R.string.status_completed else R.string.status_pending),
-        filled = false,
-        enabled = enabled && !allPreCompleted,
-        onClick = onPreMarks,
-      )
-      GatheringStatusRow(
-        label = stringResource(R.string.training_detail_post_marks_button),
-        statusText = stringResource(if (allPostCompleted) R.string.status_completed else R.string.status_pending),
-        filled = false,
-        enabled = enabled && !allPostCompleted,
-        onClick = onPostMarks,
-      )
+      if (marksApplicable) {
+        GatheringStatusRow(
+          label = stringResource(R.string.training_detail_pre_marks_button),
+          statusText = stringResource(if (allPreCompleted) R.string.status_completed else R.string.status_pending),
+          filled = false,
+          enabled = enabled && !allPreCompleted,
+          onClick = onPreMarks,
+        )
+        GatheringStatusRow(
+          label = stringResource(R.string.training_detail_post_marks_button),
+          statusText = stringResource(if (allPostCompleted) R.string.status_completed else R.string.status_pending),
+          filled = false,
+          enabled = enabled && !allPostCompleted,
+          onClick = onPostMarks,
+        )
+      }
     }
   }
 }

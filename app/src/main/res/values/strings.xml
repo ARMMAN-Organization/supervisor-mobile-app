@@ -186,7 +186,7 @@
   <string name="marks_complete_dialog_message_post">Are you sure you want to complete all this post marks? You can\'t edit post marks by any topic afterwards.</string>
   <string name="marks_error_load">Failed to load marks</string>
   <string name="marks_error_submit">Failed to save marks</string>
-  <string name="marks_error_invalid_value">Marks must be a non-negative number</string>
+  <string name="marks_error_invalid_value">Marks must be a number between 0 and 100</string>
   <string name="marks_error_topic_required">Please select a training topic</string>
 
   <!-- Transaction types -->

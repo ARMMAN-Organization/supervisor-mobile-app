@@ -213,6 +213,22 @@ class MarksViewModelTest {
   }
 
   @Test
+  fun `entering a number above 100 blocks save with a validation error`() = runTest(dispatcher) {
+    val repo = TestRepository()
+    val viewModel = MarksViewModel(repo, savedStateHandle())
+    readyState(viewModel)
+    viewModel.onTopicSelected("topic-1")
+    dispatcher.scheduler.advanceUntilIdle()
+
+    viewModel.onMarksChanged("sakhi-1", "954")
+    viewModel.onSave()
+    dispatcher.scheduler.advanceUntilIdle()
+
+    assertTrue((viewModel.uiState.value as MarksUiState.Success).invalidValueError)
+    assertEquals(null, repo.lastSavedTopicId)
+  }
+
+  @Test
   fun `saving immediately after selecting a topic waits for the roster load instead of saving an empty roster`() =
     runTest(dispatcher) {
       val repo = TestRepository()

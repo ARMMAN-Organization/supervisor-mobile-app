@@ -185,7 +185,7 @@
   <string name="marks_complete_dialog_message_post">तुम्हाला हे सर्व नंतरचे गुण पूर्ण करायची खात्री आहे का? त्यानंतर तुम्ही कोणत्याही विषयाचे नंतरचे गुण संपादित करू शकणार नाही.</string>
   <string name="marks_error_load">गुण लोड करण्यात अयशस्वी</string>
   <string name="marks_error_submit">गुण जतन करण्यात अयशस्वी</string>
-  <string name="marks_error_invalid_value">गुण ऋण नसलेली संख्या असणे आवश्यक आहे</string>
+  <string name="marks_error_invalid_value">गुण ० ते १०० दरम्यान संख्या असणे आवश्यक आहे</string>
   <string name="marks_error_topic_required">कृपया प्रशिक्षण विषय निवडा</string>
   <string name="attendance_error_load">उपस्थिती यादी लोड करण्यात अयशस्वी</string>
 

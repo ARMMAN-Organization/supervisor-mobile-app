@@ -74,7 +74,7 @@ class MarksViewModel @Inject constructor(
 
   fun onMarksChanged(sakhiId: String, rawValue: String) = updateSuccess { state ->
     val marks = rawValue.toIntOrNull()
-    if (rawValue.isNotEmpty() && (marks == null || marks < 0)) {
+    if (rawValue.isNotEmpty() && (marks == null || marks !in MIN_MARKS..MAX_MARKS)) {
       return@updateSuccess state.copy(invalidValueError = true)
     }
     state.copy(
@@ -176,5 +176,10 @@ class MarksViewModel @Inject constructor(
 
   private inline fun updateSuccess(transform: (MarksUiState.Success) -> MarksUiState.Success) {
     _uiState.update { current -> if (current is MarksUiState.Success) transform(current) else current }
+  }
+
+  private companion object {
+    const val MIN_MARKS = 0
+    const val MAX_MARKS = 100
   }
 }
