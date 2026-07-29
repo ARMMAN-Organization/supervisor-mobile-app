@@ -68,10 +68,12 @@ fun MeetingHeaderCard(
       }
       MeetingHeaderRow(stringResource(R.string.meeting_detail_start_date), state.detail.startDate)
       MeetingHeaderRow(stringResource(R.string.meeting_detail_end_date), state.detail.endDate)
-      MeetingHeaderRow(
-        stringResource(R.string.meeting_detail_sakhi_attended),
-        stringResource(R.string.meeting_training_attended_count, state.detail.attendedCount, state.detail.totalRosterCount),
-      )
+      if (state.detail.eventType == EventType.MEETING) {
+        MeetingHeaderRow(
+          stringResource(R.string.meeting_detail_sakhi_attended),
+          stringResource(R.string.meeting_training_attended_count, state.detail.attendedCount, state.detail.totalRosterCount),
+        )
+      }
       if (state.detail.remarks.isNotBlank()) {
         Text(
           text = state.detail.remarks,
@@ -93,11 +95,21 @@ private fun MeetingHeaderRow(label: String, value: String) {
 }
 
 @Composable
-fun CompleteConfirmDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+fun CompleteConfirmDialog(eventType: EventType, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+  val titleRes = if (eventType == EventType.TRAINING) {
+    R.string.training_detail_complete_dialog_title
+  } else {
+    R.string.meeting_detail_complete_dialog_title
+  }
+  val messageRes = if (eventType == EventType.TRAINING) {
+    R.string.training_detail_complete_dialog_message
+  } else {
+    R.string.meeting_detail_complete_dialog_message
+  }
   AlertDialog(
     onDismissRequest = onDismiss,
-    title = { Text(stringResource(R.string.meeting_detail_complete_dialog_title)) },
-    text = { Text(stringResource(R.string.meeting_detail_complete_dialog_message)) },
+    title = { Text(stringResource(titleRes)) },
+    text = { Text(stringResource(messageRes)) },
     confirmButton = { TextButton(onClick = onConfirm) { Text(stringResource(R.string.meeting_detail_complete_confirm)) } },
     dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
   )

@@ -11,3 +11,4 @@ captures/
 *.pdf
 run-mobile.local.sh
 run-tab.local.sh
+AUDIT_FINDINGS.md

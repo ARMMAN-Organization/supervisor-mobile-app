@@ -16,9 +16,13 @@ import androidx.room.RoomDatabase
     SupervisorEventEntity::class,
     EventAttendanceEntity::class,
     EventPhotoEntity::class,
+    EventGatheringEntity::class,
+    EventTopicEntity::class,
+    EventMarksEntity::class,
+    EventMarksCompletionEntity::class,
     CallLogEntity::class,
   ],
-  version = 3,
+  version = 5,
 )
 abstract class AppDatabase : RoomDatabase() {
   abstract fun transactionDao(): TransactionDao

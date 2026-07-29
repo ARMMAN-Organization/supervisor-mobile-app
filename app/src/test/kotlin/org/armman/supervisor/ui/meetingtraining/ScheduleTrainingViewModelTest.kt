@@ -16,7 +16,7 @@ import org.junit.Before
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class ScheduleMeetingViewModelTest {
+class ScheduleTrainingViewModelTest {
   private val dispatcher = StandardTestDispatcher()
 
   @Before
@@ -35,7 +35,7 @@ class ScheduleMeetingViewModelTest {
   ) : MeetingTrainingRepository {
     var scheduleCallCount = 0
       private set
-    var lastRequest: ScheduleMeetingRequest? = null
+    var lastRequest: ScheduleTrainingRequest? = null
       private set
 
     fun failNextCalls(fail: Boolean) {
@@ -52,12 +52,7 @@ class ScheduleMeetingViewModelTest {
 
     override suspend fun getSavedAttendance(eventId: String): List<AttendanceEntry> = error("not used")
 
-    override suspend fun scheduleMeeting(request: ScheduleMeetingRequest): MeetingEntry {
-      if (shouldFail) error("schedule failed")
-      scheduleCallCount++
-      lastRequest = request
-      return MeetingEntry("event-1", EventType.MEETING, request.projectName, request.startDate, request.endDate, request.remarks, 1L)
-    }
+    override suspend fun scheduleMeeting(request: ScheduleMeetingRequest): MeetingEntry = error("not used")
 
     override suspend fun rescheduleMeeting(eventId: String, newStartDate: String, newEndDate: String) = error("not used")
 
@@ -71,7 +66,14 @@ class ScheduleMeetingViewModelTest {
 
     override suspend fun getAllPhotoFilePaths(): List<String> = error("not used")
 
-    override suspend fun scheduleTraining(request: ScheduleTrainingRequest): MeetingEntry = error("not used")
+    override suspend fun scheduleTraining(request: ScheduleTrainingRequest): MeetingEntry {
+      if (shouldFail) error("schedule failed")
+      scheduleCallCount++
+      lastRequest = request
+      return MeetingEntry(
+        "event-1", EventType.TRAINING, request.projectName, request.startDate, request.endDate, request.remarks, 1L,
+      )
+    }
 
     override suspend fun getTrainingTopicsCatalog(): List<TrainingTopic> = error("not used")
 
@@ -91,50 +93,80 @@ class ScheduleMeetingViewModelTest {
     override suspend fun completeMarks(eventId: String, topicId: String, marksType: MarksType) = error("not used")
   }
 
-  private fun readyState(viewModel: ScheduleMeetingViewModel): ScheduleMeetingUiState.Success {
+  private fun readyState(viewModel: ScheduleTrainingViewModel): ScheduleTrainingUiState.Success {
     dispatcher.scheduler.advanceUntilIdle()
-    return viewModel.uiState.value as ScheduleMeetingUiState.Success
+    return viewModel.uiState.value as ScheduleTrainingUiState.Success
   }
 
   // --- Positive ---
 
   @Test
-  fun `initial load populates project list`() = runTest(dispatcher) {
-    val viewModel = ScheduleMeetingViewModel(TestRepository())
+  fun `initial load populates project list and defaults start date to today`() = runTest(dispatcher) {
+    val viewModel = ScheduleTrainingViewModel(TestRepository())
     val state = readyState(viewModel)
 
     assertEquals(1, state.projects.size)
+    assertTrue(state.startDate!!.isNotBlank())
   }
 
   @Test
   fun `submit with valid project and dates succeeds and calls repository once`() = runTest(dispatcher) {
     val repo = TestRepository()
-    val viewModel = ScheduleMeetingViewModel(repo)
+    val viewModel = ScheduleTrainingViewModel(repo)
     readyState(viewModel)
 
     viewModel.onProjectSelected("loc-1")
-    viewModel.onStartDateSelected("22 Jul 2026")
-    viewModel.onEndDateSelected("23 Jul 2026")
+    viewModel.onStartDateSelected("27 Jul 2026")
+    viewModel.onEndDateSelected("30 Jul 2026")
     viewModel.onSubmit()
     dispatcher.scheduler.advanceUntilIdle()
 
     assertEquals(1, repo.scheduleCallCount)
-    assertTrue((viewModel.uiState.value as ScheduleMeetingUiState.Success).submitted)
+    assertTrue((viewModel.uiState.value as ScheduleTrainingUiState.Success).submitted)
   }
 
   @Test
-  fun `start and end date equal is a valid single-day meeting`() = runTest(dispatcher) {
+  fun `checking pre-post marks toggle is included in the submitted request`() = runTest(dispatcher) {
     val repo = TestRepository()
-    val viewModel = ScheduleMeetingViewModel(repo)
+    val viewModel = ScheduleTrainingViewModel(repo)
     readyState(viewModel)
 
     viewModel.onProjectSelected("loc-1")
-    viewModel.onStartDateSelected("22 Jul 2026")
-    viewModel.onEndDateSelected("22 Jul 2026")
+    viewModel.onStartDateSelected("27 Jul 2026")
+    viewModel.onPrePostMarksToggled(true)
     viewModel.onSubmit()
     dispatcher.scheduler.advanceUntilIdle()
 
-    assertEquals(1, repo.scheduleCallCount)
+    assertTrue(repo.lastRequest!!.prePostMarksApplicable)
+  }
+
+  @Test
+  fun `remarks are included in the submitted request`() = runTest(dispatcher) {
+    val repo = TestRepository()
+    val viewModel = ScheduleTrainingViewModel(repo)
+    readyState(viewModel)
+
+    viewModel.onProjectSelected("loc-1")
+    viewModel.onStartDateSelected("27 Jul 2026")
+    viewModel.onRemarksChanged("Test remarks")
+    viewModel.onSubmit()
+    dispatcher.scheduler.advanceUntilIdle()
+
+    assertEquals("Test remarks", repo.lastRequest!!.remarks)
+  }
+
+  @Test
+  fun `end date left blank defaults to start date`() = runTest(dispatcher) {
+    val repo = TestRepository()
+    val viewModel = ScheduleTrainingViewModel(repo)
+    readyState(viewModel)
+
+    viewModel.onProjectSelected("loc-1")
+    viewModel.onStartDateSelected("27 Jul 2026")
+    viewModel.onSubmit()
+    dispatcher.scheduler.advanceUntilIdle()
+
+    assertEquals("27 Jul 2026", repo.lastRequest!!.endDate)
   }
 
   // --- Negative ---
@@ -142,62 +174,62 @@ class ScheduleMeetingViewModelTest {
   @Test
   fun `submit with no project selected blocks with PROJECT_REQUIRED`() = runTest(dispatcher) {
     val repo = TestRepository()
-    val viewModel = ScheduleMeetingViewModel(repo)
+    val viewModel = ScheduleTrainingViewModel(repo)
     readyState(viewModel)
 
-    viewModel.onStartDateSelected("22 Jul 2026")
     viewModel.onSubmit()
     dispatcher.scheduler.advanceUntilIdle()
 
-    val state = viewModel.uiState.value as ScheduleMeetingUiState.Success
-    assertEquals(ScheduleMeetingFormError.PROJECT_REQUIRED, state.formError)
+    val state = viewModel.uiState.value as ScheduleTrainingUiState.Success
+    assertEquals(ScheduleTrainingFormError.PROJECT_REQUIRED, state.formError)
     assertEquals(0, repo.scheduleCallCount)
   }
 
   @Test
   fun `submit with no start date blocks with START_DATE_REQUIRED`() = runTest(dispatcher) {
     val repo = TestRepository()
-    val viewModel = ScheduleMeetingViewModel(repo)
+    val viewModel = ScheduleTrainingViewModel(repo)
     readyState(viewModel)
 
     viewModel.onProjectSelected("loc-1")
+    viewModel.onStartDateSelected("")
     viewModel.onSubmit()
     dispatcher.scheduler.advanceUntilIdle()
 
-    val state = viewModel.uiState.value as ScheduleMeetingUiState.Success
-    assertEquals(ScheduleMeetingFormError.START_DATE_REQUIRED, state.formError)
+    val state = viewModel.uiState.value as ScheduleTrainingUiState.Success
+    assertEquals(ScheduleTrainingFormError.START_DATE_REQUIRED, state.formError)
     assertEquals(0, repo.scheduleCallCount)
   }
 
   @Test
   fun `end date before start date blocks with INVALID_DATE_RANGE`() = runTest(dispatcher) {
     val repo = TestRepository()
-    val viewModel = ScheduleMeetingViewModel(repo)
+    val viewModel = ScheduleTrainingViewModel(repo)
     readyState(viewModel)
 
     viewModel.onProjectSelected("loc-1")
-    viewModel.onStartDateSelected("23 Jul 2026")
-    viewModel.onEndDateSelected("22 Jul 2026")
+    viewModel.onStartDateSelected("28 Jul 2026")
+    viewModel.onEndDateSelected("27 Jul 2026")
     viewModel.onSubmit()
     dispatcher.scheduler.advanceUntilIdle()
 
-    val state = viewModel.uiState.value as ScheduleMeetingUiState.Success
-    assertEquals(ScheduleMeetingFormError.INVALID_DATE_RANGE, state.formError)
+    val state = viewModel.uiState.value as ScheduleTrainingUiState.Success
+    assertEquals(ScheduleTrainingFormError.INVALID_DATE_RANGE, state.formError)
     assertEquals(0, repo.scheduleCallCount)
   }
 
   @Test
   fun `repository failure on submit moves to Error`() = runTest(dispatcher) {
     val repo = TestRepository(shouldFail = true)
-    val viewModel = ScheduleMeetingViewModel(repo)
+    val viewModel = ScheduleTrainingViewModel(repo)
     readyState(viewModel)
 
     viewModel.onProjectSelected("loc-1")
-    viewModel.onStartDateSelected("22 Jul 2026")
+    viewModel.onStartDateSelected("27 Jul 2026")
     viewModel.onSubmit()
     dispatcher.scheduler.advanceUntilIdle()
 
-    assertTrue(viewModel.uiState.value is ScheduleMeetingUiState.Error)
+    assertTrue(viewModel.uiState.value is ScheduleTrainingUiState.Error)
   }
 
   // --- Edge cases ---
@@ -205,15 +237,24 @@ class ScheduleMeetingViewModelTest {
   @Test
   fun `double submit while isSubmitting is a no-op`() = runTest(dispatcher) {
     val repo = TestRepository()
-    val viewModel = ScheduleMeetingViewModel(repo)
+    val viewModel = ScheduleTrainingViewModel(repo)
     readyState(viewModel)
 
     viewModel.onProjectSelected("loc-1")
-    viewModel.onStartDateSelected("22 Jul 2026")
+    viewModel.onStartDateSelected("27 Jul 2026")
     viewModel.onSubmit()
     viewModel.onSubmit()
     dispatcher.scheduler.advanceUntilIdle()
 
     assertEquals(1, repo.scheduleCallCount)
+  }
+
+  @Test
+  fun `pre-post marks defaults to unchecked`() = runTest(dispatcher) {
+    val viewModel = ScheduleTrainingViewModel(TestRepository())
+    val state = readyState(viewModel)
+
+    assertEquals(false, state.prePostMarksApplicable)
+    assertEquals(false, state.submitted)
   }
 }

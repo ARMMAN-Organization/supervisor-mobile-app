@@ -8,6 +8,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.armman.supervisor.data.local.EventStatus
+import org.armman.supervisor.data.local.MarksType
 import org.armman.supervisor.model.LocationOption
 import org.armman.supervisor.ui.navigation.Routes
 import org.junit.After
@@ -30,8 +31,13 @@ class AttendanceViewModelTest {
     Dispatchers.resetMain()
   }
 
-  private fun savedStateHandle(eventId: String = "event-1") =
-    SavedStateHandle(mapOf(Routes.MEETING_DETAIL_EVENT_ID_ARG to eventId))
+  private fun savedStateHandle(eventId: String = "event-1", gatheringId: String? = null) =
+    SavedStateHandle(
+      buildMap {
+        put(Routes.MEETING_DETAIL_EVENT_ID_ARG, eventId)
+        if (gatheringId != null) put(Routes.GATHERING_ID_ARG, gatheringId)
+      },
+    )
 
   private class TestRepository(
     private val projects: List<LocationOption> = listOf(LocationOption("loc-1", "Zone A")),
@@ -40,10 +46,13 @@ class AttendanceViewModelTest {
       "event-1", EventType.MEETING, "Zone A", "22 Jul 2026", "22 Jul 2026", "",
       EventStatus.SCHEDULED, attendedCount = 0, totalRosterCount = 1, photoPaths = emptyList(),
     ),
+    private val existingGatheringAttendance: List<AttendanceEntry> = emptyList(),
     private val existingAttendance: List<AttendanceEntry> = emptyList(),
     private var shouldFail: Boolean = false,
   ) : MeetingTrainingRepository {
     var lastSavedAttendance: List<AttendanceEntry>? = null
+      private set
+    var lastSavedGatheringId: String? = null
       private set
 
     fun failNextCalls(fail: Boolean) {
@@ -79,6 +88,28 @@ class AttendanceViewModelTest {
     override suspend fun completeMeeting(eventId: String) = error("not used")
 
     override suspend fun getAllPhotoFilePaths(): List<String> = error("not used")
+
+    override suspend fun scheduleTraining(request: ScheduleTrainingRequest): MeetingEntry = error("not used")
+
+    override suspend fun getTrainingTopicsCatalog(): List<TrainingTopic> = error("not used")
+
+    override suspend fun addGathering(eventId: String, topicNames: List<String>, date: String): String = error("not used")
+
+    override suspend fun saveGatheringAttendance(eventId: String, gatheringId: String, attendance: List<AttendanceEntry>) {
+      if (shouldFail) error("save failed")
+      lastSavedAttendance = attendance
+      lastSavedGatheringId = gatheringId
+    }
+
+    override suspend fun getGatheringAttendanceRoster(gatheringId: String): List<AttendanceEntry> = existingGatheringAttendance
+
+    override suspend fun getTopicsForGathering(gatheringId: String): List<TrainingTopic> = error("not used")
+
+    override suspend fun getMarks(topicId: String, marksType: MarksType): List<MarksEntry> = error("not used")
+
+    override suspend fun saveMarks(eventId: String, topicId: String, marksType: MarksType, entries: List<MarksEntry>) = error("not used")
+
+    override suspend fun completeMarks(eventId: String, topicId: String, marksType: MarksType) = error("not used")
   }
 
   private fun readyState(viewModel: AttendanceViewModel): AttendanceUiState.Success {
@@ -98,7 +129,7 @@ class AttendanceViewModelTest {
   }
 
   @Test
-  fun `reopening after a previous save restores the saved presence instead of resetting to absent`() = runTest(dispatcher) {
+  fun `reopening a Meeting restores previously saved attendance instead of resetting to absent`() = runTest(dispatcher) {
     val roster = listOf(AttendanceRosterEntry("sakhi-1", "Sushil"), AttendanceRosterEntry("sakhi-2", "Asha"))
     val repo = TestRepository(
       roster = roster,
@@ -214,5 +245,45 @@ class AttendanceViewModelTest {
 
     viewModel.onToggle("sakhi-1")
     assertEquals(0, (viewModel.uiState.value as AttendanceUiState.Success).presentCount)
+  }
+
+  // --- Gathering-scoped (Training) ---
+
+  @Test
+  fun `gathering attendance saves via saveGatheringAttendance, not saveAttendance`() = runTest(dispatcher) {
+    val repo = TestRepository()
+    val viewModel = AttendanceViewModel(repo, savedStateHandle(gatheringId = "gathering-1"))
+    readyState(viewModel)
+
+    viewModel.onToggle("sakhi-1")
+    viewModel.onSave()
+    dispatcher.scheduler.advanceUntilIdle()
+
+    assertEquals("gathering-1", repo.lastSavedGatheringId)
+    assertEquals(true, repo.lastSavedAttendance?.single()?.present)
+  }
+
+  @Test
+  fun `reopening a gathering restores previously saved attendance instead of resetting to absent`() = runTest(dispatcher) {
+    val repo = TestRepository(existingGatheringAttendance = listOf(AttendanceEntry("sakhi-1", "Sushil", present = true)))
+    val viewModel = AttendanceViewModel(repo, savedStateHandle(gatheringId = "gathering-1"))
+
+    val state = readyState(viewModel)
+
+    assertEquals(1, state.presentCount)
+  }
+
+  @Test
+  fun `Meeting attendance (no gatheringId) is unaffected by the gathering path`() = runTest(dispatcher) {
+    val repo = TestRepository()
+    val viewModel = AttendanceViewModel(repo, savedStateHandle())
+    readyState(viewModel)
+
+    viewModel.onToggle("sakhi-1")
+    viewModel.onSave()
+    dispatcher.scheduler.advanceUntilIdle()
+
+    assertEquals(null, repo.lastSavedGatheringId)
+    assertEquals(true, repo.lastSavedAttendance?.single()?.present)
   }
 }

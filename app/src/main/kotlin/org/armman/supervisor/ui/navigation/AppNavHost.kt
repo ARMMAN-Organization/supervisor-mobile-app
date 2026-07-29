@@ -18,11 +18,15 @@ import org.armman.supervisor.ui.callsheet.CallSheetScreen
 import org.armman.supervisor.ui.components.PlaceholderScreen
 import org.armman.supervisor.ui.dashboard.DashboardScreen
 import org.armman.supervisor.ui.login.LoginScreen
+import org.armman.supervisor.data.local.MarksType
+import org.armman.supervisor.ui.meetingtraining.AddTrainingTopicsScreen
 import org.armman.supervisor.ui.meetingtraining.AttendanceScreen
+import org.armman.supervisor.ui.meetingtraining.MarksScreen
 import org.armman.supervisor.ui.meetingtraining.MeetingDetailScreen
 import org.armman.supervisor.ui.meetingtraining.MeetingTrainingScreen
 import org.armman.supervisor.ui.meetingtraining.RescheduleMeetingScreen
 import org.armman.supervisor.ui.meetingtraining.ScheduleMeetingScreen
+import org.armman.supervisor.ui.meetingtraining.ScheduleTrainingScreen
 import org.armman.supervisor.ui.settings.SettingsScreen
 
 object Routes {
@@ -39,9 +43,17 @@ object Routes {
   const val MEETING_TRAINING = "meeting_training"
   const val MEETING_DETAIL_EVENT_ID_ARG = "eventId"
   const val SCHEDULE_MEETING = "schedule_meeting"
+  const val SCHEDULE_TRAINING = "schedule_training"
   const val MEETING_DETAIL = "meeting_detail/{$MEETING_DETAIL_EVENT_ID_ARG}"
   const val RESCHEDULE_MEETING = "reschedule_meeting/{$MEETING_DETAIL_EVENT_ID_ARG}"
   const val MEETING_ATTENDANCE = "meeting_attendance/{$MEETING_DETAIL_EVENT_ID_ARG}"
+  const val ADD_TRAINING_TOPICS = "add_training_topics/{$MEETING_DETAIL_EVENT_ID_ARG}"
+  const val GATHERING_ID_ARG = "gatheringId"
+  const val MARKS_TYPE_ARG = "marksType"
+  const val GATHERING_ATTENDANCE =
+    "gathering_attendance/{$MEETING_DETAIL_EVENT_ID_ARG}/{$GATHERING_ID_ARG}"
+  const val GATHERING_MARKS =
+    "gathering_marks/{$MEETING_DETAIL_EVENT_ID_ARG}/{$GATHERING_ID_ARG}/{$MARKS_TYPE_ARG}"
   const val CALL_SHEET = "call_sheet"
   const val CALL_SHEET_SAKHI_ID_ARG = "sakhiId"
   const val CALL_HISTORY = "call_history/{$CALL_SHEET_SAKHI_ID_ARG}"
@@ -65,6 +77,13 @@ object Routes {
   fun rescheduleMeeting(eventId: String) = "reschedule_meeting/$eventId"
 
   fun meetingAttendance(eventId: String) = "meeting_attendance/$eventId"
+
+  fun addTrainingTopics(eventId: String) = "add_training_topics/$eventId"
+
+  fun gatheringAttendance(eventId: String, gatheringId: String) = "gathering_attendance/$eventId/$gatheringId"
+
+  fun gatheringMarks(eventId: String, gatheringId: String, marksType: MarksType) =
+    "gathering_marks/$eventId/$gatheringId/${marksType.name}"
 }
 
 /** Top-level navigation graph for the Supervisor app. */
@@ -127,12 +146,18 @@ fun AppNavHost() {
       MeetingTrainingScreen(
         onBack = { navController.popBackStack() },
         onNewMeeting = { navController.navigate(Routes.SCHEDULE_MEETING) },
-        onNewTraining = { /* Training is not yet implemented */ },
+        onNewTraining = { navController.navigate(Routes.SCHEDULE_TRAINING) },
         onEventSelected = { eventId -> navController.navigate(Routes.meetingDetail(eventId)) },
       )
     }
     composable(Routes.SCHEDULE_MEETING) {
       ScheduleMeetingScreen(
+        onBack = { navController.popBackStack() },
+        onSubmitted = { navController.popBackStack() },
+      )
+    }
+    composable(Routes.SCHEDULE_TRAINING) {
+      ScheduleTrainingScreen(
         onBack = { navController.popBackStack() },
         onSubmitted = { navController.popBackStack() },
       )
@@ -146,6 +171,45 @@ fun AppNavHost() {
         onBack = { navController.popBackStack() },
         onReschedule = { navController.navigate(Routes.rescheduleMeeting(eventId)) },
         onAttendance = { navController.navigate(Routes.meetingAttendance(eventId)) },
+        onAddTopics = { navController.navigate(Routes.addTrainingTopics(eventId)) },
+        onGatheringAttendance = { gatheringId -> navController.navigate(Routes.gatheringAttendance(eventId, gatheringId)) },
+        onGatheringMarks = { gatheringId, marksType ->
+          navController.navigate(Routes.gatheringMarks(eventId, gatheringId, marksType))
+        },
+      )
+    }
+    composable(
+      Routes.ADD_TRAINING_TOPICS,
+      arguments = listOf(navArgument(Routes.MEETING_DETAIL_EVENT_ID_ARG) { type = NavType.StringType }),
+    ) {
+      AddTrainingTopicsScreen(
+        onBack = { navController.popBackStack() },
+        onSaved = { navController.popBackStack() },
+      )
+    }
+    composable(
+      Routes.GATHERING_ATTENDANCE,
+      arguments = listOf(
+        navArgument(Routes.MEETING_DETAIL_EVENT_ID_ARG) { type = NavType.StringType },
+        navArgument(Routes.GATHERING_ID_ARG) { type = NavType.StringType },
+      ),
+    ) {
+      AttendanceScreen(
+        onBack = { navController.popBackStack() },
+        onSaved = { navController.popBackStack() },
+      )
+    }
+    composable(
+      Routes.GATHERING_MARKS,
+      arguments = listOf(
+        navArgument(Routes.MEETING_DETAIL_EVENT_ID_ARG) { type = NavType.StringType },
+        navArgument(Routes.GATHERING_ID_ARG) { type = NavType.StringType },
+        navArgument(Routes.MARKS_TYPE_ARG) { type = NavType.StringType },
+      ),
+    ) {
+      MarksScreen(
+        onBack = { navController.popBackStack() },
+        onSaved = { navController.popBackStack() },
       )
     }
     composable(
