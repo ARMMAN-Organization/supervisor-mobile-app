@@ -101,6 +101,21 @@ class AssignItemDetailViewModelTest {
   }
 
   @Test
+  fun `refresh re-fetches without transiently emitting Loading over existing content`() = runTest(dispatcher) {
+    val viewModel = AssignItemDetailViewModel(TestRepository(), savedStateHandle("sakhi-1"))
+    dispatcher.scheduler.advanceUntilIdle()
+    assertTrue(viewModel.uiState.value is AssignItemDetailUiState.Success)
+
+    viewModel.refresh()
+
+    // Unlike the initial load, refresh() must not flash Loading over the screen that's already
+    // showing valid content — this is what caused the visible flicker on screen entry/resume.
+    assertTrue(viewModel.uiState.value is AssignItemDetailUiState.Success)
+    dispatcher.scheduler.advanceUntilIdle()
+    assertTrue(viewModel.uiState.value is AssignItemDetailUiState.Success)
+  }
+
+  @Test
   fun `retry after error re-fetches and can reach Success`() = runTest(dispatcher) {
     val repo = TestRepository(details = emptyMap())
     val viewModel = AssignItemDetailViewModel(repo, savedStateHandle("sakhi-1"))
