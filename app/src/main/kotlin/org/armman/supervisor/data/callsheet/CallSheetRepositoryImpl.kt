@@ -2,6 +2,7 @@ package org.armman.supervisor.data.callsheet
 
 import org.armman.supervisor.data.local.CallLogDao
 import org.armman.supervisor.data.local.CallLogEntity
+import org.armman.supervisor.data.projects.ProjectsRepository
 import org.armman.supervisor.model.LocationOption
 import org.armman.supervisor.ui.assignitem.SakhiOption
 import org.armman.supervisor.ui.callsheet.CallConnected
@@ -22,33 +23,17 @@ import java.util.UUID
 import javax.inject.Inject
 
 /**
- * Concrete [CallSheetRepository]. Reference/lookup data (locations, Sakhis, their stats) is local
- * sample data — it stands in for the future read-only GET endpoints and carries no risk of data
- * loss. Call logs the Supervisor actually creates are persisted in the local encrypted database
- * ([CallLogDao]) so they survive process death — the app has no real call-logs API yet. When that
- * API is ready, only [logCall]/[getCallHistory] change to HTTP calls returning/accepting the same
- * models — the interface, its Hilt binding in `di/CallSheetModule.kt`, and every caller (ViewModels,
- * screens) stay unchanged.
+ * Concrete [CallSheetRepository]. Locations and Sakhis come from the real auth-service roster via
+ * [ProjectsRepository] (shared with Dashboard/Assign Item). Per-Sakhi stats (visits due, risk
+ * counts, etc.) remain placeholder data — no dashboard/call-sheet-stats endpoint exists yet; only
+ * [getSakhiSummaries]'s stats lookup changes when one ships. Call logs the Supervisor actually
+ * creates are persisted in the local encrypted database ([CallLogDao]) so they survive process
+ * death — the app has no real call-logs API yet.
  */
 class CallSheetRepositoryImpl @Inject constructor(
+  private val projectsRepository: ProjectsRepository,
   private val callLogDao: CallLogDao,
 ) : CallSheetRepository {
-
-  private val locations = listOf(
-    LocationOption("loc-1", "Unrestricted Armman"),
-    LocationOption("loc-2", "Wardha - Zone A"),
-  )
-
-  private val sakhisByLocation = mapOf(
-    "loc-1" to listOf(SakhiOption("sakhi-1", "Sushil"), SakhiOption("sakhi-2", "Asha Patil")),
-    "loc-2" to listOf(SakhiOption("sakhi-3", "Test sakhi 3")),
-  )
-
-  private val statsBySakhi = mapOf(
-    "sakhi-1" to sampleStats(closureFormPending = 96, highRiskAnc = 21),
-    "sakhi-2" to sampleStats(),
-    "sakhi-3" to sampleStats(closureFormPending = 96, highRiskAnc = 21),
-  )
 
   private fun sampleStats(
     visitDue: Int = 0,
@@ -72,19 +57,25 @@ class CallSheetRepositoryImpl @Inject constructor(
     lastDataSyncDate = lastDataSyncDate,
   )
 
-  override suspend fun getLocations(): List<LocationOption> = locations
+  override suspend fun getLocations(): List<LocationOption> = projectsRepository.getProjects()
 
   override suspend fun getSakhiSummaries(locationId: String?): List<SakhiCallSummary> {
-    val sakhis = sakhisByLocation[locationId].orEmpty()
+    if (locationId == null) return emptyList()
+    val sakhis = projectsRepository.getSakhis(locationId)
     return sakhis.map { sakhi ->
-      val stats = statsBySakhi[sakhi.id] ?: error("Unknown sakhi id: ${sakhi.id}")
       val latest = callLogDao.getLatestForSakhi(sakhi.id)
-      SakhiCallSummary(sakhi = sakhi, stats = stats, lastCalledAtEpochMillis = latest?.timestampEpochMillis)
+      SakhiCallSummary(sakhi = sakhi, stats = sampleStats(), lastCalledAtEpochMillis = latest?.timestampEpochMillis)
     }
   }
 
-  override suspend fun getSakhiOption(sakhiId: String): SakhiOption =
-    sakhisByLocation.values.flatten().firstOrNull { it.id == sakhiId } ?: error("Unknown sakhi id: $sakhiId")
+  override suspend fun getSakhiOption(sakhiId: String): SakhiOption {
+    val locations = projectsRepository.getProjects()
+    for (location in locations) {
+      val match = projectsRepository.getSakhis(location.id).firstOrNull { it.id == sakhiId }
+      if (match != null) return match
+    }
+    error("Unknown sakhi id: $sakhiId")
+  }
 
   override suspend fun getCallHistory(sakhiId: String): List<CallLogEntry> =
     callLogDao.getBySakhi(sakhiId).map { it.toEntry() }
