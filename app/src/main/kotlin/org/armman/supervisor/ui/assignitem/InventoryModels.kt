@@ -9,8 +9,10 @@ data class InventoryItem(val id: String, val name: String, val category: ItemCat
 /** Inventory transaction type — maps to the `inventory_transactions.transaction_type` DB enum. */
 enum class TransactionType { HANDOVER, RETURNED, PERMANENT_DAMAGED, MISPLACED, CONSUMED }
 
-/** One item + quantity line the supervisor is submitting. */
-data class TransactionItemQuantity(val itemId: String, val quantity: Int)
+/** One item + quantity line the supervisor is submitting. [existingRowId] is set only when
+ * editing a pre-existing item line (identifies which server row to update); null for a brand-new
+ * line in a create submission. */
+data class TransactionItemQuantity(val itemId: String, val quantity: Int, val existingRowId: String? = null)
 
 /**
  * A pending inventory transaction the supervisor is submitting for a Sakhi. A single submission

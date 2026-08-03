@@ -53,6 +53,11 @@ class AddItemTransactionViewModel @Inject constructor(
   private val _uiState = MutableStateFlow<AddItemTransactionUiState>(AddItemTransactionUiState.Loading)
   val uiState: StateFlow<AddItemTransactionUiState> = _uiState.asStateFlow()
 
+  // Item id -> server row id being edited, one entry per item line in the transaction group being
+  // edited. Empty in create mode. Used on submit to tell `updateTransaction` which row each edited
+  // quantity belongs to.
+  private var editingRowIdsByItemId: Map<String, String> = emptyMap()
+
   init {
     load()
   }
@@ -69,10 +74,18 @@ class AddItemTransactionViewModel @Inject constructor(
         val programs = repository.getPrograms()
         val items = repository.getInventoryItems()
         val editing = editTransactionId?.let { id ->
-          repository.getTransactions(sakhiId).firstOrNull { it.id == id }
+          repository.getTransactions(sakhiId).firstOrNull { id in it.ids }
             ?: error("Unknown transaction id: $id")
         }
         val itemIdsByName = items.associate { it.name to it.id }
+        val editingQuantitiesByItemId = editing?.items?.associate { entry ->
+          val itemId = itemIdsByName[entry.itemName] ?: error("Unknown item name: ${entry.itemName}")
+          itemId to entry.quantity
+        }.orEmpty()
+        editingRowIdsByItemId = editing?.items?.associate { entry ->
+          val itemId = itemIdsByName[entry.itemName] ?: error("Unknown item name: ${entry.itemName}")
+          itemId to entry.id
+        }.orEmpty()
 
         _uiState.value = AddItemTransactionUiState.Success(
           sakhiName = detail.sakhiName,
@@ -82,10 +95,7 @@ class AddItemTransactionViewModel @Inject constructor(
           selectedType = editing?.transactionType,
           transactionDate = editing?.date,
           remarks = "",
-          quantities = editing?.items.orEmpty().associate { entry ->
-            val itemId = itemIdsByName[entry.itemName] ?: error("Unknown item name: ${entry.itemName}")
-            itemId to entry.quantity
-          },
+          quantities = editingQuantitiesByItemId,
           formError = null,
           isSubmitting = false,
           submitted = false,
@@ -105,9 +115,14 @@ class AddItemTransactionViewModel @Inject constructor(
 
   fun onRemarksChanged(remarks: String) = updateSuccess { it.copy(remarks = remarks) }
 
+  /** In edit mode, only quantities for the transaction group's existing item lines can be
+   * changed — adding a brand-new item id isn't supported, since there is no API to add/remove
+   * item lines on an existing transaction. */
   fun onQuantityChanged(itemId: String, quantity: Int) = updateSuccess { state ->
-    val updated = state.quantities.toMutableMap()
-    if (quantity > 0) updated[itemId] = quantity else updated.remove(itemId)
+    if (state.isEditing && itemId !in editingRowIdsByItemId) return@updateSuccess state
+    val updated = state.quantities.toMutableMap().also {
+      if (quantity > 0) it[itemId] = quantity else it.remove(itemId)
+    }
     state.copy(quantities = updated, formError = null)
   }
 
@@ -130,10 +145,12 @@ class AddItemTransactionViewModel @Inject constructor(
           transactionType = checkNotNull(state.selectedType),
           transactionDate = checkNotNull(state.transactionDate),
           remarks = state.remarks.ifBlank { null },
-          items = state.quantities.map { (itemId, qty) -> TransactionItemQuantity(itemId, qty) },
+          items = state.quantities.map { (itemId, qty) ->
+            TransactionItemQuantity(itemId, qty, existingRowId = editingRowIdsByItemId[itemId])
+          },
         )
         if (editTransactionId != null) {
-          repository.updateTransaction(editTransactionId, submission)
+          repository.updateTransaction(submission)
         } else {
           repository.submitTransaction(submission)
         }

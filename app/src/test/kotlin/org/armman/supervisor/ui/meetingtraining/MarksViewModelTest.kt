@@ -9,6 +9,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.armman.supervisor.data.local.EventStatus
 import org.armman.supervisor.data.local.MarksType
+import org.armman.supervisor.data.meetingtraining.EventScheduleResult
 import org.armman.supervisor.model.LocationOption
 import org.armman.supervisor.ui.navigation.Routes
 import org.junit.After
@@ -75,7 +76,7 @@ class MarksViewModelTest {
 
     override suspend fun getSavedAttendance(eventId: String): List<AttendanceEntry> = error("not used")
 
-    override suspend fun scheduleMeeting(request: ScheduleMeetingRequest): MeetingEntry = error("not used")
+    override suspend fun scheduleMeeting(request: ScheduleMeetingRequest): EventScheduleResult = error("not used")
 
     override suspend fun rescheduleMeeting(eventId: String, newStartDate: String, newEndDate: String) = error("not used")
 
@@ -89,7 +90,7 @@ class MarksViewModelTest {
 
     override suspend fun getAllPhotoFilePaths(): List<String> = error("not used")
 
-    override suspend fun scheduleTraining(request: ScheduleTrainingRequest): MeetingEntry = error("not used")
+    override suspend fun scheduleTraining(request: ScheduleTrainingRequest): EventScheduleResult = error("not used")
 
     override suspend fun getTrainingTopicsCatalog(): List<TrainingTopic> = error("not used")
 

@@ -1,5 +1,10 @@
 package org.armman.supervisor.data.meetingtraining
 
+import org.armman.supervisor.data.auth.session.SessionStore
+import org.armman.supervisor.data.connectivity.ConnectivityChecker
+import org.armman.supervisor.data.events.PendingSupervisorEventDao
+import org.armman.supervisor.data.events.PendingSupervisorEventEntity
+import org.armman.supervisor.data.events.SupervisorEventSyncStatus
 import org.armman.supervisor.data.local.EventAttendanceEntity
 import org.armman.supervisor.data.local.EventGatheringEntity
 import org.armman.supervisor.data.local.EventMarksEntity
@@ -8,6 +13,7 @@ import org.armman.supervisor.data.local.MarksType
 import org.armman.supervisor.data.local.SupervisorEventDao
 import org.armman.supervisor.data.local.SupervisorEventEntity
 import org.armman.supervisor.data.local.SupervisorEventWithDetails
+import org.armman.supervisor.data.projects.ProjectsRepository
 import org.armman.supervisor.model.LocationOption
 import org.armman.supervisor.ui.meetingtraining.AttendanceEntry
 import org.armman.supervisor.ui.meetingtraining.AttendanceRosterEntry
@@ -21,31 +27,35 @@ import org.armman.supervisor.ui.meetingtraining.MeetingTrainingRepository
 import org.armman.supervisor.ui.meetingtraining.ScheduleMeetingRequest
 import org.armman.supervisor.ui.meetingtraining.ScheduleTrainingRequest
 import org.armman.supervisor.ui.meetingtraining.TrainingTopic
+import java.time.Instant
 import java.util.UUID
 import javax.inject.Inject
 
+private const val EMPTY_TOPICS_JSON = "{}"
+
 /**
- * Concrete [MeetingTrainingRepository]. Projects and the Sakhi roster are local sample data,
- * standing in for future read-only GET endpoints (same rationale as `AssignItemRepositoryImpl`).
- * Events, attendance and photos the Supervisor actually creates are persisted in the local
- * encrypted database ([SupervisorEventDao]) so they survive process death.
+ * Concrete [MeetingTrainingRepository]. Projects and the Sakhi roster delegate to
+ * [projectsRepository] — the same real source Dashboard/Assign Item/Call Sheet use.
+ * [scheduleMeeting]/[scheduleTraining] follow sakhi-mobile-app's offline write-queue pattern:
+ * the local [SupervisorEventEntity] row (attendance/marks/photos) is created immediately with a
+ * client-generated id, regardless of connectivity; a [PendingSupervisorEventEntity] is queued and
+ * either synced now (online) or left for [syncScheduler]'s background WorkManager job (offline).
+ * Every other flow on this event (attendance, marks, photos, reschedule, cancel, complete) keeps
+ * working exactly as today, keyed on the stable client id — none of those have a backend
+ * endpoint, so they stay 100% local. Reads ([getEvents]/[getEventDetail]) stay local-Room-only:
+ * the server's flat `SupervisorEvent` row has no gatherings/attendance/photo concept, so
+ * reconciling server-only events (created elsewhere) into this richer local shape is out of
+ * scope (see plan §4 Option A).
  */
 class MeetingTrainingRepositoryImpl @Inject constructor(
   private val eventDao: SupervisorEventDao,
+  private val pendingDao: PendingSupervisorEventDao,
+  private val syncScheduler: SupervisorEventSyncScheduler,
+  private val syncExecutor: SupervisorEventSyncExecutor,
+  private val projectsRepository: ProjectsRepository,
+  private val sessionStore: SessionStore,
+  private val connectivityChecker: ConnectivityChecker,
 ) : MeetingTrainingRepository {
-
-  private val projects = listOf(
-    LocationOption("loc-1", "Unrestricted Armman"),
-    LocationOption("loc-2", "Wardha - Zone A"),
-  )
-
-  private val rosterByProject = mapOf(
-    "loc-1" to listOf(
-      AttendanceRosterEntry("sakhi-1", "Sushil"),
-      AttendanceRosterEntry("sakhi-2", "Asha Patil"),
-    ),
-    "loc-2" to listOf(AttendanceRosterEntry("sakhi-3", "Kavita Sharma")),
-  )
 
   private val trainingTopicsCatalog = listOf(
     TrainingTopic("topic-1", "Antenatal Care Basics"),
@@ -56,17 +66,18 @@ class MeetingTrainingRepositoryImpl @Inject constructor(
     TrainingTopic("topic-6", "Data Collection & App Usage"),
   )
 
-  override suspend fun getProjects(): List<LocationOption> = projects
+  override suspend fun getProjects(): List<LocationOption> = projectsRepository.getProjects()
 
   override suspend fun getSakhiRoster(projectId: String?): List<AttendanceRosterEntry> =
-    rosterByProject[projectId].orEmpty()
+    projectId?.let { projectsRepository.getSakhis(it) }.orEmpty().map { AttendanceRosterEntry(it.id, it.name) }
 
   override suspend fun getEvents(status: EventStatus): List<MeetingEntry> =
     eventDao.getByStatus(status.name).map { it.toEntry() }
 
   override suspend fun getEventDetail(eventId: String): MeetingDetail {
     val details = eventDao.getById(eventId) ?: error("Unknown event id: $eventId")
-    val rosterSize = rosterByProject[details.event.projectId]?.size ?: details.attendance.size
+    val roster = projectsRepository.getSakhis(details.event.projectId)
+    val rosterSize = roster.ifEmpty { null }?.size ?: details.attendance.size
     val gatherings = details.gatherings.map { it.toSummary(rosterSize) }
     return details.toDetail(rosterSize, gatherings)
   }
@@ -93,10 +104,10 @@ class MeetingTrainingRepositoryImpl @Inject constructor(
     )
   }
 
-  override suspend fun scheduleMeeting(request: ScheduleMeetingRequest): MeetingEntry {
+  override suspend fun scheduleMeeting(request: ScheduleMeetingRequest): EventScheduleResult {
     val id = "event-${UUID.randomUUID()}"
     val createdAt = System.currentTimeMillis()
-    val entity = SupervisorEventEntity(
+    val localEvent = SupervisorEventEntity(
       id = id,
       projectId = request.projectId,
       projectName = request.projectName,
@@ -107,8 +118,7 @@ class MeetingTrainingRepositoryImpl @Inject constructor(
       status = EventStatus.SCHEDULED.name,
       createdAt = createdAt,
     )
-    eventDao.insertEvent(entity)
-    return MeetingEntry(
+    val entry = MeetingEntry(
       id = id,
       eventType = EventType.MEETING,
       projectName = request.projectName,
@@ -117,12 +127,13 @@ class MeetingTrainingRepositoryImpl @Inject constructor(
       remarks = request.remarks,
       createdAt = createdAt,
     )
+    return queueAndSync(id, localEvent, request.projectId, EventType.MEETING, request.startDate, request.remarks, entry)
   }
 
-  override suspend fun scheduleTraining(request: ScheduleTrainingRequest): MeetingEntry {
+  override suspend fun scheduleTraining(request: ScheduleTrainingRequest): EventScheduleResult {
     val id = "event-${UUID.randomUUID()}"
     val createdAt = System.currentTimeMillis()
-    val entity = SupervisorEventEntity(
+    val localEvent = SupervisorEventEntity(
       id = id,
       projectId = request.projectId,
       projectName = request.projectName,
@@ -134,8 +145,7 @@ class MeetingTrainingRepositoryImpl @Inject constructor(
       createdAt = createdAt,
       prePostMarksApplicable = request.prePostMarksApplicable,
     )
-    eventDao.insertEvent(entity)
-    return MeetingEntry(
+    val entry = MeetingEntry(
       id = id,
       eventType = EventType.TRAINING,
       projectName = request.projectName,
@@ -144,6 +154,64 @@ class MeetingTrainingRepositoryImpl @Inject constructor(
       remarks = request.remarks,
       createdAt = createdAt,
     )
+    return queueAndSync(id, localEvent, request.projectId, EventType.TRAINING, request.startDate, request.remarks, entry)
+  }
+
+  /** Inserts [localEvent] into the local encrypted DB immediately (so attendance/marks/photos work
+   * right away, offline or not) and queues [id] for sync to the real `supervisor-events` API —
+   * synced immediately when online, or left for background sync when offline. Mirrors
+   * [org.armman.supervisor.data.assignitem.AssignItemRepositoryImpl]'s write-queue pattern. Always
+   * submits `status=SCHEDULED`: a newly created event has no photo yet, and the server requires
+   * `photoMediaId` for `COMPLETED`. [ScheduleMeetingRequest.projectName]/`endDate` have no server
+   * field, so they're only persisted locally, never sent. A real online rejection still throws —
+   * and rolls back both [localEvent] and its [PendingSupervisorEventEntity] row, so no orphaned
+   * local-only event or forever-retried pending row survives a hard failure; only connectivity
+   * failures are queued (with both rows kept, exactly as offline scheduling does). */
+  private suspend fun queueAndSync(
+    id: String,
+    localEvent: SupervisorEventEntity,
+    projectId: String,
+    eventType: EventType,
+    eventDate: String,
+    remarks: String,
+    entry: MeetingEntry,
+  ): EventScheduleResult {
+    eventDao.insertEvent(localEvent)
+    val supervisorId = checkNotNull(sessionStore.readSession()?.subjectId) { "No active session" }
+    val pending = PendingSupervisorEventEntity(
+      id = id,
+      projectId = projectId,
+      supervisorId = supervisorId,
+      eventType = eventType.name,
+      eventDate = eventDate,
+      topicsJson = EMPTY_TOPICS_JSON,
+      remarks = remarks.ifBlank { null },
+      status = EventStatus.SCHEDULED.name,
+      syncStatus = SupervisorEventSyncStatus.PENDING.name,
+      createdAtEpochMillis = Instant.now().toEpochMilli(),
+      lastAttemptAtEpochMillis = null,
+      retryCount = 0,
+      remoteId = null,
+      lastErrorMessage = null,
+    )
+    pendingDao.upsert(pending)
+
+    if (!connectivityChecker.isOnline()) {
+      syncScheduler.syncNow()
+      return EventScheduleResult.QueuedOffline(entry)
+    }
+    return when (val result = syncExecutor.runOne(id)) {
+      is SupervisorEventSyncItemResult.Synced -> EventScheduleResult.Synced(entry)
+      is SupervisorEventSyncItemResult.Failed -> {
+        eventDao.deleteEvent(localEvent)
+        pendingDao.deleteById(id)
+        error(result.message ?: "Failed to schedule event")
+      }
+      is SupervisorEventSyncItemResult.Retryable -> {
+        syncScheduler.syncNow()
+        EventScheduleResult.QueuedOffline(entry)
+      }
+    }
   }
 
   override suspend fun getTrainingTopicsCatalog(): List<TrainingTopic> = trainingTopicsCatalog

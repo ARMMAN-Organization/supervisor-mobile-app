@@ -7,6 +7,9 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import org.armman.supervisor.data.assignitem.TransactionDeleteResult
+import org.armman.supervisor.data.assignitem.TransactionSubmitResult
+import org.armman.supervisor.data.assignitem.TransactionUpdateResult
 import org.armman.supervisor.model.LocationOption
 import org.armman.supervisor.ui.navigation.Routes
 import org.junit.After
@@ -38,14 +41,14 @@ class AssignItemDetailViewModelTest {
     ),
     private val transactions: Map<String, List<TransactionEntry>> = mapOf(
       "sakhi-1" to listOf(
-        TransactionEntry("txn-1", "10 Oct 2025", TransactionType.CONSUMED, listOf(TransactionItemEntry("Sugar strips", 20))),
+        TransactionEntry(listOf("txn-1"), "10 Oct 2025", TransactionType.CONSUMED, listOf(TransactionItemEntry("txn-1", "Sugar strips", 20))),
       ),
     ),
     private var shouldFailDelete: Boolean = false,
   ) : AssignItemRepository {
     var deleteCallCount = 0
       private set
-    var lastDeletedId: String? = null
+    var lastDeletedIds: List<String>? = null
       private set
 
     fun setDetails(newDetails: Map<String, SakhiDetail>) {
@@ -69,15 +72,15 @@ class AssignItemDetailViewModelTest {
 
     override suspend fun getInventoryItems(): List<InventoryItem> = error("not used")
 
-    override suspend fun submitTransaction(submission: TransactionSubmission): TransactionEntry = error("not used")
+    override suspend fun submitTransaction(submission: TransactionSubmission): TransactionSubmitResult = error("not used")
 
-    override suspend fun updateTransaction(transactionId: String, submission: TransactionSubmission): TransactionEntry =
-      error("not used")
+    override suspend fun updateTransaction(submission: TransactionSubmission): TransactionUpdateResult = error("not used")
 
-    override suspend fun deleteTransaction(sakhiId: String, transactionId: String) {
+    override suspend fun deleteTransaction(sakhiId: String, transactionIds: List<String>): TransactionDeleteResult {
       deleteCallCount++
-      lastDeletedId = transactionId
+      lastDeletedIds = transactionIds
       if (shouldFailDelete) error("delete failed")
+      return TransactionDeleteResult.Synced
     }
   }
 
@@ -152,15 +155,33 @@ class AssignItemDetailViewModelTest {
   }
 
   @Test
-  fun `multiple items within one transaction all pass through`() = runTest(dispatcher) {
+  fun `transactions for different submissions pass through as separate cards`() = runTest(dispatcher) {
+    val repo = TestRepository(
+      transactions = mapOf(
+        "sakhi-1" to listOf(
+          TransactionEntry(listOf("txn-1"), "10 Oct 2025", TransactionType.CONSUMED, listOf(TransactionItemEntry("txn-1", "Sugar strips", 20))),
+          TransactionEntry(listOf("txn-2"), "10 Oct 2025", TransactionType.CONSUMED, listOf(TransactionItemEntry("txn-2", "HB strip", 20))),
+        ),
+      ),
+    )
+    val viewModel = AssignItemDetailViewModel(repo, savedStateHandle("sakhi-1"))
+    dispatcher.scheduler.advanceUntilIdle()
+
+    val state = viewModel.uiState.value as AssignItemDetailUiState.Success
+    assertEquals(2, state.transactions.size)
+    assertTrue(state.transactions.all { it.items.size == 1 })
+  }
+
+  @Test
+  fun `a grouped multi-item submission passes through as one card`() = runTest(dispatcher) {
     val repo = TestRepository(
       transactions = mapOf(
         "sakhi-1" to listOf(
           TransactionEntry(
-            "txn-1",
+            listOf("txn-1", "txn-2"),
             "10 Oct 2025",
             TransactionType.CONSUMED,
-            listOf(TransactionItemEntry("Sugar strips", 20), TransactionItemEntry("HB strip", 20)),
+            listOf(TransactionItemEntry("txn-1", "Sugar strips", 20), TransactionItemEntry("txn-2", "HB strip", 20)),
           ),
         ),
       ),
@@ -169,23 +190,38 @@ class AssignItemDetailViewModelTest {
     dispatcher.scheduler.advanceUntilIdle()
 
     val state = viewModel.uiState.value as AssignItemDetailUiState.Success
+    assertEquals(1, state.transactions.size)
     assertEquals(2, state.transactions.first().items.size)
+    assertEquals(listOf("txn-1", "txn-2"), state.transactions.first().ids)
   }
 
   // --- Delete ---
 
   @Test
-  fun `deleting a transaction calls repository and reloads`() = runTest(dispatcher) {
+  fun `deleting a transaction calls repository with all ids in the group and reloads`() = runTest(dispatcher) {
     val repo = TestRepository()
     val viewModel = AssignItemDetailViewModel(repo, savedStateHandle("sakhi-1"))
     dispatcher.scheduler.advanceUntilIdle()
 
-    viewModel.onDeleteTransaction("txn-1")
+    viewModel.onDeleteTransactions(listOf("txn-1"))
     dispatcher.scheduler.advanceUntilIdle()
 
     assertEquals(1, repo.deleteCallCount)
-    assertEquals("txn-1", repo.lastDeletedId)
+    assertEquals(listOf("txn-1"), repo.lastDeletedIds)
     assertTrue(viewModel.uiState.value is AssignItemDetailUiState.Success)
+  }
+
+  @Test
+  fun `deleting a multi-item group passes every id to the repository in one call`() = runTest(dispatcher) {
+    val repo = TestRepository()
+    val viewModel = AssignItemDetailViewModel(repo, savedStateHandle("sakhi-1"))
+    dispatcher.scheduler.advanceUntilIdle()
+
+    viewModel.onDeleteTransactions(listOf("txn-1", "txn-2"))
+    dispatcher.scheduler.advanceUntilIdle()
+
+    assertEquals(1, repo.deleteCallCount)
+    assertEquals(listOf("txn-1", "txn-2"), repo.lastDeletedIds)
   }
 
   @Test
@@ -194,7 +230,7 @@ class AssignItemDetailViewModelTest {
     val viewModel = AssignItemDetailViewModel(repo, savedStateHandle("sakhi-1"))
     dispatcher.scheduler.advanceUntilIdle()
 
-    viewModel.onDeleteTransaction("txn-1")
+    viewModel.onDeleteTransactions(listOf("txn-1"))
     dispatcher.scheduler.advanceUntilIdle()
 
     assertTrue(viewModel.uiState.value is AssignItemDetailUiState.Error)

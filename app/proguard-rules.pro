@@ -25,6 +25,29 @@
 # (RemoteAuthRepository.loginOnline / SessionStore / OfflineCredentialCache).
 -keep class org.armman.supervisor.data.auth.** { *; }
 
+# Same reflection-based Gson risk as data.auth above, for the projects/Sakhi roster DTOs
+# (ProjectDto, SakhiDto, ProjectsEnvelopeDto, SakhisEnvelopeDto) — without this, R8 strips/renames
+# their fields in release builds and Gson silently mis-populates them, surfacing as the Dashboard's
+# generic error state right after login (DashboardRepositoryImpl -> ProjectsRepository.getProjects).
+-keep class org.armman.supervisor.data.projects.** { *; }
+
+# Same reflection-based Gson risk as data.projects above, for inventory-items/transactions DTOs
+# and request bodies (InventoryItemDto, InventoryTransactionDto, CreateInventoryTransactionRequest,
+# UpdateInventoryTransactionRequest, envelope types) and supervisor-events DTOs/requests
+# (SupervisorEventDto, CreateSupervisorEventRequest, envelope types) — without this, R8
+# strips/renames their fields in release builds, silently breaking Assign Item and
+# Meetings/Training (e.g. "Failed to load sakhi detail", HTTP 403-looking failures that are
+# actually malformed request bodies / mis-populated response fields, not real server rejections).
+-keep class org.armman.supervisor.data.inventory.** { *; }
+-keep class org.armman.supervisor.data.events.** { *; }
+
+# Room entities are constructed via reflection by Room's generated *_Impl DAOs, invisible to R8's
+# reachability analysis the same way Gson-constructed DTOs are — without this, field
+# renaming/stripping in release corrupts the local Room read-cache/offline-write-queue tables
+# added for Assign Item and Meetings/Training (TransactionEntity, PendingInventoryTransactionEntity,
+# InventoryItemCacheEntity, SupervisorEventCacheEntity, PendingSupervisorEventEntity, etc.).
+-keep class org.armman.supervisor.data.local.** { *; }
+
 # Retrofit's own recommended R8 rules. Retrofit builds each call's generic return type
 # (Response<LoginResponseDto>) from the service interface method's signature/annotations at
 # runtime; stripping those causes GsonConverterFactory to hand back the wrong type and

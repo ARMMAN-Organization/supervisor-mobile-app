@@ -2,12 +2,20 @@ package org.armman.supervisor.data.local
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
+import org.armman.supervisor.data.events.PendingSupervisorEventDao
+import org.armman.supervisor.data.events.PendingSupervisorEventEntity
+import org.armman.supervisor.data.events.SupervisorEventCacheDao
+import org.armman.supervisor.data.events.SupervisorEventCacheEntity
+import org.armman.supervisor.data.inventory.InventoryItemCacheDao
+import org.armman.supervisor.data.inventory.InventoryItemCacheEntity
 
 /**
- * Local database for data not yet backed by a real API (e.g. inventory transactions — see
- * `AssignItemRepositoryImpl`). On-device this is opened with a SQLCipher `SupportFactory` keyed by
- * a Keystore-backed passphrase (see `di/DatabaseModule.kt`); nothing here depends on that, so unit
- * tests can open it as a plain, unencrypted Room in-memory database instead.
+ * Local database, doubling as both an offline cache for API-backed reads (inventory items/
+ * transactions, supervisor-events) and the sole store for data with no backend endpoint yet
+ * (meeting/training attendance, marks, photos; call logs). On-device this is opened with a
+ * SQLCipher `SupportFactory` keyed by a Keystore-backed passphrase (see `di/DatabaseModule.kt`);
+ * nothing here depends on that, so unit tests can open it as a plain, unencrypted Room in-memory
+ * database instead.
  */
 @Database(
   entities = [
@@ -21,11 +29,20 @@ import androidx.room.RoomDatabase
     EventMarksEntity::class,
     EventMarksCompletionEntity::class,
     CallLogEntity::class,
+    InventoryItemCacheEntity::class,
+    SupervisorEventCacheEntity::class,
+    PendingInventoryTransactionEntity::class,
+    PendingInventoryTransactionItemEntity::class,
+    PendingSupervisorEventEntity::class,
   ],
-  version = 5,
+  version = 7,
 )
 abstract class AppDatabase : RoomDatabase() {
   abstract fun transactionDao(): TransactionDao
   abstract fun supervisorEventDao(): SupervisorEventDao
   abstract fun callLogDao(): CallLogDao
+  abstract fun inventoryItemCacheDao(): InventoryItemCacheDao
+  abstract fun supervisorEventCacheDao(): SupervisorEventCacheDao
+  abstract fun pendingInventoryTransactionDao(): PendingInventoryTransactionDao
+  abstract fun pendingSupervisorEventDao(): PendingSupervisorEventDao
 }

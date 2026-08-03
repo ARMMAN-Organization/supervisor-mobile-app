@@ -17,7 +17,7 @@ val localProperties = Properties().apply {
 }
 // Retrofit requires the base URL to end with "/"; normalize in case a developer's override omits it.
 val apiBaseUrl: String = (localProperties.getProperty("API_BASE_URL")
-  ?: "https://api.arogyasakhi.armman.org/api/v1/").let { if (it.endsWith("/")) it else "$it/" }
+  ?: "https://api.armman.org/api/v1/").let { if (it.endsWith("/")) it else "$it/" }
 
 android {
   namespace = "org.armman.supervisor"
@@ -101,6 +101,12 @@ dependencies {
   implementation(libs.androidx.room.ktx)
   kapt(libs.androidx.room.compiler)
   implementation(libs.sqlcipher.android)
+
+  // Offline write-queue for inventory-transaction and supervisor-event writes (see
+  // data/assignitem/TransactionSyncExecutor, data/meetingtraining/SupervisorEventSyncExecutor).
+  implementation(libs.androidx.work.runtime.ktx)
+  implementation(libs.androidx.hilt.work)
+  kapt(libs.androidx.hilt.compiler)
 
   testImplementation(libs.junit)
   testImplementation(libs.coroutines.test)

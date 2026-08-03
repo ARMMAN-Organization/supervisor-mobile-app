@@ -67,4 +67,19 @@ interface TransactionDao {
     check(existing.sakhiId == sakhiId) { "Transaction $transactionId does not belong to sakhi $sakhiId" }
     deleteTransaction(existing)
   }
+
+  @Query("DELETE FROM transactions WHERE sakhiId = :sakhiId")
+  suspend fun deleteAllForSakhi(sakhiId: String)
+
+  /** Cache-repopulation helper for the fetch-then-cache read flow: replaces every locally cached
+   * transaction for [sakhiId] with the freshly fetched [entities], clearing stale rows (e.g. ones
+   * deleted server-side by another device) rather than merging. */
+  @Transaction
+  suspend fun replaceForSakhi(sakhiId: String, entities: List<TransactionWithItems>) {
+    deleteAllForSakhi(sakhiId)
+    entities.forEach { (entity, items) ->
+      insertTransaction(entity)
+      if (items.isNotEmpty()) insertItems(items)
+    }
+  }
 }

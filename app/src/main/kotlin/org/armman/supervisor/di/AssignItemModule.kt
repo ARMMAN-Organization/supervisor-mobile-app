@@ -7,8 +7,9 @@ import dagger.hilt.components.SingletonComponent
 import org.armman.supervisor.data.assignitem.AssignItemRepositoryImpl
 import org.armman.supervisor.ui.assignitem.AssignItemRepository
 
-/** Binds the Assign Item data source. Projects/Sakhis are real (see [org.armman.supervisor.data.assignitem.AssignItemRepositoryImpl]);
- * the item catalog and transactions are still local. */
+/** Binds the Assign Item data source (see [org.armman.supervisor.data.assignitem.AssignItemRepositoryImpl]) —
+ * projects/Sakhis, the item catalog, and transactions are all backed by real APIs, with the local
+ * database as an offline-read cache. */
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class AssignItemModule {

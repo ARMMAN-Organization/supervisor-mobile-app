@@ -7,6 +7,9 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import org.armman.supervisor.data.assignitem.TransactionDeleteResult
+import org.armman.supervisor.data.assignitem.TransactionSubmitResult
+import org.armman.supervisor.data.assignitem.TransactionUpdateResult
 import org.armman.supervisor.model.LocationOption
 import org.armman.supervisor.ui.navigation.Routes
 import org.junit.After
@@ -73,22 +76,31 @@ class AddItemTransactionViewModelTest {
 
     override suspend fun getInventoryItems(): List<InventoryItem> = items
 
-    override suspend fun submitTransaction(submission: TransactionSubmission): TransactionEntry {
+    override suspend fun submitTransaction(submission: TransactionSubmission): TransactionSubmitResult {
       submitCallCount++
       if (shouldFailSubmit) error("submit failed")
       lastSubmission = submission
-      return TransactionEntry("txn-new", submission.transactionDate, submission.transactionType, emptyList())
+      val ids = submission.items.mapIndexed { index, _ -> "txn-new-$index" }
+      val entry = TransactionEntry(
+        ids,
+        submission.transactionDate,
+        submission.transactionType,
+        submission.items.mapIndexed { index, item -> TransactionItemEntry(ids[index], item.itemId, item.quantity) },
+      )
+      return TransactionSubmitResult.Synced(entry)
     }
 
-    override suspend fun updateTransaction(transactionId: String, submission: TransactionSubmission): TransactionEntry {
+    override suspend fun updateTransaction(submission: TransactionSubmission): TransactionUpdateResult {
       updateCallCount++
       if (shouldFailSubmit) error("update failed")
-      lastUpdatedId = transactionId
+      val ids = submission.items.mapNotNull { it.existingRowId }
+      lastUpdatedId = ids.firstOrNull()
       lastSubmission = submission
-      return TransactionEntry(transactionId, submission.transactionDate, submission.transactionType, emptyList())
+      val entry = TransactionEntry(ids, submission.transactionDate, submission.transactionType, emptyList())
+      return TransactionUpdateResult.Synced(entry)
     }
 
-    override suspend fun deleteTransaction(sakhiId: String, transactionId: String) = error("not used")
+    override suspend fun deleteTransaction(sakhiId: String, transactionIds: List<String>): TransactionDeleteResult = error("not used")
   }
 
   // --- Positive ---
@@ -251,12 +263,11 @@ class AddItemTransactionViewModelTest {
 
       override suspend fun getInventoryItems(): List<InventoryItem> = error("not used")
 
-      override suspend fun submitTransaction(submission: TransactionSubmission): TransactionEntry = error("not used")
+      override suspend fun submitTransaction(submission: TransactionSubmission): TransactionSubmitResult = error("not used")
 
-      override suspend fun updateTransaction(transactionId: String, submission: TransactionSubmission): TransactionEntry =
-        error("not used")
+      override suspend fun updateTransaction(submission: TransactionSubmission): TransactionUpdateResult = error("not used")
 
-      override suspend fun deleteTransaction(sakhiId: String, transactionId: String) = error("not used")
+      override suspend fun deleteTransaction(sakhiId: String, transactionIds: List<String>): TransactionDeleteResult = error("not used")
     }
     val viewModel = AddItemTransactionViewModel(repo, savedStateHandle())
     dispatcher.scheduler.advanceUntilIdle()
@@ -317,10 +328,10 @@ class AddItemTransactionViewModelTest {
       transactions = mapOf(
         "sakhi-1" to listOf(
           TransactionEntry(
-            "txn-1",
+            listOf("txn-1"),
             "10 Oct 2025",
             TransactionType.HANDOVER,
-            listOf(TransactionItemEntry("Sugar strips", 15)),
+            listOf(TransactionItemEntry("txn-1", "Sugar strips", 15)),
           ),
         ),
       ),
@@ -341,10 +352,10 @@ class AddItemTransactionViewModelTest {
       transactions = mapOf(
         "sakhi-1" to listOf(
           TransactionEntry(
-            "txn-1",
+            listOf("txn-1"),
             "10 Oct 2025",
             TransactionType.HANDOVER,
-            listOf(TransactionItemEntry("Sugar strips", 15)),
+            listOf(TransactionItemEntry("txn-1", "Sugar strips", 15)),
           ),
         ),
       ),
@@ -374,18 +385,15 @@ class AddItemTransactionViewModelTest {
   }
 
   @Test
-  fun `edit mode reducing a quantity to zero removes it from the update payload`() = runTest(dispatcher) {
+  fun `edit mode initializes quantities for every item line in the transaction group`() = runTest(dispatcher) {
     val repo = TestRepository(
       transactions = mapOf(
         "sakhi-1" to listOf(
           TransactionEntry(
-            "txn-1",
+            listOf("txn-1", "txn-2"),
             "10 Oct 2025",
             TransactionType.HANDOVER,
-            listOf(
-              TransactionItemEntry("Sugar strips", 15),
-              TransactionItemEntry("BP Monitor", 1),
-            ),
+            listOf(TransactionItemEntry("txn-1", "Sugar strips", 15), TransactionItemEntry("txn-2", "BP Monitor", 4)),
           ),
         ),
       ),
@@ -393,12 +401,98 @@ class AddItemTransactionViewModelTest {
     val viewModel = AddItemTransactionViewModel(repo, savedStateHandle(editTransactionId = "txn-1"))
     dispatcher.scheduler.advanceUntilIdle()
 
-    viewModel.onQuantityChanged("item-2", 0)
+    val state = viewModel.uiState.value as AddItemTransactionUiState.Success
+    assertEquals(mapOf("item-1" to 15, "item-2" to 4), state.quantities)
+  }
+
+  @Test
+  fun `edit mode changing one item's quantity leaves the group's other item lines untouched`() =
+    runTest(dispatcher) {
+      val repo = TestRepository(
+        transactions = mapOf(
+          "sakhi-1" to listOf(
+            TransactionEntry(
+              listOf("txn-1", "txn-2"),
+              "10 Oct 2025",
+              TransactionType.HANDOVER,
+              listOf(TransactionItemEntry("txn-1", "Sugar strips", 15), TransactionItemEntry("txn-2", "BP Monitor", 4)),
+            ),
+          ),
+        ),
+      )
+      val viewModel = AddItemTransactionViewModel(repo, savedStateHandle(editTransactionId = "txn-1"))
+      dispatcher.scheduler.advanceUntilIdle()
+
+      viewModel.onQuantityChanged("item-1", 25)
+
+      val state = viewModel.uiState.value as AddItemTransactionUiState.Success
+      assertEquals(mapOf("item-1" to 25, "item-2" to 4), state.quantities)
+    }
+
+  @Test
+  fun `edit mode ignores an attempt to add a brand-new item line not in the group`() = runTest(dispatcher) {
+    val repo = TestRepository(
+      transactions = mapOf(
+        "sakhi-1" to listOf(
+          TransactionEntry(
+            listOf("txn-1"),
+            "10 Oct 2025",
+            TransactionType.HANDOVER,
+            listOf(TransactionItemEntry("txn-1", "Sugar strips", 15)),
+          ),
+        ),
+      ),
+    )
+    val viewModel = AddItemTransactionViewModel(repo, savedStateHandle(editTransactionId = "txn-1"))
+    dispatcher.scheduler.advanceUntilIdle()
+
+    // item-2 was never part of this transaction's item lines, so it's not editable here.
+    viewModel.onQuantityChanged("item-2", 3)
+
+    val state = viewModel.uiState.value as AddItemTransactionUiState.Success
+    assertEquals(mapOf("item-1" to 15), state.quantities)
+  }
+
+  @Test
+  fun `edit mode submission sends every item line in the group, each with its own row id`() = runTest(dispatcher) {
+    val repo = TestRepository(
+      transactions = mapOf(
+        "sakhi-1" to listOf(
+          TransactionEntry(
+            listOf("txn-1", "txn-2"),
+            "10 Oct 2025",
+            TransactionType.HANDOVER,
+            listOf(TransactionItemEntry("txn-1", "Sugar strips", 15), TransactionItemEntry("txn-2", "BP Monitor", 4)),
+          ),
+        ),
+      ),
+    )
+    val viewModel = AddItemTransactionViewModel(repo, savedStateHandle(editTransactionId = "txn-1"))
+    dispatcher.scheduler.advanceUntilIdle()
+
+    viewModel.onQuantityChanged("item-1", 25)
     viewModel.onSubmit()
     dispatcher.scheduler.advanceUntilIdle()
 
     val submission = requireNotNull(repo.lastSubmission)
-    assertTrue(submission.items.none { it.itemId == "item-2" })
+    assertEquals(2, submission.items.size)
+    assertEquals("txn-1", submission.items.first { it.itemId == "item-1" }.existingRowId)
+    assertEquals("txn-2", submission.items.first { it.itemId == "item-2" }.existingRowId)
+    assertEquals(25, submission.items.first { it.itemId == "item-1" }.quantity)
+    assertEquals(4, submission.items.first { it.itemId == "item-2" }.quantity)
+  }
+
+  @Test
+  fun `create mode is unaffected by edit-mode narrowing and still allows multiple items`() = runTest(dispatcher) {
+    val repo = TestRepository()
+    val viewModel = AddItemTransactionViewModel(repo, savedStateHandle())
+    dispatcher.scheduler.advanceUntilIdle()
+
+    viewModel.onQuantityChanged("item-1", 5)
+    viewModel.onQuantityChanged("item-2", 3)
+
+    val state = viewModel.uiState.value as AddItemTransactionUiState.Success
+    assertEquals(mapOf("item-1" to 5, "item-2" to 3), state.quantities)
   }
 
   @Test
@@ -407,10 +501,10 @@ class AddItemTransactionViewModelTest {
       transactions = mapOf(
         "sakhi-1" to listOf(
           TransactionEntry(
-            "txn-1",
+            listOf("txn-1"),
             "10 Oct 2025",
             TransactionType.HANDOVER,
-            listOf(TransactionItemEntry("Sugar strips", 15)),
+            listOf(TransactionItemEntry("txn-1", "Sugar strips", 15)),
           ),
         ),
       ),
