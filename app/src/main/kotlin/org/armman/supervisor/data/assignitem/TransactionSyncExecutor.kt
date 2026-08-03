@@ -95,6 +95,12 @@ class TransactionSyncExecutor @Inject constructor(
     }
   }
 
+  // KNOWN LIMITATION (PR #25 review): CreateInventoryTransactionRequest carries no client-
+  // generated idempotency key. If the server commits a create but the client loses the
+  // connection before/while reading the response (still an IOException), syncRow's catch treats
+  // it as "never reached the server" and retries this identical request, which can create a
+  // duplicate set of rows. Accepted for now: a real fix needs backend support for a dedupe key
+  // on this endpoint, which is outside this app's scope to fix alone.
   private suspend fun syncCreate(row: PendingInventoryTransactionWithItems): TransactionSyncItemResult {
     val entity = row.transaction
     val request = CreateInventoryTransactionRequest(

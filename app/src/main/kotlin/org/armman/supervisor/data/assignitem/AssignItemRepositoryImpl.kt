@@ -88,6 +88,12 @@ class AssignItemRepositoryImpl @Inject constructor(
     }
   }
 
+  // KNOWN LIMITATION (PR #25 review): this only reads transactionDao, the synced cache — a
+  // transaction that's still queued in pendingDao (submitted/updated/deleted while offline, or
+  // mid-retry) is not merged in here, so it won't appear (or won't disappear, for a queued
+  // delete) until the next successful background sync. Accepted for now: a real fix requires
+  // showing pending rows in a distinct, non-editable UI state (no server id yet for a queued
+  // CREATE), which is a scoped UI change requiring its own plan/approval, not a silent patch here.
   override suspend fun getTransactions(sakhiId: String): List<TransactionEntry> {
     if (!connectivityChecker.isOnline()) {
       return transactionDao.getBySakhi(sakhiId).toGroupedEntries()
