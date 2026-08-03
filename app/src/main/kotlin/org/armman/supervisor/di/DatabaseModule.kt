@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
+import androidx.work.WorkManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -13,8 +14,12 @@ import net.sqlcipher.database.SQLiteDatabase
 import net.sqlcipher.database.SupportFactory
 import org.armman.supervisor.BuildConfig
 import org.armman.supervisor.data.auth.session.SecureKeyValueStore
+import org.armman.supervisor.data.events.PendingSupervisorEventDao
+import org.armman.supervisor.data.events.SupervisorEventCacheDao
+import org.armman.supervisor.data.inventory.InventoryItemCacheDao
 import org.armman.supervisor.data.local.AppDatabase
 import org.armman.supervisor.data.local.CallLogDao
+import org.armman.supervisor.data.local.PendingInventoryTransactionDao
 import org.armman.supervisor.data.local.SupervisorEventDao
 import org.armman.supervisor.data.local.TransactionDao
 import java.security.SecureRandom
@@ -22,6 +27,9 @@ import javax.inject.Singleton
 
 private const val SEED_TRANSACTION_ID = "txn-seed-1"
 private const val SEED_SAKHI_ID = "sakhi-1"
+private const val SEED_PROJECT_ID = "loc-1"
+private const val SEED_SUPERVISOR_ID = "sup-seed-1"
+private const val SEED_TIMESTAMP = "2025-10-10T00:00:00.000Z"
 
 private const val DATABASE_NAME = "armman_supervisor.db"
 private const val PASSPHRASE_KEY = "local_db_passphrase"
@@ -66,6 +74,26 @@ object DatabaseModule {
   @Provides
   fun provideCallLogDao(database: AppDatabase): CallLogDao = database.callLogDao()
 
+  @Provides
+  fun provideInventoryItemCacheDao(database: AppDatabase): InventoryItemCacheDao =
+    database.inventoryItemCacheDao()
+
+  @Provides
+  fun provideSupervisorEventCacheDao(database: AppDatabase): SupervisorEventCacheDao =
+    database.supervisorEventCacheDao()
+
+  @Provides
+  fun providePendingInventoryTransactionDao(database: AppDatabase): PendingInventoryTransactionDao =
+    database.pendingInventoryTransactionDao()
+
+  @Provides
+  fun providePendingSupervisorEventDao(database: AppDatabase): PendingSupervisorEventDao =
+    database.pendingSupervisorEventDao()
+
+  @Provides
+  @Singleton
+  fun provideWorkManager(@ApplicationContext context: Context): WorkManager = WorkManager.getInstance(context)
+
   private fun generatePassphrase(): String {
     val bytes = ByteArray(PASSPHRASE_BYTES)
     SecureRandom().nextBytes(bytes)
@@ -76,16 +104,21 @@ object DatabaseModule {
     override fun onCreate(db: SupportSQLiteDatabase) {
       super.onCreate(db)
       db.execSQL(
-        "INSERT INTO transactions (id, sakhiId, date, transactionType) VALUES (?, ?, ?, ?)",
-        arrayOf(SEED_TRANSACTION_ID, SEED_SAKHI_ID, "10 Oct 2025", "CONSUMED"),
+        """INSERT INTO transactions
+          (id, sakhiId, projectId, supervisorId, date, transactionType, remarks, createdAt, updatedAt)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        arrayOf(
+          SEED_TRANSACTION_ID, SEED_SAKHI_ID, SEED_PROJECT_ID, SEED_SUPERVISOR_ID,
+          "10 Oct 2025", "CONSUMED", null, SEED_TIMESTAMP, SEED_TIMESTAMP,
+        ),
       )
       db.execSQL(
-        "INSERT INTO transaction_items (transactionId, itemName, quantity) VALUES (?, ?, ?)",
-        arrayOf(SEED_TRANSACTION_ID, "Sugar strips", 20),
+        "INSERT INTO transaction_items (transactionId, itemId, itemName, quantity) VALUES (?, ?, ?, ?)",
+        arrayOf(SEED_TRANSACTION_ID, "item-1", "Sugar strips", 20),
       )
       db.execSQL(
-        "INSERT INTO transaction_items (transactionId, itemName, quantity) VALUES (?, ?, ?)",
-        arrayOf(SEED_TRANSACTION_ID, "HB strip", 20),
+        "INSERT INTO transaction_items (transactionId, itemId, itemName, quantity) VALUES (?, ?, ?, ?)",
+        arrayOf(SEED_TRANSACTION_ID, "item-2", "HB strip", 20),
       )
     }
   }

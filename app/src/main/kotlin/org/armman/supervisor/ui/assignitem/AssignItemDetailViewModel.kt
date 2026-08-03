@@ -50,10 +50,11 @@ class AssignItemDetailViewModel @Inject constructor(
     load(showLoading = false)
   }
 
-  fun onDeleteTransaction(transactionId: String) {
+  /** Deletes every row id in [transactionIds] — the whole card's transaction group. */
+  fun onDeleteTransactions(transactionIds: List<String>) {
     viewModelScope.launch {
       try {
-        repository.deleteTransaction(sakhiId, transactionId)
+        repository.deleteTransaction(sakhiId, transactionIds)
         val detail = repository.getSakhiDetail(sakhiId)
         val transactions = repository.getTransactions(sakhiId)
         _uiState.value = AssignItemDetailUiState.Success(detail, transactions)

@@ -38,6 +38,10 @@ import org.armman.supervisor.ui.components.TransactionItemRow
 import org.armman.supervisor.ui.theme.DashboardHeaderGreen
 import org.armman.supervisor.ui.theme.Dimens
 import org.armman.supervisor.ui.theme.White
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 /** Assign Item to Sakhi detail screen: Sakhi context + a list of item-assignment transactions. */
 @Composable
@@ -79,7 +83,7 @@ fun AssignItemDetailScreen(
         is AssignItemDetailUiState.Success -> SuccessContent(
           state = state,
           onEditTransaction = onEditTransaction,
-          onDeleteTransaction = viewModel::onDeleteTransaction,
+          onDeleteTransaction = viewModel::onDeleteTransactions,
         )
       }
     }
@@ -109,10 +113,10 @@ private fun ErrorContent(message: String, onRetry: () -> Unit) {
 private fun SuccessContent(
   state: AssignItemDetailUiState.Success,
   onEditTransaction: (String) -> Unit,
-  onDeleteTransaction: (String) -> Unit,
+  onDeleteTransaction: (List<String>) -> Unit,
 ) {
-  // Id of the transaction pending a delete confirmation, or null when no dialog is showing.
-  var pendingDeleteId by remember { mutableStateOf<String?>(null) }
+  // Ids of the transaction group pending a delete confirmation, or null when no dialog is showing.
+  var pendingDeleteIds by remember { mutableStateOf<List<String>?>(null) }
 
   Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
     SakhiInfoHeader(detail = state.detail)
@@ -128,7 +132,7 @@ private fun SuccessContent(
         )
       } else {
         state.transactions.forEach { transaction ->
-          DatePill(text = transaction.date, backgroundColor = DashboardHeaderGreen)
+          DatePill(text = transaction.date.toDisplayDate(), backgroundColor = DashboardHeaderGreen)
           TransactionCard(
             transactionTypeLabel = stringResource(
               R.string.assign_item_transaction_type_label,
@@ -138,21 +142,21 @@ private fun SuccessContent(
             items = transaction.items.map {
               TransactionItemRow(it.itemName, stringResource(R.string.assign_item_qty_label, it.quantity))
             },
-            onEdit = { onEditTransaction(transaction.id) },
-            onDelete = { pendingDeleteId = transaction.id },
+            onEdit = { onEditTransaction(transaction.ids.first()) },
+            onDelete = { pendingDeleteIds = transaction.ids },
           )
         }
       }
     }
   }
 
-  pendingDeleteId?.let { id ->
+  pendingDeleteIds?.let { ids ->
     DeleteConfirmDialog(
       onConfirm = {
-        pendingDeleteId = null
-        onDeleteTransaction(id)
+        pendingDeleteIds = null
+        onDeleteTransaction(ids)
       },
-      onDismiss = { pendingDeleteId = null },
+      onDismiss = { pendingDeleteIds = null },
     )
   }
 }
@@ -197,3 +201,11 @@ private fun SakhiInfoHeader(detail: SakhiDetail) {
     }
   }
 }
+
+private val DisplayDateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("dd MMM yyyy", Locale.getDefault())
+
+/** [TransactionEntry.date] may be an ISO instant (fresh server rows) or already "dd MMM yyyy"
+ * (older cached rows) — normalize both to the app-wide display format. */
+private fun String.toDisplayDate(): String =
+  runCatching { DisplayDateFormatter.format(Instant.parse(this).atZone(ZoneId.systemDefault())) }
+    .getOrDefault(this)

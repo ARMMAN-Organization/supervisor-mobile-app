@@ -7,6 +7,9 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import org.armman.supervisor.data.assignitem.TransactionDeleteResult
+import org.armman.supervisor.data.assignitem.TransactionSubmitResult
+import org.armman.supervisor.data.assignitem.TransactionUpdateResult
 import org.armman.supervisor.model.LocationOption
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -61,12 +64,11 @@ class AssignItemViewModelTest {
 
     override suspend fun getInventoryItems(): List<InventoryItem> = error("not used")
 
-    override suspend fun submitTransaction(submission: TransactionSubmission): TransactionEntry = error("not used")
+    override suspend fun submitTransaction(submission: TransactionSubmission): TransactionSubmitResult = error("not used")
 
-    override suspend fun updateTransaction(transactionId: String, submission: TransactionSubmission): TransactionEntry =
-      error("not used")
+    override suspend fun updateTransaction(submission: TransactionSubmission): TransactionUpdateResult = error("not used")
 
-    override suspend fun deleteTransaction(sakhiId: String, transactionId: String) = error("not used")
+    override suspend fun deleteTransaction(sakhiId: String, transactionIds: List<String>): TransactionDeleteResult = error("not used")
   }
 
   // --- Positive ---
