@@ -3,6 +3,7 @@ package org.armman.supervisor.data.auth
 import org.armman.supervisor.data.auth.session.OfflineCredentialCache
 import org.armman.supervisor.data.auth.session.SessionStore
 import org.armman.supervisor.data.connectivity.ConnectivityChecker
+import org.armman.supervisor.data.projects.ProjectsRepository
 import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -28,6 +29,7 @@ class RemoteAuthRepository @Inject constructor(
   private val sessionStore: SessionStore,
   private val offlineCredentialCache: OfflineCredentialCache,
   private val connectivityChecker: ConnectivityChecker,
+  private val projectsRepository: ProjectsRepository,
 ) : AuthRepository {
 
   override suspend fun login(request: LoginRequest): LoginResult {
@@ -49,6 +51,9 @@ class RemoteAuthRepository @Inject constructor(
   override suspend fun logout() {
     try {
       sessionStore.clearSession()
+      // A shared device may log a different Supervisor in next — never leave this account's
+      // cached roster to be served under the next session.
+      projectsRepository.clearCache()
     } catch (e: Exception) {
       // Logout must never throw — the user must still land on the login screen.
     }

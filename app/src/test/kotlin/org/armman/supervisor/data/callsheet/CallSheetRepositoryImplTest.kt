@@ -35,6 +35,15 @@ private class FakeProjectsRepository : ProjectsRepository {
     "sakhi-3" -> SakhiDetail("Kavita Sharma", "Wardha - Zone A", "")
     else -> error("Unknown sakhi id: $sakhiId")
   }
+
+  override suspend fun getSakhiOption(sakhiId: String): SakhiOption = when (sakhiId) {
+    "sakhi-1" -> SakhiOption("sakhi-1", "Sushil")
+    "sakhi-2" -> SakhiOption("sakhi-2", "Asha Patil")
+    "sakhi-3" -> SakhiOption("sakhi-3", "Kavita Sharma")
+    else -> error("Unknown sakhi id: $sakhiId")
+  }
+
+  override fun clearCache() = Unit
 }
 
 /** [CallLogDao] has no JVM-testable implementation — see the same pattern/reasoning documented on

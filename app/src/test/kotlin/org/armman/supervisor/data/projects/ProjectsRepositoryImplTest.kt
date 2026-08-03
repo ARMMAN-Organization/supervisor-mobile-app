@@ -13,12 +13,17 @@ private class FakeProjectsApi : ProjectsApi {
       SakhiDto("sakhi-1", "Sushil", "+911111111111", "proj-1", "sup-1"),
     ),
   )
+  var failingProjectIds: Set<String> = emptySet()
+  var getSakhisCallCount = 0
 
   override suspend fun getProjects(): Response<ProjectsEnvelopeDto> =
     Response.success(ProjectsEnvelopeDto(success = true, message = "OK", data = projects))
 
-  override suspend fun getSakhis(projectId: String): Response<SakhisEnvelopeDto> =
-    Response.success(SakhisEnvelopeDto(success = true, message = "OK", data = sakhisByProject[projectId].orEmpty()))
+  override suspend fun getSakhis(projectId: String): Response<SakhisEnvelopeDto> {
+    getSakhisCallCount++
+    if (projectId in failingProjectIds) error("Simulated network failure for $projectId")
+    return Response.success(SakhisEnvelopeDto(success = true, message = "OK", data = sakhisByProject[projectId].orEmpty()))
+  }
 }
 
 class ProjectsRepositoryImplTest {
@@ -57,8 +62,79 @@ class ProjectsRepositoryImplTest {
     assertEquals("", detail.address)
   }
 
+  @Test
+  fun `getSakhiDetail fetches the roster on a cache miss instead of throwing`() = runTest {
+    // Simulates process death: a fresh Singleton with an empty cache, detail requested directly.
+    val detail = repository.getSakhiDetail("sakhi-1")
+
+    assertEquals("Sushil", detail.sakhiName)
+    assertEquals("Test Project", detail.projectName)
+  }
+
   @Test(expected = IllegalStateException::class)
-  fun `getSakhiDetail throws for a sakhi never seen in a getSakhis call`() = runTest {
+  fun `getSakhiDetail throws for a sakhi in no project's roster`() = runTest {
     repository.getSakhiDetail("unknown-sakhi")
+  }
+
+  @Test
+  fun `getSakhiDetail does not re-fetch a roster already cached`() = runTest {
+    repository.getSakhis("proj-1")
+    val callsAfterWarmUp = api.getSakhisCallCount
+
+    repository.getSakhiDetail("sakhi-1")
+
+    assertEquals(callsAfterWarmUp, api.getSakhisCallCount)
+  }
+
+  @Test
+  fun `getSakhiOption returns the option for a sakhi seen in a prior getSakhis call`() = runTest {
+    repository.getSakhis("proj-1")
+
+    val option = repository.getSakhiOption("sakhi-1")
+
+    assertEquals("sakhi-1", option.id)
+    assertEquals("Sushil", option.name)
+  }
+
+  @Test
+  fun `getSakhiOption fetches the roster on a cache miss instead of throwing`() = runTest {
+    val option = repository.getSakhiOption("sakhi-1")
+
+    assertEquals("sakhi-1", option.id)
+  }
+
+  @Test(expected = IllegalStateException::class)
+  fun `getSakhiOption throws for a sakhi in no project's roster`() = runTest {
+    repository.getSakhiOption("unknown-sakhi")
+  }
+
+  @Test
+  fun `clearCache forces getSakhiDetail to re-fetch instead of serving a stale entry`() = runTest {
+    repository.getSakhis("proj-1")
+
+    repository.clearCache()
+
+    val callsBeforeDetail = api.getSakhisCallCount
+    val detail = repository.getSakhiDetail("sakhi-1")
+
+    assertEquals("Sushil", detail.sakhiName)
+    assertTrue(api.getSakhisCallCount > callsBeforeDetail)
+  }
+
+  @Test
+  fun `getSakhiDetail skips a project whose roster fails to load and keeps searching`() = runTest {
+    api.projects = listOf(ProjectDto("proj-broken", "Broken Project"), ProjectDto("proj-1", "Test Project"))
+    api.failingProjectIds = setOf("proj-broken")
+
+    val detail = repository.getSakhiDetail("sakhi-1")
+
+    assertEquals("Sushil", detail.sakhiName)
+  }
+
+  @Test(expected = IllegalStateException::class)
+  fun `getSakhiDetail throws unknown-sakhi, not a network error, when every project fails`() = runTest {
+    api.failingProjectIds = setOf("proj-1")
+
+    repository.getSakhiDetail("sakhi-1")
   }
 }

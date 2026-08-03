@@ -7,6 +7,10 @@ import org.armman.supervisor.data.auth.session.FakeSecureKeyValueStore
 import org.armman.supervisor.data.auth.session.OfflineCredentialCache
 import org.armman.supervisor.data.auth.session.SessionStore
 import org.armman.supervisor.data.connectivity.FakeConnectivityChecker
+import org.armman.supervisor.data.projects.ProjectsRepository
+import org.armman.supervisor.model.LocationOption
+import org.armman.supervisor.ui.assignitem.SakhiDetail
+import org.armman.supervisor.ui.assignitem.SakhiOption
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -16,6 +20,22 @@ import org.junit.Test
 import retrofit2.Response
 import java.io.IOException
 import java.util.Base64
+
+private class FakeProjectsRepository : ProjectsRepository {
+  var clearCacheCallCount = 0
+
+  override suspend fun getProjects(): List<LocationOption> = emptyList()
+
+  override suspend fun getSakhis(projectId: String): List<SakhiOption> = emptyList()
+
+  override suspend fun getSakhiDetail(sakhiId: String): SakhiDetail = error("Unknown sakhi id: $sakhiId")
+
+  override suspend fun getSakhiOption(sakhiId: String): SakhiOption = error("Unknown sakhi id: $sakhiId")
+
+  override fun clearCache() {
+    clearCacheCallCount++
+  }
+}
 
 class RemoteAuthRepositoryTest {
 
@@ -66,6 +86,7 @@ class RemoteAuthRepositoryTest {
   private lateinit var sessionStore: SessionStore
   private lateinit var offlineCredentialCache: OfflineCredentialCache
   private lateinit var connectivityChecker: FakeConnectivityChecker
+  private lateinit var projectsRepository: FakeProjectsRepository
   private lateinit var repository: RemoteAuthRepository
 
   @Before
@@ -75,12 +96,14 @@ class RemoteAuthRepositoryTest {
     sessionStore = SessionStore(keyValueStore)
     offlineCredentialCache = OfflineCredentialCache(keyValueStore)
     connectivityChecker = FakeConnectivityChecker(online = true)
+    projectsRepository = FakeProjectsRepository()
     repository = RemoteAuthRepository(
       authApi = authApi,
       jwtClaimsDecoder = JwtClaimsDecoder(),
       sessionStore = sessionStore,
       offlineCredentialCache = offlineCredentialCache,
       connectivityChecker = connectivityChecker,
+      projectsRepository = projectsRepository,
     )
   }
 
@@ -236,5 +259,15 @@ class RemoteAuthRepositoryTest {
     repository.logout()
 
     assertNull(sessionStore.readSession())
+  }
+
+  @Test
+  fun `logout clears the cached projects roster so a different supervisor cannot see it`() = runTest {
+    authApi.response = successResponse()
+    repository.login(LoginRequest(username = "super01", password = "Super@123"))
+
+    repository.logout()
+
+    assertEquals(1, projectsRepository.clearCacheCallCount)
   }
 }

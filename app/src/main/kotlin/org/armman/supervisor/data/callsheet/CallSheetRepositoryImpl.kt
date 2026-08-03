@@ -68,14 +68,7 @@ class CallSheetRepositoryImpl @Inject constructor(
     }
   }
 
-  override suspend fun getSakhiOption(sakhiId: String): SakhiOption {
-    val locations = projectsRepository.getProjects()
-    for (location in locations) {
-      val match = projectsRepository.getSakhis(location.id).firstOrNull { it.id == sakhiId }
-      if (match != null) return match
-    }
-    error("Unknown sakhi id: $sakhiId")
-  }
+  override suspend fun getSakhiOption(sakhiId: String): SakhiOption = projectsRepository.getSakhiOption(sakhiId)
 
   override suspend fun getCallHistory(sakhiId: String): List<CallLogEntry> =
     callLogDao.getBySakhi(sakhiId).map { it.toEntry() }
