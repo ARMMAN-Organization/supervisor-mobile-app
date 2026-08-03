@@ -5,13 +5,47 @@ import org.armman.supervisor.data.local.TransactionDao
 import org.armman.supervisor.data.local.TransactionEntity
 import org.armman.supervisor.data.local.TransactionItemEntity
 import org.armman.supervisor.data.local.TransactionWithItems
+import org.armman.supervisor.data.projects.ProjectsRepository
+import org.armman.supervisor.model.LocationOption
 import org.armman.supervisor.ui.assignitem.ItemCategory
+import org.armman.supervisor.ui.assignitem.SakhiDetail
+import org.armman.supervisor.ui.assignitem.SakhiOption
 import org.armman.supervisor.ui.assignitem.TransactionItemQuantity
 import org.armman.supervisor.ui.assignitem.TransactionSubmission
 import org.armman.supervisor.ui.assignitem.TransactionType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+
+/** [ProjectsRepository] coverage lives in `ProjectsRepositoryImplTest` — this fake exists only so
+ * this file's transaction-persistence tests (its actual purpose) don't depend on a real network
+ * call. */
+private class FakeProjectsRepository : ProjectsRepository {
+  override suspend fun getProjects(): List<LocationOption> =
+    listOf(LocationOption("loc-1", "Unrestricted Armman"), LocationOption("loc-2", "Wardha - Zone A"))
+
+  override suspend fun getSakhis(projectId: String): List<SakhiOption> = when (projectId) {
+    "loc-1" -> listOf(SakhiOption("sakhi-1", "Sushil"), SakhiOption("sakhi-2", "Asha Patil"))
+    "loc-2" -> listOf(SakhiOption("sakhi-3", "Kavita Sharma"))
+    else -> emptyList()
+  }
+
+  override suspend fun getSakhiDetail(sakhiId: String): SakhiDetail = when (sakhiId) {
+    "sakhi-1" -> SakhiDetail("Sushil", "Unrestricted Armman", "Mumbai")
+    "sakhi-2" -> SakhiDetail("Asha Patil", "Unrestricted Armman", "Mumbai")
+    "sakhi-3" -> SakhiDetail("Kavita Sharma", "Wardha - Zone A", "Wardha")
+    else -> error("Unknown sakhi id: $sakhiId")
+  }
+
+  override suspend fun getSakhiOption(sakhiId: String): SakhiOption = when (sakhiId) {
+    "sakhi-1" -> SakhiOption("sakhi-1", "Sushil")
+    "sakhi-2" -> SakhiOption("sakhi-2", "Asha Patil")
+    "sakhi-3" -> SakhiOption("sakhi-3", "Kavita Sharma")
+    else -> error("Unknown sakhi id: $sakhiId")
+  }
+
+  override fun clearCache() = Unit
+}
 
 /**
  * [TransactionDao] has no JVM-testable implementation — Room requires an Android [android.content.Context]
@@ -80,42 +114,7 @@ private class FakeTransactionDao : TransactionDao {
 }
 
 class AssignItemRepositoryImplTest {
-  private val repository = AssignItemRepositoryImpl(FakeTransactionDao())
-
-  @Test
-  fun `getLocations returns the expected stub list`() = runTest {
-    val locations = repository.getLocations()
-
-    assertEquals(2, locations.size)
-    assertEquals("Unrestricted Armman", locations.first().name)
-  }
-
-  @Test
-  fun `getSakhis returns stub sakhis for a known location`() = runTest {
-    val sakhis = repository.getSakhis("loc-1")
-
-    assertTrue(sakhis.any { it.name == "Sushil" })
-  }
-
-  @Test
-  fun `getSakhis falls back to empty for unknown or null location`() = runTest {
-    assertTrue(repository.getSakhis("unknown-loc").isEmpty())
-    assertTrue(repository.getSakhis(null).isEmpty())
-  }
-
-  @Test
-  fun `getSakhiDetail returns stub detail for a known sakhi`() = runTest {
-    val detail = repository.getSakhiDetail("sakhi-1")
-
-    assertEquals("Sushil", detail.sakhiName)
-    assertEquals("Unrestricted Armman", detail.projectName)
-    assertEquals("Mumbai", detail.address)
-  }
-
-  @Test(expected = IllegalStateException::class)
-  fun `getSakhiDetail throws for unknown sakhi id`() = runTest {
-    repository.getSakhiDetail("unknown-id")
-  }
+  private val repository = AssignItemRepositoryImpl(FakeTransactionDao(), FakeProjectsRepository())
 
   @Test
   fun `getTransactions returns a submitted transaction with multiple item rows`() = runTest {
@@ -332,7 +331,7 @@ class AssignItemRepositoryImplTest {
   @Test
   fun `transaction survives repository re-creation over the same underlying store`() = runTest {
     val sharedDao = FakeTransactionDao()
-    val firstRepository = AssignItemRepositoryImpl(sharedDao)
+    val firstRepository = AssignItemRepositoryImpl(sharedDao, FakeProjectsRepository())
 
     val entry = firstRepository.submitTransaction(
       TransactionSubmission(
@@ -347,7 +346,7 @@ class AssignItemRepositoryImplTest {
 
     // Simulates the app process dying and restarting: a brand new repository instance, same
     // underlying persisted store — this is the scenario the in-memory-map stub could not survive.
-    val secondRepository = AssignItemRepositoryImpl(sharedDao)
+    val secondRepository = AssignItemRepositoryImpl(sharedDao, FakeProjectsRepository())
     val transactions = secondRepository.getTransactions("sakhi-2")
 
     assertEquals(1, transactions.size)
@@ -357,7 +356,7 @@ class AssignItemRepositoryImplTest {
   @Test
   fun `deleting a transaction leaves no orphaned item rows behind`() = runTest {
     val dao = FakeTransactionDao()
-    val repo = AssignItemRepositoryImpl(dao)
+    val repo = AssignItemRepositoryImpl(dao, FakeProjectsRepository())
     val entry = repo.submitTransaction(
       TransactionSubmission(
         sakhiId = "sakhi-2",

@@ -35,16 +35,19 @@ class AssignItemDetailViewModel @Inject constructor(
   val uiState: StateFlow<AssignItemDetailUiState> = _uiState.asStateFlow()
 
   init {
-    load()
+    load(showLoading = true)
   }
 
   fun onRetry() {
-    load()
+    load(showLoading = true)
   }
 
-  /** Reload after returning from the Add screen with a newly-submitted transaction. */
+  /** Re-fetch after returning from the Add screen with a newly-submitted transaction, or on every
+   * subsequent screen resume. Does NOT show the full-screen [AssignItemDetailUiState.Loading] —
+   * this screen is already showing [AssignItemDetailUiState.Success] by the time a resume can
+   * fire, so resetting to Loading would flash the spinner over content that's still valid. */
   fun refresh() {
-    load()
+    load(showLoading = false)
   }
 
   fun onDeleteTransaction(transactionId: String) {
@@ -62,8 +65,8 @@ class AssignItemDetailViewModel @Inject constructor(
     }
   }
 
-  private fun load() {
-    _uiState.value = AssignItemDetailUiState.Loading
+  private fun load(showLoading: Boolean) {
+    if (showLoading) _uiState.value = AssignItemDetailUiState.Loading
     viewModelScope.launch {
       try {
         val detail = repository.getSakhiDetail(sakhiId)

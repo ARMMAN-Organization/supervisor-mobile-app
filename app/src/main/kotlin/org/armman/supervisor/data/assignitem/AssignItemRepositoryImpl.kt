@@ -4,6 +4,7 @@ import org.armman.supervisor.data.local.TransactionDao
 import org.armman.supervisor.data.local.TransactionEntity
 import org.armman.supervisor.data.local.TransactionItemEntity
 import org.armman.supervisor.data.local.TransactionWithItems
+import org.armman.supervisor.data.projects.ProjectsRepository
 import org.armman.supervisor.model.LocationOption
 import org.armman.supervisor.ui.assignitem.AssignItemRepository
 import org.armman.supervisor.ui.assignitem.InventoryItem
@@ -18,36 +19,25 @@ import java.util.UUID
 import javax.inject.Inject
 
 /**
- * Concrete [AssignItemRepository]. Reference/lookup data (locations, Sakhis, the inventory master
- * list) is local sample data — it stands in for the future read-only GET endpoints and carries no
- * risk of data loss. Transactions the Supervisor actually creates/edits/deletes are persisted in
- * the local encrypted database ([TransactionDao]) so they survive process death, not just an
- * in-memory map — the app has no real inventory-transactions API yet. When that API is ready, only
- * the transaction methods below change to HTTP calls returning/accepting the same models — the
- * interface, its Hilt binding in `di/AssignItemModule.kt`, and every caller (ViewModels, screens)
- * stay unchanged.
+ * Concrete [AssignItemRepository]. Projects/Sakhis are delegated to [projectsRepository] — the
+ * same source Dashboard uses, so both features stay in sync once that repository gets real data.
+ * Today [projectsRepository] itself is still local sample data (auth-service has no
+ * projects/Sakhi-roster endpoint yet), same as the inventory item catalog below (no items
+ * master-data endpoint exists either — confirmed absent from the API Gateway). Transactions the
+ * Supervisor actually creates/edits/deletes are persisted in the local encrypted database
+ * ([TransactionDao]) so they survive process death — the app has no real inventory-transactions
+ * API yet either. When these are ready, only [getInventoryItems], the transaction methods below,
+ * and [ProjectsRepository]'s implementation change to HTTP calls returning/accepting the same
+ * models — the interface, its Hilt binding in `di/AssignItemModule.kt`, and every caller
+ * (ViewModels, screens) stay unchanged.
  */
 class AssignItemRepositoryImpl @Inject constructor(
   private val transactionDao: TransactionDao,
+  private val projectsRepository: ProjectsRepository,
 ) : AssignItemRepository {
 
-  private val locations = listOf(
-    LocationOption("loc-1", "Unrestricted Armman"),
-    LocationOption("loc-2", "Wardha - Zone A"),
-  )
-
-  private val sakhisByLocation = mapOf(
-    "loc-1" to listOf(SakhiOption("sakhi-1", "Sushil"), SakhiOption("sakhi-2", "Asha Patil")),
-    "loc-2" to listOf(SakhiOption("sakhi-3", "Kavita Sharma")),
-  )
-
-  private val sakhiDetails = mapOf(
-    "sakhi-1" to SakhiDetail(sakhiName = "Sushil", projectName = "Unrestricted Armman", address = "Mumbai"),
-    "sakhi-2" to SakhiDetail(sakhiName = "Asha Patil", projectName = "Unrestricted Armman", address = "Mumbai"),
-    "sakhi-3" to SakhiDetail(sakhiName = "Kavita Sharma", projectName = "Wardha - Zone A", address = "Wardha"),
-  )
-
-  // Inventory master — sample items across both categories (SRS FR-SV-1.2 examples).
+  // Inventory master — sample items across both categories (SRS FR-SV-1.2 examples); no items
+  // master-data endpoint exists yet.
   private val inventoryItems = listOf(
     InventoryItem("item-1", "Sugar strips", ItemCategory.CONSUMABLE),
     InventoryItem("item-2", "HB strip", ItemCategory.CONSUMABLE),
@@ -58,17 +48,17 @@ class AssignItemRepositoryImpl @Inject constructor(
     InventoryItem("item-7", "Weighing Scale", ItemCategory.INSTRUMENT),
   )
 
-  override suspend fun getLocations(): List<LocationOption> = locations
+  override suspend fun getLocations(): List<LocationOption> = projectsRepository.getProjects()
 
-  override suspend fun getSakhis(locationId: String?): List<SakhiOption> = sakhisByLocation[locationId].orEmpty()
+  override suspend fun getSakhis(locationId: String?): List<SakhiOption> =
+    locationId?.let { projectsRepository.getSakhis(it) }.orEmpty()
 
-  override suspend fun getSakhiDetail(sakhiId: String): SakhiDetail =
-    sakhiDetails[sakhiId] ?: error("Unknown sakhi id: $sakhiId")
+  override suspend fun getSakhiDetail(sakhiId: String): SakhiDetail = projectsRepository.getSakhiDetail(sakhiId)
 
   override suspend fun getTransactions(sakhiId: String): List<TransactionEntry> =
     transactionDao.getBySakhi(sakhiId).map { it.toEntry() }
 
-  override suspend fun getPrograms(): List<LocationOption> = locations
+  override suspend fun getPrograms(): List<LocationOption> = projectsRepository.getProjects()
 
   override suspend fun getInventoryItems(): List<InventoryItem> = inventoryItems
 

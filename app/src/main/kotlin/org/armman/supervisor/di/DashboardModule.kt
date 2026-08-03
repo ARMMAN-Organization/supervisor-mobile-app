@@ -7,7 +7,8 @@ import dagger.hilt.components.SingletonComponent
 import org.armman.supervisor.data.dashboard.DashboardRepositoryImpl
 import org.armman.supervisor.ui.dashboard.DashboardRepository
 
-/** Binds the dashboard data source. Currently local sample data; swaps to network calls in place. */
+/** Binds the dashboard data source. KPI/summary numbers are still local sample data; locations
+ * and the Supervisor name are real (see [DashboardRepositoryImpl]). */
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class DashboardModule {
