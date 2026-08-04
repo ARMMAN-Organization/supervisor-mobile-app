@@ -12,10 +12,10 @@ import org.armman.supervisor.data.inventory.InventoryItemCacheEntity
 /**
  * Local database, doubling as both an offline cache for API-backed reads (inventory items/
  * transactions, supervisor-events) and the sole store for data with no backend endpoint yet
- * (meeting/training attendance, marks, photos; call logs). On-device this is opened with a
- * SQLCipher `SupportFactory` keyed by a Keystore-backed passphrase (see `di/DatabaseModule.kt`);
- * nothing here depends on that, so unit tests can open it as a plain, unencrypted Room in-memory
- * database instead.
+ * (meeting/training attendance, marks, photos). On-device this is opened with a SQLCipher
+ * `SupportFactory` keyed by a Keystore-backed passphrase (see `di/DatabaseModule.kt`); nothing
+ * here depends on that, so unit tests can open it as a plain, unencrypted Room in-memory database
+ * instead.
  */
 @Database(
   entities = [
@@ -28,19 +28,17 @@ import org.armman.supervisor.data.inventory.InventoryItemCacheEntity
     EventTopicEntity::class,
     EventMarksEntity::class,
     EventMarksCompletionEntity::class,
-    CallLogEntity::class,
     InventoryItemCacheEntity::class,
     SupervisorEventCacheEntity::class,
     PendingInventoryTransactionEntity::class,
     PendingInventoryTransactionItemEntity::class,
     PendingSupervisorEventEntity::class,
   ],
-  version = 7,
+  version = 8,
 )
 abstract class AppDatabase : RoomDatabase() {
   abstract fun transactionDao(): TransactionDao
   abstract fun supervisorEventDao(): SupervisorEventDao
-  abstract fun callLogDao(): CallLogDao
   abstract fun inventoryItemCacheDao(): InventoryItemCacheDao
   abstract fun supervisorEventCacheDao(): SupervisorEventCacheDao
   abstract fun pendingInventoryTransactionDao(): PendingInventoryTransactionDao

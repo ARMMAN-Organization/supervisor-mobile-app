@@ -21,6 +21,11 @@ interface ProjectsRepository {
    * as [getSakhiDetail]. */
   suspend fun getSakhiOption(sakhiId: String): SakhiOption
 
+  /** Looks up the id of the project [sakhiId] primarily belongs to, same cache-then-fetch-all
+   * behavior as [getSakhiDetail]. Needed to submit a call log (FR-SV-3.1/3.2), which is scoped to
+   * a project. */
+  suspend fun getSakhiProjectId(sakhiId: String): String
+
   /** Drops all cached project/Sakhi roster data. Call on sign-out so a subsequent login (as
    * possibly a different Supervisor on a shared device) never serves another account's roster. */
   fun clearCache()

@@ -64,6 +64,12 @@ private class FakeProjectsRepository : ProjectsRepository {
     else -> error("Unknown sakhi id: $sakhiId")
   }
 
+  override suspend fun getSakhiProjectId(sakhiId: String): String = when (sakhiId) {
+    "sakhi-1", "sakhi-2" -> "loc-1"
+    "sakhi-3" -> "loc-2"
+    else -> error("Unknown sakhi id: $sakhiId")
+  }
+
   override fun clearCache() = Unit
 }
 

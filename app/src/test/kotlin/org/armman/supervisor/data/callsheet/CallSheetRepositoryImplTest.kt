@@ -1,8 +1,11 @@
 package org.armman.supervisor.data.callsheet
 
 import kotlinx.coroutines.test.runTest
-import org.armman.supervisor.data.local.CallLogDao
-import org.armman.supervisor.data.local.CallLogEntity
+import org.armman.supervisor.data.calllog.CallLogApi
+import org.armman.supervisor.data.calllog.CallLogDto
+import org.armman.supervisor.data.calllog.CallLogEnvelopeDto
+import org.armman.supervisor.data.calllog.CallLogsEnvelopeDto
+import org.armman.supervisor.data.calllog.CreateCallLogRequestDto
 import org.armman.supervisor.data.projects.ProjectsRepository
 import org.armman.supervisor.model.LocationOption
 import org.armman.supervisor.ui.assignitem.SakhiDetail
@@ -16,6 +19,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import retrofit2.Response
+import java.util.UUID
 
 /** [ProjectsRepositoryImplTest] covers the real implementation — this fake exists only so this
  * file's call-log-persistence tests (its actual purpose) don't depend on a real network call. */
@@ -43,30 +48,45 @@ private class FakeProjectsRepository : ProjectsRepository {
     else -> error("Unknown sakhi id: $sakhiId")
   }
 
+  override suspend fun getSakhiProjectId(sakhiId: String): String = when (sakhiId) {
+    "sakhi-1", "sakhi-2" -> "loc-1"
+    "sakhi-3" -> "loc-2"
+    else -> error("Unknown sakhi id: $sakhiId")
+  }
+
   override fun clearCache() = Unit
 }
 
-/** [CallLogDao] has no JVM-testable implementation — see the same pattern/reasoning documented on
- * `AssignItemRepositoryImplTest`'s `FakeTransactionDao`. */
-private class FakeCallLogDao : CallLogDao {
-  // Mirrors the real DAO's "timestampEpochMillis DESC, rowid DESC" ordering: entries is
-  // insertion-ordered, so reversing it breaks same-millisecond ties by most-recently-inserted.
-  private val entries = mutableListOf<CallLogEntity>()
+/** In-memory fake standing in for supervisor-operations-service's call-logs endpoints — mirrors
+ * the real backend's newest-first ordering and its single flat `callStatus` field. */
+private class FakeCallLogApi : CallLogApi {
+  private val entries = mutableListOf<CallLogDto>()
 
-  override suspend fun getBySakhi(sakhiId: String): List<CallLogEntity> =
-    entries.asReversed().filter { it.sakhiId == sakhiId }
-      .sortedByDescending { it.timestampEpochMillis }
-
-  override suspend fun getLatestForSakhi(sakhiId: String): CallLogEntity? = getBySakhi(sakhiId).firstOrNull()
-
-  override suspend fun insert(entity: CallLogEntity) {
-    entries += entity
+  override suspend fun createCallLog(request: CreateCallLogRequestDto): Response<CallLogEnvelopeDto> {
+    val created = CallLogDto(
+      id = "call-${UUID.randomUUID()}",
+      sakhiId = request.sakhiId,
+      callStatus = request.callStatus,
+      notes = request.notes,
+      followupAction = request.followupAction,
+      callStartAt = request.callStartAt,
+      callEndAt = null,
+      callDurationSeconds = request.callDurationSeconds,
+      responder = request.responder,
+    )
+    entries.add(0, created)
+    return Response.success(CallLogEnvelopeDto(success = true, message = "OK", data = created))
   }
+
+  override suspend fun getCallLogsBySakhi(sakhiId: String): Response<CallLogsEnvelopeDto> =
+    Response.success(
+      CallLogsEnvelopeDto(success = true, message = "OK", data = entries.filter { it.sakhiId == sakhiId }),
+    )
 }
 
 class CallSheetRepositoryImplTest {
-  private val dao = FakeCallLogDao()
-  private val repository = CallSheetRepositoryImpl(FakeProjectsRepository(), dao)
+  private val api = FakeCallLogApi()
+  private val repository = CallSheetRepositoryImpl(FakeProjectsRepository(), api)
 
   @Test
   fun `getSakhiSummaries returns only sakhis under the given location`() = runTest {
@@ -148,6 +168,25 @@ class CallSheetRepositoryImplTest {
     assertEquals("Discussed follow-up visit", stored.notes)
     assertEquals("Schedule visit next week", stored.followUpAction)
     assertNull(stored.failureReason)
+  }
+
+  @Test
+  fun `logCall rounds duration to the nearest minute rather than truncating`() = runTest {
+    val created = repository.logCall(
+      CallLogSubmission(
+        sakhiId = "sakhi-1",
+        connected = CallConnected.YES,
+        successOutcome = SuccessOutcome.PICKED_UP_TALKED,
+        failureReason = null,
+        responder = null,
+        durationMinutes = 2,
+        notes = null,
+        followUpAction = null,
+      ),
+    )
+
+    val stored = repository.getCallHistory("sakhi-1").single { it.id == created.id }
+    assertEquals(2, stored.durationMinutes)
   }
 
   @Test
