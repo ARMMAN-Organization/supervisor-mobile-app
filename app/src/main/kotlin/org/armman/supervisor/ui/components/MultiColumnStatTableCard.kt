@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -22,20 +23,21 @@ import org.armman.supervisor.ui.theme.SerifTitle
 import org.armman.supervisor.ui.theme.White
 import org.armman.supervisor.ui.theme.softShadow
 
-/** One row of a [StatTableCard] — a label plus two numeric columns (e.g. Mother/Child counts). */
-data class StatTableRow(val label: String, val valueA: Int, val valueB: Int)
+/** One row of a [MultiColumnStatTableCard] — a label plus any number of numeric columns. */
+data class MultiColumnStatRow(val label: String, val values: List<Int>)
 
 /**
- * Reusable "title + optional badge pill + 3-column (label/A/B) table" card. Powers all four
- * dashboard summary sections and is generic enough for any future label+two-number report.
+ * Generalization of [StatTableCard] for tables with more than two numeric columns (e.g. Visit
+ * Summary's Village/Total/Due/Missed). The label column plus each entry in [columnHeaders]
+ * share the row width equally amongst the value columns; the label column keeps a fixed 2x
+ * weight, matching [StatTableCard]'s proportions.
  */
 @Composable
-fun StatTableCard(
+fun MultiColumnStatTableCard(
   title: String,
   columnHeaderLabel: String,
-  columnHeaderA: String,
-  columnHeaderB: String,
-  rows: List<StatTableRow>,
+  columnHeaders: List<String>,
+  rows: List<MultiColumnStatRow>,
   headerBackgroundColor: Color,
   headerTextColor: Color,
   alternateRowColor: Color,
@@ -65,69 +67,42 @@ fun StatTableCard(
         }
       }
       Spacer(modifier = Modifier.height(Dimens.SmallSpacing))
-      StatTable(
-        columnHeaderLabel = columnHeaderLabel,
-        columnHeaderA = columnHeaderA,
-        columnHeaderB = columnHeaderB,
-        rows = rows,
-        headerBackgroundColor = headerBackgroundColor,
-        headerTextColor = headerTextColor,
-        alternateRowColor = alternateRowColor,
-        textColor = textColor,
-      )
-    }
-  }
-}
-
-/**
- * Bare "header row + label/A/B rows" table with no surrounding card, title or badge — the shared
- * body of [StatTableCard], reusable inside a screen's own card wrapper (e.g. Registrations, which
- * stacks a badge count and target lines above this table within a single card).
- */
-@Composable
-fun StatTable(
-  columnHeaderLabel: String,
-  columnHeaderA: String,
-  columnHeaderB: String,
-  rows: List<StatTableRow>,
-  headerBackgroundColor: Color,
-  headerTextColor: Color,
-  alternateRowColor: Color,
-  textColor: Color,
-  modifier: Modifier = Modifier,
-) {
-  Column(modifier = modifier.fillMaxWidth()) {
-    Row(
-      modifier = Modifier.fillMaxWidth().height(Dimens.TableRowHeight).background(headerBackgroundColor),
-      verticalAlignment = Alignment.CenterVertically,
-    ) {
-      TableCell(columnHeaderLabel, weight = 2f, color = headerTextColor)
-      TableCell(columnHeaderA, weight = 1f, color = headerTextColor)
-      TableCell(columnHeaderB, weight = 1f, color = headerTextColor)
-    }
-    rows.forEachIndexed { index, row ->
       Row(
         modifier = Modifier
           .fillMaxWidth()
-          .height(Dimens.TableRowHeight)
-          .background(if (index % 2 == 1) alternateRowColor else White),
+          .defaultMinSize(minHeight = Dimens.TableRowHeight)
+          .background(headerBackgroundColor),
         verticalAlignment = Alignment.CenterVertically,
       ) {
-        TableCell(row.label, weight = 2f, color = textColor)
-        TableCell("${row.valueA}", weight = 1f, color = textColor)
-        TableCell("${row.valueB}", weight = 1f, color = textColor)
+        TableCell(columnHeaderLabel, weight = 2f, color = headerTextColor, singleLine = false)
+        columnHeaders.forEach { header -> TableCell(header, weight = 1f, color = headerTextColor, singleLine = false) }
+      }
+      rows.forEachIndexed { index, row ->
+        Row(
+          modifier = Modifier
+            .fillMaxWidth()
+            .height(Dimens.TableRowHeight)
+            .background(if (index % 2 == 1) alternateRowColor else White),
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          TableCell(row.label, weight = 2f, color = textColor)
+          row.values.forEach { value -> TableCell("$value", weight = 1f, color = textColor) }
+        }
       }
     }
   }
 }
 
 @Composable
-private fun RowScope.TableCell(text: String, weight: Float, color: Color) {
+private fun RowScope.TableCell(text: String, weight: Float, color: Color, singleLine: Boolean = true) {
   Text(
     text = text,
     style = MaterialTheme.typography.bodyMedium,
     color = color,
-    modifier = Modifier.weight(weight).padding(horizontal = Dimens.SmallSpacing),
+    maxLines = if (singleLine) 1 else Int.MAX_VALUE,
+    modifier = Modifier
+      .weight(weight)
+      .padding(horizontal = Dimens.ExtraSmallSpacing, vertical = Dimens.ExtraSmallSpacing),
     textAlign = if (weight == 2f) TextAlign.Start else TextAlign.Center,
   )
 }

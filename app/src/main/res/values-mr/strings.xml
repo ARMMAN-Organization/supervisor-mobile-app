@@ -37,6 +37,20 @@
   <string name="summary_row_target">लक्ष्य</string>
   <string name="summary_row_total_risk">एकूण जोखीम</string>
 
+  <!-- Visit / Risk / Monitoring Summary and Registrations detail screens -->
+  <string name="registrations_title">नोंदणी</string>
+  <string name="table_header_village">गाव</string>
+  <string name="table_header_total">एकूण</string>
+  <string name="table_header_due">प्रलंबित</string>
+  <string name="table_header_missed">चुकलेले</string>
+  <string name="visit_summary_empty">या निवडीसाठी भेट डेटा उपलब्ध नाही</string>
+  <string name="risk_summary_empty">या निवडीसाठी जोखीम डेटा उपलब्ध नाही</string>
+  <string name="monitoring_summary_empty">या निवडीसाठी देखरेख डेटा उपलब्ध नाही</string>
+  <string name="registrations_empty">या निवडीसाठी नोंदणी डेटा उपलब्ध नाही</string>
+  <string name="registrations_mother_target_label">माता नोंदणी लक्ष्य</string>
+  <string name="registrations_child_target_label">बालक नोंदणी लक्ष्य</string>
+  <string name="cd_registration_badge_icon">एकूण नोंदणी</string>
+
   <!-- Stale Sakhi report -->
   <string name="stale_sakhi_banner_title">सखीने गेल्या ७ किंवा अधिक दिवसांपासून डेटा अपलोड न केल्याचा अहवाल</string>
   <string name="stale_sakhi_table_header_name">सखीचे नाव</string>

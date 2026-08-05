@@ -12,3 +12,6 @@ captures/
 run-mobile.local.sh
 run-tab.local.sh
 AUDIT_FINDINGS.md
+
+# Reference docs pulled in from Google Drive (SRS/ERD/HLD excerpts) — not project source, keep local only
+docs/reference/
