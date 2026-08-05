@@ -254,6 +254,7 @@
   <string name="call_responder_husband">Husband</string>
   <string name="call_responder_sakhi">Sakhi</string>
   <string name="call_responder_person_who_does_not_know_woman">Person who does not know women</string>
+  <string name="call_history_unrecognized_value">Unrecognized</string>
 
   <!-- Dashboard state -->
   <string name="dashboard_error_generic">Something went wrong. Please try again.</string>

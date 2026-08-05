@@ -54,6 +54,8 @@ class ProjectsRepositoryImpl @Inject constructor(
     return SakhiOption(sakhi.sakhiId, sakhi.displayName)
   }
 
+  override suspend fun getSakhiProjectId(sakhiId: String): String = findSakhi(sakhiId).primaryProjectId
+
   override fun clearCache() {
     sakhisBySakhiId.clear()
   }

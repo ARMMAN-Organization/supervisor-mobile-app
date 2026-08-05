@@ -155,6 +155,12 @@ private class FakeProjectsRepository : ProjectsRepository {
   }
 
   override suspend fun getSakhiDetail(sakhiId: String): SakhiDetail = error("not used")
+
+  override suspend fun getSakhiOption(sakhiId: String): SakhiOption = error("not used")
+
+  override suspend fun getSakhiProjectId(sakhiId: String): String = error("not used")
+
+  override fun clearCache() = Unit
 }
 
 private class FakeSupervisorEventsApi : SupervisorEventsApi {

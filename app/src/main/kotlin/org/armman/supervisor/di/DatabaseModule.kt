@@ -18,7 +18,6 @@ import org.armman.supervisor.data.events.PendingSupervisorEventDao
 import org.armman.supervisor.data.events.SupervisorEventCacheDao
 import org.armman.supervisor.data.inventory.InventoryItemCacheDao
 import org.armman.supervisor.data.local.AppDatabase
-import org.armman.supervisor.data.local.CallLogDao
 import org.armman.supervisor.data.local.PendingInventoryTransactionDao
 import org.armman.supervisor.data.local.SupervisorEventDao
 import org.armman.supervisor.data.local.TransactionDao
@@ -70,9 +69,6 @@ object DatabaseModule {
 
   @Provides
   fun provideSupervisorEventDao(database: AppDatabase): SupervisorEventDao = database.supervisorEventDao()
-
-  @Provides
-  fun provideCallLogDao(database: AppDatabase): CallLogDao = database.callLogDao()
 
   @Provides
   fun provideInventoryItemCacheDao(database: AppDatabase): InventoryItemCacheDao =

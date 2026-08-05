@@ -1,7 +1,10 @@
 package org.armman.supervisor.data.callsheet
 
-import org.armman.supervisor.data.local.CallLogDao
-import org.armman.supervisor.data.local.CallLogEntity
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import org.armman.supervisor.data.calllog.CallLogApi
+import org.armman.supervisor.data.calllog.CallLogDto
+import org.armman.supervisor.data.calllog.CreateCallLogRequestDto
 import org.armman.supervisor.data.projects.ProjectsRepository
 import org.armman.supervisor.model.LocationOption
 import org.armman.supervisor.ui.assignitem.SakhiOption
@@ -17,22 +20,40 @@ import org.armman.supervisor.ui.callsheet.FailureReason
 import org.armman.supervisor.ui.callsheet.SakhiCallSummary
 import org.armman.supervisor.ui.callsheet.SuccessOutcome
 import java.text.SimpleDateFormat
+import java.time.Instant
 import java.util.Date
 import java.util.Locale
-import java.util.UUID
 import javax.inject.Inject
+
+/** Backend `callStatus` values that mean the call connected — the app splits these into
+ * [SuccessOutcome], while the remaining four values become [FailureReason]. Derived from the
+ * enum itself (not a hardcoded string list) so a renamed/added [SuccessOutcome] constant can't
+ * silently drift out of sync with this set. [SuccessOutcome.UNKNOWN] is excluded — it's a
+ * display-only fallback, never a real wire value to match against. */
+private val CONNECTED_STATUSES = (SuccessOutcome.entries - SuccessOutcome.UNKNOWN).mapTo(mutableSetOf()) { it.name }
+
+/** Backend enum lookup that falls back to [SuccessOutcome.UNKNOWN]/[FailureReason.UNKNOWN]/
+ * [CallResponder.UNKNOWN] instead of throwing. The backend's call-status/responder lookup values
+ * can grow independently of an app release (see SRS `call_logs.call_status` — an open-ended
+ * lookup, not a fixed enum), so one unrecognized value must degrade gracefully rather than
+ * breaking the whole history/summary fetch. */
+private inline fun <reified T : Enum<T>> enumOfOrUnknown(name: String, unknown: T): T =
+  enumValues<T>().firstOrNull { it.name == name } ?: unknown
+
+private const val SECONDS_PER_MINUTE = 60
 
 /**
  * Concrete [CallSheetRepository]. Locations and Sakhis come from the real auth-service roster via
  * [ProjectsRepository] (shared with Dashboard/Assign Item). Per-Sakhi stats (visits due, risk
  * counts, etc.) remain placeholder data — no dashboard/call-sheet-stats endpoint exists yet; only
- * [getSakhiSummaries]'s stats lookup changes when one ships. Call logs the Supervisor actually
- * creates are persisted in the local encrypted database ([CallLogDao]) so they survive process
- * death — the app has no real call-logs API yet.
+ * [getSakhiSummaries]'s stats lookup changes when one ships. Call logs are read/written through
+ * [CallLogApi] (supervisor-operations-service); the backend models a single flat `callStatus`
+ * enum where this app models two ([CallConnected] + [SuccessOutcome] or [FailureReason]) — see
+ * [toEntry]/[toCreateRequest] for the mapping.
  */
 class CallSheetRepositoryImpl @Inject constructor(
   private val projectsRepository: ProjectsRepository,
-  private val callLogDao: CallLogDao,
+  private val callLogApi: CallLogApi,
 ) : CallSheetRepository {
 
   private fun sampleStats(
@@ -62,48 +83,75 @@ class CallSheetRepositoryImpl @Inject constructor(
   override suspend fun getSakhiSummaries(locationId: String?): List<SakhiCallSummary> {
     if (locationId == null) return emptyList()
     val sakhis = projectsRepository.getSakhis(locationId)
-    return sakhis.map { sakhi ->
-      val latest = callLogDao.getLatestForSakhi(sakhi.id)
-      SakhiCallSummary(sakhi = sakhi, stats = sampleStats(), lastCalledAtEpochMillis = latest?.timestampEpochMillis)
+    return coroutineScope {
+      sakhis.map { sakhi -> sakhi to async { fetchCallHistory(sakhi.id) } }
+        .map { (sakhi, history) ->
+          SakhiCallSummary(sakhi = sakhi, stats = sampleStats(), lastCalledAtEpochMillis = history.await().firstOrNull()?.timestampEpochMillis)
+        }
     }
   }
 
   override suspend fun getSakhiOption(sakhiId: String): SakhiOption = projectsRepository.getSakhiOption(sakhiId)
 
-  override suspend fun getCallHistory(sakhiId: String): List<CallLogEntry> =
-    callLogDao.getBySakhi(sakhiId).map { it.toEntry() }
+  override suspend fun getCallHistory(sakhiId: String): List<CallLogEntry> = fetchCallHistory(sakhiId)
 
   override suspend fun logCall(submission: CallLogSubmission): CallLogEntry {
-    val id = "call-${UUID.randomUUID()}"
-    val entity = submission.toEntity(id)
-    callLogDao.insert(entity)
-    return entity.toEntry()
+    val response = callLogApi.createCallLog(submission.toCreateRequest())
+    if (!response.isSuccessful) error("Failed to log call: HTTP ${response.code()}")
+    val body = response.body() ?: error("Empty call log response")
+    if (!body.success) error(body.message ?: "Failed to log call")
+    val created = body.data ?: error("Empty call log response")
+    return created.toEntry()
   }
 
-  private fun CallLogEntity.toEntry(): CallLogEntry = CallLogEntry(
-    id = id,
-    timestampEpochMillis = timestampEpochMillis,
-    connected = if (connected) CallConnected.YES else CallConnected.NO,
-    successOutcome = successOutcome?.let { SuccessOutcome.valueOf(it) },
-    failureReason = failureReason?.let { FailureReason.valueOf(it) },
-    responder = responder?.let { CallResponder.valueOf(it) },
-    durationMinutes = durationMinutes,
-    notes = notes,
-    followUpAction = followUpAction,
-  )
+  private suspend fun fetchCallHistory(sakhiId: String): List<CallLogEntry> {
+    val response = callLogApi.getCallLogsBySakhi(sakhiId)
+    if (!response.isSuccessful) error("Failed to load call history: HTTP ${response.code()}")
+    val body = response.body() ?: error("Empty call history response")
+    if (!body.success) error(body.message ?: "Failed to load call history")
+    // Newest first (SRS FR-SV-3.3) — the backend already returns newest-first, but sort
+    // defensively since [SakhiCallSummary.lastCalledAtEpochMillis] relies on entry order.
+    return body.data.orEmpty().map { it.toEntry() }.sortedByDescending { it.timestampEpochMillis }
+  }
 
-  private fun CallLogSubmission.toEntity(id: String): CallLogEntity = CallLogEntity(
-    id = id,
-    sakhiId = sakhiId,
-    timestampEpochMillis = System.currentTimeMillis(),
-    connected = connected == CallConnected.YES,
-    successOutcome = successOutcome?.name,
-    failureReason = failureReason?.name,
-    responder = responder?.name,
-    durationMinutes = durationMinutes,
-    notes = notes,
-    followUpAction = followUpAction,
-  )
+  private fun CallLogDto.toEntry(): CallLogEntry {
+    val connected = if (callStatus in CONNECTED_STATUSES) CallConnected.YES else CallConnected.NO
+    return CallLogEntry(
+      id = id,
+      timestampEpochMillis = Instant.parse(callStartAt).toEpochMilli(),
+      connected = connected,
+      successOutcome = if (connected == CallConnected.YES) enumOfOrUnknown(callStatus, SuccessOutcome.UNKNOWN) else null,
+      failureReason = if (connected == CallConnected.NO) enumOfOrUnknown(callStatus, FailureReason.UNKNOWN) else null,
+      responder = responder?.let { enumOfOrUnknown(it, CallResponder.UNKNOWN) },
+      // Round rather than truncate — 90s should read back as 2 minutes, not 1.
+      durationMinutes = callDurationSeconds?.let { (it + SECONDS_PER_MINUTE / 2) / SECONDS_PER_MINUTE },
+      notes = notes,
+      followUpAction = followupAction,
+    )
+  }
+
+  private suspend fun CallLogSubmission.toCreateRequest(): CreateCallLogRequestDto {
+    val projectId = projectsRepository.getSakhiProjectId(sakhiId)
+    val callStatus = when (connected) {
+      CallConnected.YES -> checkNotNull(successOutcome).name
+      CallConnected.NO -> checkNotNull(failureReason).name
+    }
+    // callDatetime and callStartAt intentionally share one timestamp: the Supervisor logs a call
+    // after it has already happened (FR-SV-3.1/3.2), so there's no separately-observed "call
+    // initiated" moment distinct from "when this log entry represents" — see ERD §4.7 call_logs.
+    val nowIso = Instant.now().toString()
+    return CreateCallLogRequestDto(
+      projectId = projectId,
+      sakhiId = sakhiId,
+      callDatetime = nowIso,
+      callStatus = callStatus,
+      callStartAt = nowIso,
+      callDurationSeconds = durationMinutes?.let { it * SECONDS_PER_MINUTE },
+      notes = notes,
+      followupAction = followUpAction,
+      responder = responder?.name,
+    )
+  }
 
   private fun todayDisplayDate(): String = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).format(Date())
 }

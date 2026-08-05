@@ -8,14 +8,17 @@ const val RECENTLY_CALLED_WINDOW_MILLIS = 24 * 60 * 60 * 1000L
 /** Whether a call attempt connected (SRS FR-SV-3.2 "call status"). */
 enum class CallConnected { YES, NO }
 
-/** Outcome recorded when a call connected. */
-enum class SuccessOutcome { PICKED_UP_TALKED, PICKED_UP_NO_ONE_TALKING, PICKED_UP_CUT_MIDWAY, CALL_BACK }
+/** Outcome recorded when a call connected. [UNKNOWN] is never user-selectable — it's a display-only
+ * fallback for a backend `callStatus` value this app version doesn't recognize (the backend's
+ * call-status lookup can grow independently of an app release, see SRS `call_logs.call_status`). */
+enum class SuccessOutcome { PICKED_UP_TALKED, PICKED_UP_NO_ONE_TALKING, PICKED_UP_CUT_MIDWAY, CALL_BACK, UNKNOWN }
 
-/** Reason recorded when a call did not connect. */
-enum class FailureReason { NOT_PICKED_UP, RINGING, PHONE_OFF, OUT_OF_NETWORK }
+/** Reason recorded when a call did not connect. [UNKNOWN] is never user-selectable — see [SuccessOutcome.UNKNOWN]. */
+enum class FailureReason { NOT_PICKED_UP, RINGING, PHONE_OFF, OUT_OF_NETWORK, UNKNOWN }
 
-/** Who answered the call — only captured when [SuccessOutcome.PICKED_UP_TALKED]. */
-enum class CallResponder { RELATIVE, HUSBAND, SAKHI, PERSON_WHO_DOES_NOT_KNOW_WOMAN }
+/** Who answered the call — only captured when [SuccessOutcome.PICKED_UP_TALKED]. [UNKNOWN] is never
+ * user-selectable — see [SuccessOutcome.UNKNOWN]. */
+enum class CallResponder { RELATIVE, HUSBAND, SAKHI, PERSON_WHO_DOES_NOT_KNOW_WOMAN, UNKNOWN }
 
 /** Which Info row of the Call Sheet stats table a [CallSheetStatValue] belongs to. */
 enum class CallSheetStatKind {
