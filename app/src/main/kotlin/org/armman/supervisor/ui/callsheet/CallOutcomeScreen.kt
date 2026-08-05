@@ -136,7 +136,7 @@ private fun SuccessOutcomeCard(
   val responderLabels = CallResponder.entries.associateWith { stringResource(it.labelRes()) }
   FormCard(titleRes = R.string.call_outcome_success_label) {
     SingleSelectDropdown(
-      options = SuccessOutcome.entries,
+      options = SuccessOutcome.entries - SuccessOutcome.UNKNOWN,
       selected = formState.successOutcome,
       optionLabel = { checkNotNull(successOutcomeLabels[it]) },
       placeholder = selectReasonPlaceholder,
@@ -150,7 +150,7 @@ private fun SuccessOutcomeCard(
         modifier = Modifier.padding(top = Dimens.ItemSpacing),
       )
       SingleSelectDropdown(
-        options = CallResponder.entries,
+        options = CallResponder.entries - CallResponder.UNKNOWN,
         selected = formState.responder,
         optionLabel = { checkNotNull(responderLabels[it]) },
         placeholder = selectReasonPlaceholder,
@@ -184,7 +184,7 @@ private fun FailureOutcomeCard(selected: FailureReason?, onSelected: (FailureRea
   val failureReasonLabels = FailureReason.entries.associateWith { stringResource(it.labelRes()) }
   FormCard(titleRes = R.string.call_outcome_failure_label) {
     SingleSelectDropdown(
-      options = FailureReason.entries,
+      options = FailureReason.entries - FailureReason.UNKNOWN,
       selected = selected,
       optionLabel = { checkNotNull(failureReasonLabels[it]) },
       placeholder = stringResource(R.string.call_outcome_select_reason),

@@ -22,6 +22,7 @@ fun SuccessOutcome.labelRes(): Int = when (this) {
   SuccessOutcome.PICKED_UP_NO_ONE_TALKING -> R.string.success_outcome_picked_up_no_one_talking
   SuccessOutcome.PICKED_UP_CUT_MIDWAY -> R.string.success_outcome_picked_up_cut_midway
   SuccessOutcome.CALL_BACK -> R.string.success_outcome_call_back
+  SuccessOutcome.UNKNOWN -> R.string.call_history_unrecognized_value
 }
 
 /** Display-label string resource for a [FailureReason]. Resolved to EN/MR text at display time. */
@@ -31,6 +32,7 @@ fun FailureReason.labelRes(): Int = when (this) {
   FailureReason.RINGING -> R.string.failure_reason_ringing
   FailureReason.PHONE_OFF -> R.string.failure_reason_phone_off
   FailureReason.OUT_OF_NETWORK -> R.string.failure_reason_out_of_network
+  FailureReason.UNKNOWN -> R.string.call_history_unrecognized_value
 }
 
 /** Display-label string resource for a [CallResponder]. Resolved to EN/MR text at display time. */
@@ -40,4 +42,5 @@ fun CallResponder.labelRes(): Int = when (this) {
   CallResponder.HUSBAND -> R.string.call_responder_husband
   CallResponder.SAKHI -> R.string.call_responder_sakhi
   CallResponder.PERSON_WHO_DOES_NOT_KNOW_WOMAN -> R.string.call_responder_person_who_does_not_know_woman
+  CallResponder.UNKNOWN -> R.string.call_history_unrecognized_value
 }

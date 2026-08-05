@@ -1,6 +1,9 @@
 package org.armman.supervisor.data.callsheet
 
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.ResponseBody.Companion.toResponseBody
 import org.armman.supervisor.data.calllog.CallLogApi
 import org.armman.supervisor.data.calllog.CallLogDto
 import org.armman.supervisor.data.calllog.CallLogEnvelopeDto
@@ -17,9 +20,11 @@ import org.armman.supervisor.ui.callsheet.FailureReason
 import org.armman.supervisor.ui.callsheet.SuccessOutcome
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import retrofit2.Response
+import java.time.Instant
 import java.util.UUID
 
 /** [ProjectsRepositoryImplTest] covers the real implementation — this fake exists only so this
@@ -58,11 +63,23 @@ private class FakeProjectsRepository : ProjectsRepository {
 }
 
 /** In-memory fake standing in for supervisor-operations-service's call-logs endpoints — mirrors
- * the real backend's newest-first ordering and its single flat `callStatus` field. */
+ * the real backend's newest-first ordering and its single flat `callStatus` field. Supports
+ * injecting non-2xx / empty-body / `success: false` responses so tests can exercise the three
+ * failure branches in [CallSheetRepositoryImpl.logCall]/[CallSheetRepositoryImpl.fetchCallHistory]. */
 private class FakeCallLogApi : CallLogApi {
   private val entries = mutableListOf<CallLogDto>()
+  var createCallLogResponse: Response<CallLogEnvelopeDto>? = null
+  var getCallLogsResponse: Response<CallLogsEnvelopeDto>? = null
+
+  /** Injects a raw [CallLogDto] bypassing [createCallLog], for seeding a backend-shaped payload
+   * (e.g. an unrecognized `callStatus` or a hand-written timestamp) that this app's own submission
+   * path would never produce. */
+  fun seed(entry: CallLogDto) {
+    entries.add(0, entry)
+  }
 
   override suspend fun createCallLog(request: CreateCallLogRequestDto): Response<CallLogEnvelopeDto> {
+    createCallLogResponse?.let { return it }
     val created = CallLogDto(
       id = "call-${UUID.randomUUID()}",
       sakhiId = request.sakhiId,
@@ -78,11 +95,16 @@ private class FakeCallLogApi : CallLogApi {
     return Response.success(CallLogEnvelopeDto(success = true, message = "OK", data = created))
   }
 
-  override suspend fun getCallLogsBySakhi(sakhiId: String): Response<CallLogsEnvelopeDto> =
-    Response.success(
+  override suspend fun getCallLogsBySakhi(sakhiId: String): Response<CallLogsEnvelopeDto> {
+    getCallLogsResponse?.let { return it }
+    return Response.success(
       CallLogsEnvelopeDto(success = true, message = "OK", data = entries.filter { it.sakhiId == sakhiId }),
     )
+  }
 }
+
+private fun errorResponse(code: Int): Response<CallLogsEnvelopeDto> =
+  Response.error(code, "".toResponseBody("application/json".toMediaType()))
 
 class CallSheetRepositoryImplTest {
   private val api = FakeCallLogApi()
@@ -216,5 +238,107 @@ class CallSheetRepositoryImplTest {
   fun `getSakhiOption returns the matching sakhi across locations`() = runTest {
     val sakhi = repository.getSakhiOption("sakhi-3")
     assertEquals("sakhi-3", sakhi.id)
+  }
+
+  @Test
+  fun `toEntry parses a hand-written backend-shaped ISO instant, not just Instant now toString`() = runTest {
+    api.seed(
+      CallLogDto(
+        id = "call-backend-1",
+        sakhiId = "sakhi-1",
+        callStatus = "PICKED_UP_TALKED",
+        notes = null,
+        followupAction = null,
+        callStartAt = "2026-06-15T09:30:00.000Z",
+        callEndAt = null,
+        callDurationSeconds = null,
+        responder = null,
+      ),
+    )
+
+    val history = repository.getCallHistory("sakhi-1")
+    val stored = history.single { it.id == "call-backend-1" }
+    assertEquals(Instant.parse("2026-06-15T09:30:00.000Z").toEpochMilli(), stored.timestampEpochMillis)
+  }
+
+  @Test
+  fun `toEntry maps an unrecognized callStatus to UNKNOWN instead of throwing`() = runTest {
+    api.seed(
+      CallLogDto(
+        id = "call-unknown-status",
+        sakhiId = "sakhi-1",
+        callStatus = "SWITCHED_OFF",
+        notes = null,
+        followupAction = null,
+        callStartAt = "2026-06-15T09:30:00.000Z",
+        callEndAt = null,
+        callDurationSeconds = null,
+        responder = "SOME_NEW_RESPONDER",
+      ),
+    )
+
+    val history = repository.getCallHistory("sakhi-1")
+    val stored = history.single { it.id == "call-unknown-status" }
+    assertEquals(CallConnected.NO, stored.connected)
+    assertEquals(FailureReason.UNKNOWN, stored.failureReason)
+    assertNull(stored.successOutcome)
+    assertEquals(CallResponder.UNKNOWN, stored.responder)
+  }
+
+  @Test
+  fun `logCall throws on a non-2xx response`() = runTest {
+    api.createCallLogResponse = Response.error(500, "".toResponseBody("application/json".toMediaType()))
+
+    assertThrows(IllegalStateException::class.java) {
+      runBlocking {
+        repository.logCall(
+          CallLogSubmission("sakhi-1", CallConnected.NO, null, FailureReason.RINGING, null, null, null, null),
+        )
+      }
+    }
+  }
+
+  @Test
+  fun `logCall throws when the response envelope reports success false`() = runTest {
+    api.createCallLogResponse = Response.success(CallLogEnvelopeDto(success = false, message = "Rejected", data = null))
+
+    assertThrows(IllegalStateException::class.java) {
+      runBlocking {
+        repository.logCall(
+          CallLogSubmission("sakhi-1", CallConnected.NO, null, FailureReason.RINGING, null, null, null, null),
+        )
+      }
+    }
+  }
+
+  @Test
+  fun `logCall throws on an empty response body`() = runTest {
+    api.createCallLogResponse = Response.success(null)
+
+    assertThrows(IllegalStateException::class.java) {
+      runBlocking {
+        repository.logCall(
+          CallLogSubmission("sakhi-1", CallConnected.NO, null, FailureReason.RINGING, null, null, null, null),
+        )
+      }
+    }
+  }
+
+  @Test
+  fun `getCallHistory throws on a non-2xx response`() = runTest {
+    api.getCallLogsResponse = errorResponse(404)
+
+    assertThrows(IllegalStateException::class.java) {
+      runBlocking { repository.getCallHistory("sakhi-1") }
+    }
+  }
+
+  @Test
+  fun `getCallHistory throws when the response envelope reports success false`() = runTest {
+    api.getCallLogsResponse = Response.success(CallLogsEnvelopeDto(success = false, message = "Denied", data = null))
+
+    assertThrows(IllegalStateException::class.java) {
+      runBlocking { repository.getCallHistory("sakhi-1") }
+    }
   }
 }
