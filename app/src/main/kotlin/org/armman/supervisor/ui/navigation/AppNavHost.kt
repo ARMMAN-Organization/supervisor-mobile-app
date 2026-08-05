@@ -27,13 +27,21 @@ import org.armman.supervisor.ui.meetingtraining.MeetingTrainingScreen
 import org.armman.supervisor.ui.meetingtraining.RescheduleMeetingScreen
 import org.armman.supervisor.ui.meetingtraining.ScheduleMeetingScreen
 import org.armman.supervisor.ui.meetingtraining.ScheduleTrainingScreen
+import org.armman.supervisor.ui.monitoringsummary.MonitoringSummaryScreen
+import org.armman.supervisor.ui.registrations.RegistrationsScreen
+import org.armman.supervisor.ui.risksummary.RiskSummaryScreen
 import org.armman.supervisor.ui.settings.SettingsScreen
+import org.armman.supervisor.ui.visitsummary.VisitSummaryScreen
 
 object Routes {
   const val LOGIN = "login"
   const val LOGIN_LOGGED_OUT_ARG = "loggedOut"
   const val LOGIN_ROUTE = "$LOGIN?$LOGIN_LOGGED_OUT_ARG={$LOGIN_LOGGED_OUT_ARG}"
   const val DASHBOARD = "dashboard"
+  const val VISIT_SUMMARY = "visit_summary"
+  const val RISK_SUMMARY = "risk_summary"
+  const val MONITORING_SUMMARY = "monitoring_summary"
+  const val REGISTRATIONS = "registrations"
   const val ITEMS = "items"
   const val ASSIGN_ITEM_DETAIL_SAKHI_ID_ARG = "sakhiId"
   const val ADD_ITEM_TRANSACTION_EDIT_ID_ARG = "editTransactionId"
@@ -106,6 +114,18 @@ fun AppNavHost() {
     }
     composable(Routes.DASHBOARD) {
       DashboardScreen(onNavigate = { route -> navController.navigate(route) })
+    }
+    composable(Routes.VISIT_SUMMARY) {
+      VisitSummaryScreen(onBack = { navController.popBackStack() })
+    }
+    composable(Routes.RISK_SUMMARY) {
+      RiskSummaryScreen(onBack = { navController.popBackStack() })
+    }
+    composable(Routes.MONITORING_SUMMARY) {
+      MonitoringSummaryScreen(onBack = { navController.popBackStack() })
+    }
+    composable(Routes.REGISTRATIONS) {
+      RegistrationsScreen(onBack = { navController.popBackStack() })
     }
     composable(Routes.ITEMS) {
       AssignItemScreen(

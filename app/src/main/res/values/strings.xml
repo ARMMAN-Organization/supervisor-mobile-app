@@ -37,6 +37,20 @@
   <string name="summary_row_target">Target</string>
   <string name="summary_row_total_risk">Total Risk</string>
 
+  <!-- Visit / Risk / Monitoring Summary and Registrations detail screens -->
+  <string name="registrations_title">Registrations</string>
+  <string name="table_header_village">Village</string>
+  <string name="table_header_total">Total</string>
+  <string name="table_header_due">Due</string>
+  <string name="table_header_missed">Missed</string>
+  <string name="visit_summary_empty">No visit data available for this selection</string>
+  <string name="risk_summary_empty">No risk data available for this selection</string>
+  <string name="monitoring_summary_empty">No monitoring data available for this selection</string>
+  <string name="registrations_empty">No registration data available for this selection</string>
+  <string name="registrations_mother_target_label">Mother Registration Target</string>
+  <string name="registrations_child_target_label">Child Registration Target</string>
+  <string name="cd_registration_badge_icon">Total registrations</string>
+
   <!-- Stale Sakhi report -->
   <string name="stale_sakhi_banner_title">Sakhi Not Uploaded Data In Last 7 Or More Days Report</string>
   <string name="stale_sakhi_table_header_name">Sakhi Name</string>

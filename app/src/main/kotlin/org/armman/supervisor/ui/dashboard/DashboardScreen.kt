@@ -110,7 +110,7 @@ private fun SuccessContent(
             isTablet = isTablet,
             modifier = Modifier.padding(horizontal = Dimens.ScreenPadding, vertical = Dimens.SmallSpacing),
           )
-          SummarySections(data = state.data)
+          SummarySections(data = state.data, onNavigate = onNavigate)
           DashboardStaleSakhiCard(
             entries = state.data.staleSakhis,
             modifier = Modifier.padding(horizontal = Dimens.ScreenPadding, vertical = Dimens.SmallSpacing),
@@ -125,18 +125,19 @@ private fun SuccessContent(
 }
 
 @Composable
-private fun SummarySections(data: DashboardData) {
+private fun SummarySections(data: DashboardData, onNavigate: (String) -> Unit) {
   val cards = listOf(
-    stringResource(R.string.visit_summary_title) to data.visitSummary,
-    stringResource(R.string.registration_summary_title) to data.registrationSummary,
-    stringResource(R.string.risk_summary_title) to data.riskSummary,
-    stringResource(R.string.monitoring_summary_title) to data.monitoringSummary,
+    Triple(stringResource(R.string.visit_summary_title), data.visitSummary, Routes.VISIT_SUMMARY),
+    Triple(stringResource(R.string.registration_summary_title), data.registrationSummary, Routes.REGISTRATIONS),
+    Triple(stringResource(R.string.risk_summary_title), data.riskSummary, Routes.RISK_SUMMARY),
+    Triple(stringResource(R.string.monitoring_summary_title), data.monitoringSummary, Routes.MONITORING_SUMMARY),
   )
 
-  cards.forEach { (title, rows) ->
+  cards.forEach { (title, rows, route) ->
     DashboardSummaryCard(
       title = title,
       rows = rows,
+      onClick = { onNavigate(route) },
       modifier = Modifier.padding(horizontal = Dimens.ScreenPadding, vertical = Dimens.SmallSpacing),
     )
   }

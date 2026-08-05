@@ -21,6 +21,9 @@ object Dimens {
   /** Inline icon size used alongside body/label text (e.g. status banner icons). */
   val InlineIconSize = 20.dp
 
+  /** Registration card's small app-icon badge next to the mother/child count. */
+  val RegistrationBadgeIconSize = 36.dp
+
   // Tablet button proportions (taller pill, wider inner padding).
   val ButtonHeightTablet = 48.dp
   val PillButtonPaddingHTablet = 48.dp

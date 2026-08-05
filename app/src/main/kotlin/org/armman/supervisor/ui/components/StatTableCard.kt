@@ -26,24 +26,20 @@ import org.armman.supervisor.ui.theme.softShadow
 data class StatTableRow(val label: String, val valueA: Int, val valueB: Int)
 
 /**
- * Reusable "title + optional badge pill + 3-column (label/A/B) table" card. Powers all four
- * dashboard summary sections and is generic enough for any future label+two-number report.
+ * Shared "title + optional badge pill" card chrome for stat-table cards: a white, shadowed,
+ * rounded [Surface] with the title row up top and [tableContent] slotted in below. Both
+ * [StatTableCard] and [MultiColumnStatTableCard] wrap their table body with this so the two
+ * card styles can't visually drift apart.
  */
 @Composable
-fun StatTableCard(
+fun StatCardChrome(
   title: String,
-  columnHeaderLabel: String,
-  columnHeaderA: String,
-  columnHeaderB: String,
-  rows: List<StatTableRow>,
-  headerBackgroundColor: Color,
-  headerTextColor: Color,
-  alternateRowColor: Color,
   textColor: Color,
   modifier: Modifier = Modifier,
   badgeText: String? = null,
   badgeBackgroundColor: Color = Color.Unspecified,
   badgeTextColor: Color = Color.Unspecified,
+  tableContent: @Composable () -> Unit,
 ) {
   Surface(
     color = White,
@@ -65,26 +61,89 @@ fun StatTableCard(
         }
       }
       Spacer(modifier = Modifier.height(Dimens.SmallSpacing))
+      tableContent()
+    }
+  }
+}
+
+/**
+ * Reusable "title + optional badge pill + 3-column (label/A/B) table" card. Powers all four
+ * dashboard summary sections and is generic enough for any future label+two-number report.
+ */
+@Composable
+fun StatTableCard(
+  title: String,
+  columnHeaderLabel: String,
+  columnHeaderA: String,
+  columnHeaderB: String,
+  rows: List<StatTableRow>,
+  headerBackgroundColor: Color,
+  headerTextColor: Color,
+  alternateRowColor: Color,
+  textColor: Color,
+  modifier: Modifier = Modifier,
+  badgeText: String? = null,
+  badgeBackgroundColor: Color = Color.Unspecified,
+  badgeTextColor: Color = Color.Unspecified,
+) {
+  StatCardChrome(
+    title = title,
+    textColor = textColor,
+    modifier = modifier,
+    badgeText = badgeText,
+    badgeBackgroundColor = badgeBackgroundColor,
+    badgeTextColor = badgeTextColor,
+  ) {
+    StatTable(
+      columnHeaderLabel = columnHeaderLabel,
+      columnHeaderA = columnHeaderA,
+      columnHeaderB = columnHeaderB,
+      rows = rows,
+      headerBackgroundColor = headerBackgroundColor,
+      headerTextColor = headerTextColor,
+      alternateRowColor = alternateRowColor,
+      textColor = textColor,
+    )
+  }
+}
+
+/**
+ * Bare "header row + label/A/B rows" table with no surrounding card, title or badge — the shared
+ * body of [StatTableCard], reusable inside a screen's own card wrapper (e.g. Registrations, which
+ * stacks a badge count and target lines above this table within a single card).
+ */
+@Composable
+fun StatTable(
+  columnHeaderLabel: String,
+  columnHeaderA: String,
+  columnHeaderB: String,
+  rows: List<StatTableRow>,
+  headerBackgroundColor: Color,
+  headerTextColor: Color,
+  alternateRowColor: Color,
+  textColor: Color,
+  modifier: Modifier = Modifier,
+) {
+  Column(modifier = modifier.fillMaxWidth()) {
+    Row(
+      modifier = Modifier.fillMaxWidth().height(Dimens.TableRowHeight).background(headerBackgroundColor),
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      TableCell(columnHeaderLabel, weight = 2f, color = headerTextColor)
+      TableCell(columnHeaderA, weight = 1f, color = headerTextColor)
+      TableCell(columnHeaderB, weight = 1f, color = headerTextColor)
+    }
+    rows.forEachIndexed { index, row ->
       Row(
-        modifier = Modifier.fillMaxWidth().height(Dimens.TableRowHeight).background(headerBackgroundColor),
+        modifier = Modifier
+          .fillMaxWidth()
+          .height(Dimens.TableRowHeight)
+          .background(if (index % 2 == 1) alternateRowColor else White),
         verticalAlignment = Alignment.CenterVertically,
       ) {
-        TableCell(columnHeaderLabel, weight = 2f, color = headerTextColor)
-        TableCell(columnHeaderA, weight = 1f, color = headerTextColor)
-        TableCell(columnHeaderB, weight = 1f, color = headerTextColor)
-      }
-      rows.forEachIndexed { index, row ->
-        Row(
-          modifier = Modifier
-            .fillMaxWidth()
-            .height(Dimens.TableRowHeight)
-            .background(if (index % 2 == 1) alternateRowColor else White),
-          verticalAlignment = Alignment.CenterVertically,
-        ) {
-          TableCell(row.label, weight = 2f, color = textColor)
-          TableCell("${row.valueA}", weight = 1f, color = textColor)
-          TableCell("${row.valueB}", weight = 1f, color = textColor)
-        }
+        TableCell(row.label, weight = 2f, color = textColor)
+        TableCell("${row.valueA}", weight = 1f, color = textColor)
+        TableCell("${row.valueB}", weight = 1f, color = textColor)
       }
     }
   }

@@ -1,8 +1,12 @@
 package org.armman.supervisor.ui.dashboard
 
+import androidx.compose.foundation.clickable
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import org.armman.supervisor.R
 import org.armman.supervisor.ui.components.StatTableCard
 import org.armman.supervisor.ui.components.StatTableRow
@@ -26,9 +30,15 @@ fun SummaryRowLabel.displayText(): String = stringResource(
   },
 )
 
-/** "<Title> + Current Month pill + Detail/Mother/Child table" card, reused for all four summary sections. */
+/** "<Title> + Current Month pill + Detail/Mother/Child table" card, reused for all four summary
+ * sections. Tapping the card navigates to that section's detail screen when [onClick] is set. */
 @Composable
-fun DashboardSummaryCard(title: String, rows: List<SummaryRow>, modifier: Modifier = Modifier) {
+fun DashboardSummaryCard(
+  title: String,
+  rows: List<SummaryRow>,
+  modifier: Modifier = Modifier,
+  onClick: (() -> Unit)? = null,
+) {
   StatTableCard(
     title = title,
     columnHeaderLabel = stringResource(R.string.table_header_detail),
@@ -42,6 +52,10 @@ fun DashboardSummaryCard(title: String, rows: List<SummaryRow>, modifier: Modifi
     badgeText = stringResource(R.string.current_month_label),
     badgeBackgroundColor = DashboardPillNeutral,
     badgeTextColor = NeutralG400,
-    modifier = modifier,
+    modifier = if (onClick != null) {
+      modifier.semantics { role = Role.Button }.clickable(onClick = onClick)
+    } else {
+      modifier
+    },
   )
 }
