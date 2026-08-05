@@ -53,7 +53,7 @@ fun MonitoringSummaryScreen(
 
       when (val state = uiState) {
         is MonitoringSummaryUiState.Loading -> LoadingContent()
-        is MonitoringSummaryUiState.Error -> ErrorContent(onRetry = viewModel::onRetry)
+        is MonitoringSummaryUiState.Error -> ErrorContent(state = state, onRetry = viewModel::onRetry)
         is MonitoringSummaryUiState.Success -> SuccessContent(
           state = state,
           isTablet = isTablet,
@@ -72,13 +72,16 @@ private fun LoadingContent() {
 }
 
 @Composable
-private fun ErrorContent(onRetry: () -> Unit) {
+private fun ErrorContent(state: MonitoringSummaryUiState.Error, onRetry: () -> Unit) {
   Column(
     modifier = Modifier.fillMaxSize().padding(Dimens.ScreenPadding),
     verticalArrangement = Arrangement.spacedBy(Dimens.ItemSpacing, Alignment.CenterVertically),
     horizontalAlignment = Alignment.CenterHorizontally,
   ) {
-    Text(text = stringResource(R.string.dashboard_error_generic), style = MaterialTheme.typography.bodyLarge)
+    Text(
+      text = state.exceptionMessage ?: stringResource(state.fallbackMessageRes),
+      style = MaterialTheme.typography.bodyLarge,
+    )
     PrimaryButton(text = stringResource(R.string.retry), onClick = onRetry)
   }
 }

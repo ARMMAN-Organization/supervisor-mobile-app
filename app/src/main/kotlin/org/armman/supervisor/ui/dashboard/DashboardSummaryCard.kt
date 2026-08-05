@@ -4,6 +4,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import org.armman.supervisor.R
 import org.armman.supervisor.ui.components.StatTableCard
 import org.armman.supervisor.ui.components.StatTableRow
@@ -49,6 +52,10 @@ fun DashboardSummaryCard(
     badgeText = stringResource(R.string.current_month_label),
     badgeBackgroundColor = DashboardPillNeutral,
     badgeTextColor = NeutralG400,
-    modifier = if (onClick != null) modifier.clickable(onClick = onClick) else modifier,
+    modifier = if (onClick != null) {
+      modifier.semantics { role = Role.Button }.clickable(onClick = onClick)
+    } else {
+      modifier
+    },
   )
 }

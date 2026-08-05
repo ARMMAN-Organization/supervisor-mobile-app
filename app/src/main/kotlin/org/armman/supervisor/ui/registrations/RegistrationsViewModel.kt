@@ -1,5 +1,6 @@
 package org.armman.supervisor.ui.registrations
 
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -9,6 +10,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import org.armman.supervisor.R
 import org.armman.supervisor.model.LocationOption
 import javax.inject.Inject
 
@@ -16,7 +18,8 @@ import javax.inject.Inject
 sealed interface RegistrationsUiState {
   data object Loading : RegistrationsUiState
 
-  data object Error : RegistrationsUiState
+  /** [exceptionMessage] is shown if present; otherwise the screen falls back to [fallbackMessageRes]. */
+  data class Error(@StringRes val fallbackMessageRes: Int, val exceptionMessage: String?) : RegistrationsUiState
 
   data class Success(
     val locations: List<LocationOption>,
@@ -59,7 +62,7 @@ class RegistrationsViewModel @Inject constructor(
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {
-        _uiState.value = RegistrationsUiState.Error
+        _uiState.value = RegistrationsUiState.Error(R.string.dashboard_error_generic, e.message)
       }
     }
   }
@@ -73,7 +76,7 @@ class RegistrationsViewModel @Inject constructor(
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {
-        _uiState.value = RegistrationsUiState.Error
+        _uiState.value = RegistrationsUiState.Error(R.string.dashboard_error_generic, e.message)
       }
     }
   }
