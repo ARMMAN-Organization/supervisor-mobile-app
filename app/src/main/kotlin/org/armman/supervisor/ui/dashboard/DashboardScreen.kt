@@ -130,15 +130,15 @@ private fun SummarySections(data: DashboardData, onNavigate: (String) -> Unit) {
     Triple(stringResource(R.string.visit_summary_title), data.visitSummary, Routes.VISIT_SUMMARY),
     Triple(stringResource(R.string.registration_summary_title), data.registrationSummary, Routes.REGISTRATIONS),
     Triple(stringResource(R.string.risk_summary_title), data.riskSummary, Routes.RISK_SUMMARY),
-    Triple(stringResource(R.string.monitoring_summary_title), data.monitoringSummary, Routes.MONITORING_SUMMARY),
+    Triple(stringResource(R.string.monitoring_summary_title), data.monitoringSummary, null),
   )
 
   cards.forEach { (title, rows, route) ->
     DashboardSummaryCard(
       title = title,
       rows = rows,
-      onClick = { onNavigate(route) },
-      modifier = Modifier.padding(horizontal = Dimens.ScreenPadding, vertical = Dimens.SmallSpacing),
+      onClick = route?.let { { onNavigate(it) } },
+      modifier = Modifier.padding(horizontal = Dimens.StatCardScreenPadding, vertical = Dimens.SmallSpacing),
     )
   }
 }

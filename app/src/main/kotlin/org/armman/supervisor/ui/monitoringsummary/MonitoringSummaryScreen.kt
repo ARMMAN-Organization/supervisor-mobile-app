@@ -96,7 +96,7 @@ private fun SuccessContent(
     modifier = Modifier
       .fillMaxSize()
       .verticalScroll(rememberScrollState())
-      .padding(Dimens.ScreenPadding),
+      .padding(Dimens.StatCardScreenPadding),
     verticalArrangement = Arrangement.spacedBy(Dimens.ItemSpacing),
   ) {
     SingleSelectDropdown(

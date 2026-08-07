@@ -6,6 +6,7 @@ data class VillageRegistrationRow(val villageName: String, val motherCount: Int,
 /** One Sakhi's card on the Registrations screen: name, badge total, mother/child targets, and
  * her villages' registration rows. */
 data class SakhiRegistrationSummary(
+  val sakhiId: String,
   val sakhiName: String,
   val badgeCount: Int,
   val motherTarget: Int,

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <!-- Mirrors ui/theme/Color.kt's BackgroundLavender — used as the window background so the
+       first painted frame already matches Compose content, instead of the AppCompat default
+       white flashing during navigation transitions. -->
+  <color name="background_lavender">#F1EDF9</color>
+</resources>

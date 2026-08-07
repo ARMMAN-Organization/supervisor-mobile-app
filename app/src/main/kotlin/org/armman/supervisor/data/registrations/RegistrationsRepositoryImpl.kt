@@ -22,6 +22,7 @@ class RegistrationsRepositoryImpl @Inject constructor(
     val seed = locationId?.hashCode()?.mod(SEED_RANGE) ?: 0
     return listOf(
       SakhiRegistrationSummary(
+        sakhiId = "sakhi-komal",
         sakhiName = "SakhiKomal",
         badgeCount = 2 + seed,
         motherTarget = 0,
@@ -29,6 +30,7 @@ class RegistrationsRepositoryImpl @Inject constructor(
         villages = listOf(VillageRegistrationRow("SushilTest", motherCount = 1, childCount = 1)),
       ),
       SakhiRegistrationSummary(
+        sakhiId = "sakhi-meera",
         sakhiName = "SakhiMeera",
         badgeCount = 1 + seed,
         motherTarget = 0,

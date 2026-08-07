@@ -12,6 +12,7 @@ import org.armman.supervisor.R
 import org.armman.supervisor.ui.assignitem.AddItemTransactionScreen
 import org.armman.supervisor.ui.assignitem.AssignItemDetailScreen
 import org.armman.supervisor.ui.assignitem.AssignItemScreen
+import org.armman.supervisor.ui.beneficiaries.BeneficiaryListScreen
 import org.armman.supervisor.ui.callsheet.CallHistoryScreen
 import org.armman.supervisor.ui.callsheet.CallOutcomeScreen
 import org.armman.supervisor.ui.callsheet.CallSheetScreen
@@ -28,10 +29,15 @@ import org.armman.supervisor.ui.meetingtraining.RescheduleMeetingScreen
 import org.armman.supervisor.ui.meetingtraining.ScheduleMeetingScreen
 import org.armman.supervisor.ui.meetingtraining.ScheduleTrainingScreen
 import org.armman.supervisor.ui.monitoringsummary.MonitoringSummaryScreen
+import org.armman.supervisor.ui.quickresponse.AddReasonScreen
+import org.armman.supervisor.ui.quickresponse.QuickResponseScreen
 import org.armman.supervisor.ui.registrations.RegistrationsScreen
 import org.armman.supervisor.ui.risksummary.RiskSummaryScreen
 import org.armman.supervisor.ui.settings.SettingsScreen
+import org.armman.supervisor.ui.villagerisksummary.VillageRiskDetailScreen
 import org.armman.supervisor.ui.visitsummary.VisitSummaryScreen
+import java.net.URLDecoder
+import java.net.URLEncoder
 
 object Routes {
   const val LOGIN = "login"
@@ -42,6 +48,14 @@ object Routes {
   const val RISK_SUMMARY = "risk_summary"
   const val MONITORING_SUMMARY = "monitoring_summary"
   const val REGISTRATIONS = "registrations"
+  const val SAKHI_BENEFICIARIES_SAKHI_ID_ARG = "sakhiId"
+  const val SAKHI_BENEFICIARIES = "sakhi_beneficiaries/{$SAKHI_BENEFICIARIES_SAKHI_ID_ARG}"
+  const val VILLAGE_RISK_DETAIL_VILLAGE_ID_ARG = "villageId"
+  const val VILLAGE_RISK_DETAIL_VILLAGE_NAME_ARG = "villageName"
+  const val VILLAGE_RISK_DETAIL_SAKHI_NAME_ARG = "sakhiName"
+  const val VILLAGE_RISK_DETAIL =
+    "village_risk_detail/{$VILLAGE_RISK_DETAIL_VILLAGE_ID_ARG}/{$VILLAGE_RISK_DETAIL_VILLAGE_NAME_ARG}" +
+      "/{$VILLAGE_RISK_DETAIL_SAKHI_NAME_ARG}"
   const val ITEMS = "items"
   const val ASSIGN_ITEM_DETAIL_SAKHI_ID_ARG = "sakhiId"
   const val ADD_ITEM_TRANSACTION_EDIT_ID_ARG = "editTransactionId"
@@ -67,9 +81,20 @@ object Routes {
   const val CALL_HISTORY = "call_history/{$CALL_SHEET_SAKHI_ID_ARG}"
   const val CALL_OUTCOME = "call_outcome/{$CALL_SHEET_SAKHI_ID_ARG}"
   const val QUICK_RESPONSE = "quick_response"
+  const val QUICK_RESPONSE_REQUEST_ID_ARG = "requestId"
+  const val QUICK_RESPONSE_ADD_REASON = "quick_response_add_reason/{$QUICK_RESPONSE_REQUEST_ID_ARG}"
   const val PROFILE = "profile"
   const val SETTINGS = "settings"
   const val NOTIFICATIONS = "notifications"
+
+  fun sakhiBeneficiaries(sakhiId: String) = "sakhi_beneficiaries/$sakhiId"
+
+  fun villageRiskDetail(villageId: String, villageName: String, sakhiName: String): String {
+    val encodedVillageId = URLEncoder.encode(villageId, Charsets.UTF_8.name())
+    val encodedVillageName = URLEncoder.encode(villageName, Charsets.UTF_8.name())
+    val encodedSakhiName = URLEncoder.encode(sakhiName, Charsets.UTF_8.name())
+    return "village_risk_detail/$encodedVillageId/$encodedVillageName/$encodedSakhiName"
+  }
 
   fun assignItemDetail(sakhiId: String) = "assign_item_detail/$sakhiId"
 
@@ -79,6 +104,8 @@ object Routes {
   fun callHistory(sakhiId: String) = "call_history/$sakhiId"
 
   fun callOutcome(sakhiId: String) = "call_outcome/$sakhiId"
+
+  fun quickResponseAddReason(requestId: String) = "quick_response_add_reason/$requestId"
 
   fun meetingDetail(eventId: String) = "meeting_detail/$eventId"
 
@@ -119,13 +146,37 @@ fun AppNavHost() {
       VisitSummaryScreen(onBack = { navController.popBackStack() })
     }
     composable(Routes.RISK_SUMMARY) {
-      RiskSummaryScreen(onBack = { navController.popBackStack() })
+      RiskSummaryScreen(
+        onBack = { navController.popBackStack() },
+        onVillageSelected = { villageId, villageName, sakhiName ->
+          navController.navigate(Routes.villageRiskDetail(villageId, villageName, sakhiName))
+        },
+      )
+    }
+    composable(
+      Routes.VILLAGE_RISK_DETAIL,
+      arguments = listOf(
+        navArgument(Routes.VILLAGE_RISK_DETAIL_VILLAGE_ID_ARG) { type = NavType.StringType },
+        navArgument(Routes.VILLAGE_RISK_DETAIL_VILLAGE_NAME_ARG) { type = NavType.StringType },
+        navArgument(Routes.VILLAGE_RISK_DETAIL_SAKHI_NAME_ARG) { type = NavType.StringType },
+      ),
+    ) {
+      VillageRiskDetailScreen(onBack = { navController.popBackStack() })
     }
     composable(Routes.MONITORING_SUMMARY) {
       MonitoringSummaryScreen(onBack = { navController.popBackStack() })
     }
     composable(Routes.REGISTRATIONS) {
-      RegistrationsScreen(onBack = { navController.popBackStack() })
+      RegistrationsScreen(
+        onBack = { navController.popBackStack() },
+        onSakhiSelected = { sakhiId -> navController.navigate(Routes.sakhiBeneficiaries(sakhiId)) },
+      )
+    }
+    composable(
+      Routes.SAKHI_BENEFICIARIES,
+      arguments = listOf(navArgument(Routes.SAKHI_BENEFICIARIES_SAKHI_ID_ARG) { type = NavType.StringType }),
+    ) {
+      BeneficiaryListScreen(onBack = { navController.popBackStack() })
     }
     composable(Routes.ITEMS) {
       AssignItemScreen(
@@ -276,7 +327,19 @@ fun AppNavHost() {
       )
     }
     composable(Routes.QUICK_RESPONSE) {
-      PlaceholderStub(navController, R.string.quick_action_quick_response)
+      QuickResponseScreen(
+        onBack = { navController.popBackStack() },
+        onRequestSelected = { request -> navController.navigate(Routes.quickResponseAddReason(request.id)) },
+      )
+    }
+    composable(
+      Routes.QUICK_RESPONSE_ADD_REASON,
+      arguments = listOf(navArgument(Routes.QUICK_RESPONSE_REQUEST_ID_ARG) { type = NavType.StringType }),
+    ) {
+      AddReasonScreen(
+        onBack = { navController.popBackStack() },
+        onSubmitted = { navController.popBackStack() },
+      )
     }
     composable(Routes.PROFILE) {
       PlaceholderStub(navController, R.string.profile_title)

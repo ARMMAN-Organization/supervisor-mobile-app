@@ -36,10 +36,11 @@ import org.armman.supervisor.ui.theme.NeutralG50
 import org.armman.supervisor.ui.theme.White
 
 /** Risk Summary detail screen: location filter + one Village/Mother/Child table per Sakhi.
- * Village names render as plain table cells — no white pill, no link color. */
+ * Village names are tappable, navigating to the per-village beneficiary risk detail screen. */
 @Composable
 fun RiskSummaryScreen(
   onBack: () -> Unit,
+  onVillageSelected: (villageId: String, villageName: String, sakhiName: String) -> Unit,
   modifier: Modifier = Modifier,
   viewModel: RiskSummaryViewModel = hiltViewModel(),
 ) {
@@ -59,6 +60,7 @@ fun RiskSummaryScreen(
           state = state,
           isTablet = isTablet,
           onLocationSelected = viewModel::onLocationSelected,
+          onVillageSelected = onVillageSelected,
         )
       }
     }
@@ -92,12 +94,13 @@ private fun SuccessContent(
   state: RiskSummaryUiState.Success,
   isTablet: Boolean,
   onLocationSelected: (String) -> Unit,
+  onVillageSelected: (villageId: String, villageName: String, sakhiName: String) -> Unit,
 ) {
   Column(
     modifier = Modifier
       .fillMaxSize()
       .verticalScroll(rememberScrollState())
-      .padding(Dimens.ScreenPadding),
+      .padding(Dimens.StatCardScreenPadding),
     verticalArrangement = Arrangement.spacedBy(Dimens.ItemSpacing),
   ) {
     SingleSelectDropdown(
@@ -127,6 +130,7 @@ private fun SuccessContent(
           badgeText = stringResource(R.string.current_month_label),
           badgeBackgroundColor = DashboardPillNeutral,
           badgeTextColor = NeutralG400,
+          onRowClick = { row -> onVillageSelected(row.label, row.label, sakhi.sakhiName) },
         )
       }
     }
