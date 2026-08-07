@@ -1,5 +1,6 @@
 package org.armman.supervisor.ui.registrations
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -11,9 +12,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -24,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -50,6 +51,7 @@ import org.armman.supervisor.ui.theme.softShadow
 @Composable
 fun RegistrationsScreen(
   onBack: () -> Unit,
+  onSakhiSelected: (String) -> Unit,
   modifier: Modifier = Modifier,
   viewModel: RegistrationsViewModel = hiltViewModel(),
 ) {
@@ -69,6 +71,7 @@ fun RegistrationsScreen(
           state = state,
           isTablet = isTablet,
           onLocationSelected = viewModel::onLocationSelected,
+          onSakhiSelected = onSakhiSelected,
         )
       }
     }
@@ -102,12 +105,13 @@ private fun SuccessContent(
   state: RegistrationsUiState.Success,
   isTablet: Boolean,
   onLocationSelected: (String) -> Unit,
+  onSakhiSelected: (String) -> Unit,
 ) {
   Column(
     modifier = Modifier
       .fillMaxSize()
       .verticalScroll(rememberScrollState())
-      .padding(Dimens.ScreenPadding),
+      .padding(Dimens.StatCardScreenPadding),
     verticalArrangement = Arrangement.spacedBy(Dimens.ItemSpacing),
   ) {
     SingleSelectDropdown(
@@ -123,25 +127,24 @@ private fun SuccessContent(
         Text(text = stringResource(R.string.registrations_empty), style = MaterialTheme.typography.bodyLarge)
       }
     } else {
-      state.sakhis.forEach { sakhi -> SakhiRegistrationCard(sakhi) }
+      state.sakhis.forEach { sakhi -> SakhiRegistrationCard(sakhi, onClick = { onSakhiSelected(sakhi.sakhiId) }) }
     }
   }
 }
 
 @Composable
-private fun SakhiRegistrationCard(sakhi: SakhiRegistrationSummary) {
+private fun SakhiRegistrationCard(sakhi: SakhiRegistrationSummary, onClick: () -> Unit) {
   Surface(
     color = White,
-    shape = RoundedCornerShape(Dimens.CardRadius),
-    modifier = Modifier.fillMaxWidth().softShadow(Dimens.CardRadius),
+    shape = RoundedCornerShape(Dimens.StatCardRadius),
+    modifier = Modifier.fillMaxWidth().softShadow(Dimens.StatCardRadius).clickable(onClick = onClick),
   ) {
-    Column(modifier = Modifier.padding(Dimens.TilePadding)) {
+    Column(modifier = Modifier.padding(Dimens.StatCardTilePadding)) {
       Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(text = sakhi.sakhiName, style = SerifTitle, color = NeutralG400, modifier = Modifier.weight(1f))
-        Icon(
-          imageVector = Icons.Filled.Groups,
+        Image(
+          painter = painterResource(R.drawable.arogya),
           contentDescription = stringResource(R.string.cd_registration_badge_icon),
-          tint = DashboardKpiGreen,
           modifier = Modifier.size(Dimens.RegistrationBadgeIconSize),
         )
         Text(

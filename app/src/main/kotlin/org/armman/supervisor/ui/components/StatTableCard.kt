@@ -1,6 +1,7 @@
 package org.armman.supervisor.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -18,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import org.armman.supervisor.ui.theme.Dimens
+import org.armman.supervisor.ui.theme.Primary
 import org.armman.supervisor.ui.theme.SerifTitle
 import org.armman.supervisor.ui.theme.White
 import org.armman.supervisor.ui.theme.softShadow
@@ -43,10 +45,10 @@ fun StatCardChrome(
 ) {
   Surface(
     color = White,
-    shape = RoundedCornerShape(Dimens.CardRadius),
-    modifier = modifier.fillMaxWidth().softShadow(Dimens.CardRadius),
+    shape = RoundedCornerShape(Dimens.StatCardRadius),
+    modifier = modifier.fillMaxWidth().softShadow(Dimens.StatCardRadius),
   ) {
-    Column(modifier = Modifier.padding(Dimens.TilePadding)) {
+    Column(modifier = Modifier.padding(Dimens.StatCardTilePadding)) {
       Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(text = title, style = SerifTitle, color = textColor, modifier = Modifier.weight(1f))
         if (badgeText != null) {
@@ -85,6 +87,7 @@ fun StatTableCard(
   badgeText: String? = null,
   badgeBackgroundColor: Color = Color.Unspecified,
   badgeTextColor: Color = Color.Unspecified,
+  onRowClick: ((StatTableRow) -> Unit)? = null,
 ) {
   StatCardChrome(
     title = title,
@@ -103,6 +106,7 @@ fun StatTableCard(
       headerTextColor = headerTextColor,
       alternateRowColor = alternateRowColor,
       textColor = textColor,
+      onRowClick = onRowClick,
     )
   }
 }
@@ -123,6 +127,7 @@ fun StatTable(
   alternateRowColor: Color,
   textColor: Color,
   modifier: Modifier = Modifier,
+  onRowClick: ((StatTableRow) -> Unit)? = null,
 ) {
   Column(modifier = modifier.fillMaxWidth()) {
     Row(
@@ -141,9 +146,13 @@ fun StatTable(
           .background(if (index % 2 == 1) alternateRowColor else White),
         verticalAlignment = Alignment.CenterVertically,
       ) {
-        TableCell(row.label, weight = 2f, color = textColor)
-        TableCell("${row.valueA}", weight = 1f, color = textColor)
-        TableCell("${row.valueB}", weight = 1f, color = textColor)
+        VillageLabelCell(
+          text = row.label,
+          textColor = textColor,
+          onClick = onRowClick?.let { { it(row) } },
+        )
+        TableCell(text = "${row.valueA}", weight = 1f, color = textColor)
+        TableCell(text = "${row.valueB}", weight = 1f, color = textColor)
       }
     }
   }
@@ -158,4 +167,31 @@ private fun RowScope.TableCell(text: String, weight: Float, color: Color) {
     modifier = Modifier.weight(weight).padding(horizontal = Dimens.SmallSpacing),
     textAlign = if (weight == 2f) TextAlign.Start else TextAlign.Center,
   )
+}
+
+/**
+ * Village label cell for the first table column. When [onClick] is non-null the label renders as
+ * a white pill button (rounded [Surface] + soft shadow) so it visibly reads as tappable, rather
+ * than relying on link-colored text alone.
+ */
+@Composable
+private fun RowScope.VillageLabelCell(text: String, textColor: Color, onClick: (() -> Unit)? = null) {
+  if (onClick == null) {
+    TableCell(text = text, weight = 2f, color = textColor)
+    return
+  }
+  Row(modifier = Modifier.weight(2f).padding(horizontal = Dimens.SmallSpacing, vertical = Dimens.ExtraSmallSpacing)) {
+    Surface(
+      color = White,
+      shape = RoundedCornerShape(Dimens.SmallRadius),
+      modifier = Modifier.softShadow(Dimens.SmallRadius).clickable(onClick = onClick),
+    ) {
+      Text(
+        text = text,
+        style = MaterialTheme.typography.bodyMedium,
+        color = Primary,
+        modifier = Modifier.padding(horizontal = Dimens.SmallSpacing, vertical = Dimens.ExtraSmallSpacing),
+      )
+    }
+  }
 }

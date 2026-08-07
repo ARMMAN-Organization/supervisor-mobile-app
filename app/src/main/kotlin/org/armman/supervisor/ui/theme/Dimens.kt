@@ -15,6 +15,20 @@ object Dimens {
   val SheetRadius = 40.dp
   val PillButtonPaddingH = 16.dp
 
+  /** Corner radius for [org.armman.supervisor.ui.components.StatTableCard]/[org.armman.supervisor.ui.components.StatCardChrome]
+   * (Dashboard summary cards and their Risk/Visit/Monitoring/Registration screen equivalents) —
+   * intentionally tighter than [CardRadius] per explicit request to reduce rounding on these cards. */
+  val StatCardRadius = 10.dp
+
+  /** Outer screen padding used specifically by Dashboard-style summary screens (Dashboard,
+   * Risk/Visit/Monitoring Summary, Registrations) so their cards sit closer to the screen edge,
+   * per explicit request. Other screens keep [ScreenPadding]. */
+  val StatCardScreenPadding = 16.dp
+
+  /** Internal chrome padding for [org.armman.supervisor.ui.components.StatCardChrome] — tighter
+   * than [TilePadding] per explicit request to reduce whitespace inside Dashboard/summary cards. */
+  val StatCardTilePadding = 12.dp
+
   /** Corner radius for compact inputs/banners (text fields, status banners). */
   val SmallRadius = 8.dp
 

@@ -31,10 +31,12 @@ class RegistrationsViewModelTest {
     private val locations: List<LocationOption> = listOf(LocationOption("loc-1", "Zone A"), LocationOption("loc-2", "Zone B")),
     private val sakhisByLocation: Map<String, List<SakhiRegistrationSummary>> = mapOf(
       "loc-1" to listOf(
-        SakhiRegistrationSummary("SakhiKomal", 2, 0, 0, listOf(VillageRegistrationRow("SushilTest", 1, 1))),
-        SakhiRegistrationSummary("SakhiMeera", 1, 0, 0, listOf(VillageRegistrationRow("SushilTest1", 1, 0))),
+        SakhiRegistrationSummary("sakhi-komal", "SakhiKomal", 2, 0, 0, listOf(VillageRegistrationRow("SushilTest", 1, 1))),
+        SakhiRegistrationSummary("sakhi-meera", "SakhiMeera", 1, 0, 0, listOf(VillageRegistrationRow("SushilTest1", 1, 0))),
       ),
-      "loc-2" to listOf(SakhiRegistrationSummary("SakhiAsha", 3, 1, 1, listOf(VillageRegistrationRow("Village2", 2, 1)))),
+      "loc-2" to listOf(
+        SakhiRegistrationSummary("sakhi-asha", "SakhiAsha", 3, 1, 1, listOf(VillageRegistrationRow("Village2", 2, 1))),
+      ),
     ),
     private var shouldFail: Boolean = false,
   ) : RegistrationsRepository {
@@ -95,7 +97,7 @@ class RegistrationsViewModelTest {
   @Test
   fun `large number of sakhi groups is not truncated`() = runTest(dispatcher) {
     val many = (1..20).map {
-      SakhiRegistrationSummary("Sakhi$it", it, 0, 0, listOf(VillageRegistrationRow("Village$it", it, 0)))
+      SakhiRegistrationSummary("sakhi-$it", "Sakhi$it", it, 0, 0, listOf(VillageRegistrationRow("Village$it", it, 0)))
     }
     val viewModel = RegistrationsViewModel(TestRepository(sakhisByLocation = mapOf("loc-1" to many)))
     dispatcher.scheduler.advanceUntilIdle()

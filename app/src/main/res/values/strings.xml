@@ -274,6 +274,68 @@
   <string name="dashboard_error_generic">Something went wrong. Please try again.</string>
   <string name="retry">Retry</string>
 
+  <!-- Beneficiary list -->
+  <string name="beneficiary_search_placeholder">Enter Beneficiary Name</string>
+  <string name="beneficiary_project_label">Project</string>
+  <string name="beneficiary_address_label">Address</string>
+  <string name="beneficiary_count">%1$d Beneficiaries</string>
+  <string name="beneficiary_empty">No beneficiaries registered yet</string>
+  <string name="beneficiary_search_empty">No beneficiaries match your search</string>
+  <string name="beneficiary_type_mother">Mother</string>
+  <string name="beneficiary_type_child">Deliver Child</string>
+  <string name="beneficiary_label_registration_date">Registration Date</string>
+  <string name="beneficiary_label_birthdate">Birthdate</string>
+  <string name="beneficiary_label_edd">EDD</string>
+  <string name="beneficiary_label_lmp">LMP</string>
+  <string name="beneficiary_label_phone">Phone</string>
+  <string name="beneficiary_label_height_short">Ht</string>
+  <string name="beneficiary_label_weight_short">Wt</string>
+  <string name="beneficiary_label_bmi_short">BMI</string>
+  <string name="beneficiary_value_unavailable">—</string>
+
+  <!-- Village Risk Detail -->
+  <string name="village_risk_detail_village_name_label">Village Name</string>
+  <string name="village_risk_detail_tab_mother">Mother</string>
+  <string name="village_risk_detail_tab_child">Child</string>
+  <string name="village_risk_detail_label_registration_type">Registration Type</string>
+  <string name="village_risk_detail_label_risk_details">Risk Details</string>
+  <string name="village_risk_detail_label_risk_type">Risk Type</string>
+  <string name="village_risk_detail_label_visit">Visit</string>
+  <string name="village_risk_detail_label_visit_date">Visit Date</string>
+  <string name="village_risk_detail_label_referred">Referred</string>
+  <string name="village_risk_detail_referred_yes">Referred</string>
+  <string name="village_risk_detail_referred_no">Not referred</string>
+  <string name="village_risk_detail_risk_level_high">High</string>
+  <string name="village_risk_detail_risk_level_moderate">Moderate</string>
+  <string name="village_risk_detail_risk_level_mild">Mild</string>
+  <string name="village_risk_detail_risk_level_low">Low</string>
+  <string name="village_risk_detail_empty">No beneficiaries found for this village</string>
+  <string name="village_risk_detail_empty_mothers">No mothers found for this village</string>
+  <string name="village_risk_detail_empty_children">No children found for this village</string>
+
+  <!-- Quick Response -->
+  <string name="quick_response_error_load">Unable to load Quick Response requests</string>
+  <string name="quick_response_empty">No pending requests</string>
+  <string name="quick_response_field_request_type">Request Type:</string>
+  <string name="quick_response_field_project">Project:</string>
+  <string name="quick_response_field_sakhi_name">Sakhi Name:</string>
+  <string name="quick_response_field_request_status">Request Status:</string>
+  <string name="quick_response_type_data_restore">Data Restore</string>
+  <string name="quick_response_status_pending">Pending</string>
+  <string name="quick_response_status_approved">Approved</string>
+  <string name="quick_response_status_rejected">Rejected</string>
+  <string name="quick_response_status_restored">Restored</string>
+  <string name="quick_response_add_reason_title">Add reason</string>
+  <string name="quick_response_reason_label">Reason</string>
+  <string name="quick_response_select_reason">Select Reason</string>
+  <string name="quick_response_reason_restored">Restored</string>
+  <string name="quick_response_reason_pending">Pending</string>
+  <string name="quick_response_reason_reject">Reject</string>
+  <string name="quick_response_reason_approve">Approve</string>
+  <string name="quick_response_submit">Submit</string>
+  <string name="quick_response_error_reason_required">Please select a reason</string>
+  <string name="quick_response_error_submit">Failed to submit reason</string>
+
   <!-- Placeholder destinations -->
   <string name="placeholder_coming_soon">Coming soon</string>
   <string name="cd_back">Back</string>

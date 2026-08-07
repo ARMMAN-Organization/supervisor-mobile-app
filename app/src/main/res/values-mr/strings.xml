@@ -274,6 +274,68 @@
   <string name="dashboard_error_generic">काहीतरी चुकले. कृपया पुन्हा प्रयत्न करा.</string>
   <string name="retry">पुन्हा प्रयत्न करा</string>
 
+  <!-- Beneficiary list -->
+  <string name="beneficiary_search_placeholder">लाभार्थीचे नाव प्रविष्ट करा</string>
+  <string name="beneficiary_project_label">प्रकल्प</string>
+  <string name="beneficiary_address_label">पत्ता</string>
+  <string name="beneficiary_count">%1$d लाभार्थी</string>
+  <string name="beneficiary_empty">अद्याप कोणतेही लाभार्थी नोंदणीकृत नाहीत</string>
+  <string name="beneficiary_search_empty">तुमच्या शोधाशी जुळणारे कोणतेही लाभार्थी नाहीत</string>
+  <string name="beneficiary_type_mother">माता</string>
+  <string name="beneficiary_type_child">बालक प्रसूती</string>
+  <string name="beneficiary_label_registration_date">नोंदणी दिनांक</string>
+  <string name="beneficiary_label_birthdate">जन्मतारीख</string>
+  <string name="beneficiary_label_edd">अपेक्षित प्रसूती तारीख</string>
+  <string name="beneficiary_label_lmp">शेवटची मासिक पाळी तारीख</string>
+  <string name="beneficiary_label_phone">फोन</string>
+  <string name="beneficiary_label_height_short">उंची</string>
+  <string name="beneficiary_label_weight_short">वजन</string>
+  <string name="beneficiary_label_bmi_short">बीएमआय</string>
+  <string name="beneficiary_value_unavailable">—</string>
+
+  <!-- Village Risk Detail -->
+  <string name="village_risk_detail_village_name_label">गाव</string>
+  <string name="village_risk_detail_tab_mother">माता</string>
+  <string name="village_risk_detail_tab_child">बालक</string>
+  <string name="village_risk_detail_label_registration_type">नोंदणी प्रकार</string>
+  <string name="village_risk_detail_label_risk_details">जोखीम तपशील</string>
+  <string name="village_risk_detail_label_risk_type">जोखीम प्रकार</string>
+  <string name="village_risk_detail_label_visit">भेट</string>
+  <string name="village_risk_detail_label_visit_date">भेट तारीख</string>
+  <string name="village_risk_detail_label_referred">संदर्भित</string>
+  <string name="village_risk_detail_referred_yes">संदर्भित</string>
+  <string name="village_risk_detail_referred_no">संदर्भित नाही</string>
+  <string name="village_risk_detail_risk_level_high">उच्च</string>
+  <string name="village_risk_detail_risk_level_moderate">मध्यम</string>
+  <string name="village_risk_detail_risk_level_mild">सौम्य</string>
+  <string name="village_risk_detail_risk_level_low">कमी</string>
+  <string name="village_risk_detail_empty">या गावासाठी कोणतेही लाभार्थी आढळले नाहीत</string>
+  <string name="village_risk_detail_empty_mothers">या गावासाठी कोणतीही माता आढळली नाही</string>
+  <string name="village_risk_detail_empty_children">या गावासाठी कोणतेही बालक आढळले नाही</string>
+
+  <!-- Quick Response -->
+  <string name="quick_response_error_load">त्वरित प्रतिसाद विनंत्या लोड करता आल्या नाहीत</string>
+  <string name="quick_response_empty">कोणतीही प्रलंबित विनंती नाही</string>
+  <string name="quick_response_field_request_type">विनंतीचा प्रकार:</string>
+  <string name="quick_response_field_project">प्रोजेक्ट:</string>
+  <string name="quick_response_field_sakhi_name">सखीचे नाव:</string>
+  <string name="quick_response_field_request_status">विनंतीची स्थिती:</string>
+  <string name="quick_response_type_data_restore">डेटा रिस्टोर</string>
+  <string name="quick_response_status_pending">प्रलंबित</string>
+  <string name="quick_response_status_approved">मंजूर</string>
+  <string name="quick_response_status_rejected">नामंजूर</string>
+  <string name="quick_response_status_restored">रिस्टोर केले</string>
+  <string name="quick_response_add_reason_title">कारण जोडा</string>
+  <string name="quick_response_reason_label">कारण</string>
+  <string name="quick_response_select_reason">कारण निवडा</string>
+  <string name="quick_response_reason_restored">रिस्टोर केले</string>
+  <string name="quick_response_reason_pending">प्रलंबित</string>
+  <string name="quick_response_reason_reject">नामंजूर</string>
+  <string name="quick_response_reason_approve">मंजूर</string>
+  <string name="quick_response_submit">सबमिट करा</string>
+  <string name="quick_response_error_reason_required">कृपया एक कारण निवडा</string>
+  <string name="quick_response_error_submit">कारण सबमिट करता आले नाही</string>
+
   <!-- Placeholder destinations -->
   <string name="placeholder_coming_soon">लवकरच येत आहे</string>
   <string name="cd_back">मागे</string>
