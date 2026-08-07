@@ -20,6 +20,7 @@ class VillageRiskDetailViewModel @Inject constructor(
   savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
   private val villageId: String = decode(checkNotNull(savedStateHandle[VILLAGE_ID_ARG]))
+  private val villageName: String = decode(checkNotNull(savedStateHandle[VILLAGE_NAME_ARG]))
   private val sakhiName: String = decode(checkNotNull(savedStateHandle[SAKHI_NAME_ARG]))
 
   private val _uiState = MutableStateFlow<VillageRiskDetailUiState>(VillageRiskDetailUiState.Loading)
@@ -47,7 +48,7 @@ class VillageRiskDetailViewModel @Inject constructor(
       try {
         val detail = repository.getVillageRiskDetail(villageId)
         _uiState.value = VillageRiskDetailUiState.Success(
-          villageName = detail.villageName,
+          villageName = villageName.ifBlank { detail.villageName },
           sakhiName = sakhiName,
           mothers = detail.mothers,
           children = detail.children,
@@ -63,6 +64,7 @@ class VillageRiskDetailViewModel @Inject constructor(
 
   companion object {
     const val VILLAGE_ID_ARG = "villageId"
+    const val VILLAGE_NAME_ARG = "villageName"
     const val SAKHI_NAME_ARG = "sakhiName"
 
     private fun decode(value: String): String = URLDecoder.decode(value, Charsets.UTF_8.name())

@@ -66,6 +66,7 @@ class VillageRiskDetailViewModelTest {
 
   private fun viewModel(
     villageId: String = "SushilTest",
+    villageName: String = villageId,
     sakhiName: String = "SakhiKomal",
     repository: VillageRiskDetailRepository = TestRepository(
       mapOf("SushilTest" to VillageRiskDetail("SushilTest", listOf(mother), listOf(child))),
@@ -75,6 +76,7 @@ class VillageRiskDetailViewModelTest {
     SavedStateHandle(
       mapOf(
         VillageRiskDetailViewModel.VILLAGE_ID_ARG to villageId,
+        VillageRiskDetailViewModel.VILLAGE_NAME_ARG to villageName,
         VillageRiskDetailViewModel.SAKHI_NAME_ARG to sakhiName,
       ),
     ),
@@ -168,13 +170,38 @@ class VillageRiskDetailViewModelTest {
   }
 
   @Test
-  fun `village id and sakhi name are URL-decoded from nav args`() = runTest(dispatcher) {
+  fun `village id, village name and sakhi name are URL-decoded from nav args`() = runTest(dispatcher) {
     val repo = TestRepository(mapOf("Sushil Test" to VillageRiskDetail("Sushil Test", listOf(mother), emptyList())))
-    val vm = viewModel(villageId = "Sushil%20Test", sakhiName = "Sakhi%20Komal", repository = repo)
+    val vm = viewModel(
+      villageId = "Sushil%20Test",
+      villageName = "Sushil%20Test",
+      sakhiName = "Sakhi%20Komal",
+      repository = repo,
+    )
     dispatcher.scheduler.advanceUntilIdle()
 
     val state = vm.uiState.value as VillageRiskDetailUiState.Success
     assertEquals("Sushil Test", state.villageName)
     assertEquals("Sakhi Komal", state.sakhiName)
+  }
+
+  @Test
+  fun `displayed village name comes from the nav arg, not the opaque village id`() = runTest(dispatcher) {
+    val repo = TestRepository(mapOf("village-42" to VillageRiskDetail("village-42", listOf(mother), emptyList())))
+    val vm = viewModel(villageId = "village-42", villageName = "Sushil Test", repository = repo)
+    dispatcher.scheduler.advanceUntilIdle()
+
+    val state = vm.uiState.value as VillageRiskDetailUiState.Success
+    assertEquals("Sushil Test", state.villageName)
+  }
+
+  @Test
+  fun `blank village name arg falls back to the repository's village name`() = runTest(dispatcher) {
+    val repo = TestRepository(mapOf("SushilTest" to VillageRiskDetail("SushilTest", listOf(mother), emptyList())))
+    val vm = viewModel(villageName = "", repository = repo)
+    dispatcher.scheduler.advanceUntilIdle()
+
+    val state = vm.uiState.value as VillageRiskDetailUiState.Success
+    assertEquals("SushilTest", state.villageName)
   }
 }

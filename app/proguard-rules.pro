@@ -41,6 +41,11 @@
 -keep class org.armman.supervisor.data.inventory.** { *; }
 -keep class org.armman.supervisor.data.events.** { *; }
 
+# Same reflection-based Gson risk as data.inventory/data.events above, for the call-logs DTOs
+# (CallLogDto, CreateCallLogRequestDto, envelope types) — without this, R8 strips/renames their
+# fields in release builds, silently breaking Call Sheet ("Failed to load call sheet").
+-keep class org.armman.supervisor.data.calllog.** { *; }
+
 # Room entities are constructed via reflection by Room's generated *_Impl DAOs, invisible to R8's
 # reachability analysis the same way Gson-constructed DTOs are — without this, field
 # renaming/stripping in release corrupts the local Room read-cache/offline-write-queue tables
