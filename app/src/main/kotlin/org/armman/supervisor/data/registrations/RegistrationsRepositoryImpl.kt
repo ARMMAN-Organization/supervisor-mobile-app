@@ -1,5 +1,7 @@
 package org.armman.supervisor.data.registrations
 
+import org.armman.supervisor.data.beneficiaries.BeneficiaryCaseDto
+import org.armman.supervisor.data.beneficiaries.BeneficiaryListApi
 import org.armman.supervisor.data.projects.ProjectsRepository
 import org.armman.supervisor.model.LocationOption
 import org.armman.supervisor.ui.registrations.RegistrationsRepository
@@ -7,40 +9,55 @@ import org.armman.supervisor.ui.registrations.SakhiRegistrationSummary
 import org.armman.supervisor.ui.registrations.VillageRegistrationRow
 import javax.inject.Inject
 
+private const val CASE_TYPE_MOTHER = "MOTHER"
+
 /**
- * Concrete [RegistrationsRepository]. Per-Sakhi/per-village registration counts remain local
- * sample data — no registrations-detail endpoint exists yet; the interface and its Hilt binding
- * in `di/RegistrationsModule.kt` stay unchanged when one is wired up.
+ * Concrete [RegistrationsRepository]. For each Sakhi in [locationId]'s roster, fetches her
+ * beneficiaries via [BeneficiaryListApi] and groups them by village. [motherTarget]/[childTarget]
+ * have no backing endpoint anywhere in the backend — they stay 0 rather than fabricated. A Sakhi
+ * whose beneficiary fetch fails is dropped from the result (logged via the thrown exception being
+ * swallowed) rather than failing the whole screen, matching [ProjectsRepository]'s existing
+ * per-project resilience precedent.
  */
 class RegistrationsRepositoryImpl @Inject constructor(
   private val projectsRepository: ProjectsRepository,
+  private val api: BeneficiaryListApi,
 ) : RegistrationsRepository {
 
   override suspend fun getLocations(): List<LocationOption> = projectsRepository.getProjects()
 
   override suspend fun getRegistrations(locationId: String?): List<SakhiRegistrationSummary> {
-    val seed = locationId?.hashCode()?.mod(SEED_RANGE) ?: 0
-    return listOf(
+    if (locationId == null) return emptyList()
+    val sakhis = projectsRepository.getSakhis(locationId)
+
+    return sakhis.mapNotNull { sakhi ->
+      val cases = runCatching { fetchCases(sakhi.id) }.getOrNull() ?: return@mapNotNull null
       SakhiRegistrationSummary(
-        sakhiId = "sakhi-komal",
-        sakhiName = "SakhiKomal",
-        badgeCount = 2 + seed,
+        sakhiId = sakhi.id,
+        sakhiName = sakhi.name,
+        badgeCount = cases.size,
         motherTarget = 0,
         childTarget = 0,
-        villages = listOf(VillageRegistrationRow("SushilTest", motherCount = 1, childCount = 1)),
-      ),
-      SakhiRegistrationSummary(
-        sakhiId = "sakhi-meera",
-        sakhiName = "SakhiMeera",
-        badgeCount = 1 + seed,
-        motherTarget = 0,
-        childTarget = 0,
-        villages = listOf(VillageRegistrationRow("SushilTest1", motherCount = 1, childCount = 0)),
-      ),
-    )
+        villages = groupByVillage(cases),
+      )
+    }
   }
 
-  private companion object {
-    const val SEED_RANGE = 10
+  private suspend fun fetchCases(sakhiId: String): List<BeneficiaryCaseDto> {
+    val response = api.getBeneficiaries(sakhiId)
+    if (!response.isSuccessful) error("Failed to load beneficiaries: HTTP ${response.code()}")
+    val body = response.body() ?: error("Empty beneficiaries response")
+    if (!body.success) error(body.message ?: "Failed to load beneficiaries")
+    return body.data?.items.orEmpty()
   }
+
+  private fun groupByVillage(cases: List<BeneficiaryCaseDto>): List<VillageRegistrationRow> =
+    cases.groupBy { it.villageName.orEmpty() }
+      .map { (villageName, villageCases) ->
+        VillageRegistrationRow(
+          villageName = villageName,
+          motherCount = villageCases.count { it.caseType == CASE_TYPE_MOTHER },
+          childCount = villageCases.count { it.caseType != CASE_TYPE_MOTHER },
+        )
+      }
 }

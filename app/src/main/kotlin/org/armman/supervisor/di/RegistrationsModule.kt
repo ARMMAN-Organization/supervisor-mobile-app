@@ -7,8 +7,9 @@ import dagger.hilt.components.SingletonComponent
 import org.armman.supervisor.data.registrations.RegistrationsRepositoryImpl
 import org.armman.supervisor.ui.registrations.RegistrationsRepository
 
-/** Binds the Registrations detail-screen data source. Per-Sakhi/per-village counts are still
- * local sample data (see [RegistrationsRepositoryImpl]). */
+/** Binds the Registrations detail-screen data source (see [RegistrationsRepositoryImpl]). Reuses
+ * [org.armman.supervisor.data.beneficiaries.BeneficiaryListApi], provided by
+ * [BeneficiaryListModule]. */
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class RegistrationsModule {

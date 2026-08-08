@@ -13,16 +13,22 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 import javax.inject.Inject
 
+private const val VISIT_STATUS_PENDING = "PENDING"
+private const val VISIT_STATUS_MISSED = "MISSED"
+private const val VISIT_STATUS_COMPLETED = "COMPLETED"
+
 /**
- * Concrete [DashboardRepository]. The Supervisor's own name comes from the logged-in session.
- * [getLocations] and the KPI/summary numbers below remain local sample data — [ProjectsRepository]
- * has no real project list yet (auth-service exposes no such endpoint), and no dashboard-stats
- * endpoint exists either — the interface and its Hilt binding in `di/DashboardModule.kt` stay
- * unchanged when those are wired up.
+ * Concrete [DashboardRepository]. The Supervisor's own name comes from the logged-in session,
+ * locations from [ProjectsRepository]. KPI/summary numbers come from the aggregate summary
+ * endpoints via [DashboardApi] — these are project-wide totals, not scoped by [getDashboard]'s
+ * `locationId` (the three summary endpoints take no project filter), so switching the location
+ * selector does not currently change these numbers. `kpi.monitor`, `unsyncedCount`,
+ * `monitoringSummary` and `staleSakhis` have no backing endpoint yet and stay at 0/empty.
  */
 class DashboardRepositoryImpl @Inject constructor(
   private val projectsRepository: ProjectsRepository,
   private val sessionStore: SessionStore,
+  private val api: DashboardApi,
 ) : DashboardRepository {
 
   private val dateFormatter = DateTimeFormatter.ofPattern("EEE, d MMMM yyyy", Locale.getDefault())
@@ -30,33 +36,69 @@ class DashboardRepositoryImpl @Inject constructor(
   override suspend fun getLocations(): List<LocationOption> = projectsRepository.getProjects()
 
   override suspend fun getDashboard(locationId: String?): DashboardData {
-    // Vary the placeholder numbers slightly per location so switching the selector visibly
-    // changes data, until a real dashboard-stats endpoint exists.
-    val seed = locationId?.hashCode()?.mod(SEED_RANGE) ?: 0
+    val registrationSummary = fetchRegistrationSummary()
+    val riskSummary = fetchRiskSummary()
+    val visitSummary = fetchVisitSummary()
+
+    val dueVisit = visitSummary.byStatus[VISIT_STATUS_PENDING] ?: 0
+    val missedVisit = visitSummary.byStatus[VISIT_STATUS_MISSED] ?: 0
+    val completeVisit = visitSummary.byStatus[VISIT_STATUS_COMPLETED] ?: 0
+
     return DashboardData(
       supervisorName = sessionStore.readSession()?.displayName.orEmpty(),
       roleLabel = "Field Supervisor",
       date = LocalDate.now().format(dateFormatter),
-      unsyncedCount = seed,
-      kpi = KpiSummary(dueVisit = seed, mother = seed, child = seed, monitor = seed),
+      unsyncedCount = 0,
+      kpi = KpiSummary(
+        dueVisit = dueVisit,
+        mother = registrationSummary.motherCount,
+        child = registrationSummary.childCount,
+        monitor = 0,
+      ),
       visitSummary = listOf(
-        SummaryRow(SummaryRowLabel.TOTAL, seed, seed),
-        SummaryRow(SummaryRowLabel.DUE, seed, seed),
-        SummaryRow(SummaryRowLabel.UPCOMING, seed, seed),
-        SummaryRow(SummaryRowLabel.MISSED, seed, seed),
-        SummaryRow(SummaryRowLabel.COMPLETE, seed, seed),
+        SummaryRow(SummaryRowLabel.TOTAL, visitSummary.total, visitSummary.total),
+        SummaryRow(SummaryRowLabel.DUE, dueVisit, dueVisit),
+        SummaryRow(SummaryRowLabel.UPCOMING, 0, 0),
+        SummaryRow(SummaryRowLabel.MISSED, missedVisit, missedVisit),
+        SummaryRow(SummaryRowLabel.COMPLETE, completeVisit, completeVisit),
       ),
       registrationSummary = listOf(
-        SummaryRow(SummaryRowLabel.TARGET, seed, seed),
-        SummaryRow(SummaryRowLabel.COMPLETE, seed, seed),
+        SummaryRow(SummaryRowLabel.TARGET, 0, 0),
+        SummaryRow(
+          SummaryRowLabel.COMPLETE,
+          registrationSummary.motherCount,
+          registrationSummary.childCount,
+        ),
       ),
-      riskSummary = listOf(SummaryRow(SummaryRowLabel.TOTAL_RISK, seed, seed)),
-      monitoringSummary = listOf(SummaryRow(SummaryRowLabel.TOTAL, seed, seed)),
+      riskSummary = listOf(
+        SummaryRow(SummaryRowLabel.TOTAL_RISK, riskSummary.everAtRiskCount, riskSummary.everAtRiskCount),
+      ),
+      monitoringSummary = listOf(SummaryRow(SummaryRowLabel.TOTAL, 0, 0)),
       staleSakhis = emptyList(),
     )
   }
 
-  private companion object {
-    const val SEED_RANGE = 10
+  private suspend fun fetchRegistrationSummary(): RegistrationSummaryDto {
+    val response = api.getRegistrationSummary()
+    if (!response.isSuccessful) error("Failed to load registration summary: HTTP ${response.code()}")
+    val body = response.body() ?: error("Empty registration summary response")
+    if (!body.success) error(body.message ?: "Failed to load registration summary")
+    return body.data ?: error("Empty registration summary data")
+  }
+
+  private suspend fun fetchRiskSummary(): RiskSummaryTotalsDto {
+    val response = api.getRiskSummary()
+    if (!response.isSuccessful) error("Failed to load risk summary: HTTP ${response.code()}")
+    val body = response.body() ?: error("Empty risk summary response")
+    if (!body.success) error(body.message ?: "Failed to load risk summary")
+    return body.data ?: error("Empty risk summary data")
+  }
+
+  private suspend fun fetchVisitSummary(): VisitSummaryTotalsDto {
+    val response = api.getVisitSummary()
+    if (!response.isSuccessful) error("Failed to load visit summary: HTTP ${response.code()}")
+    val body = response.body() ?: error("Empty visit summary response")
+    if (!body.success) error(body.message ?: "Failed to load visit summary")
+    return body.data ?: error("Empty visit summary data")
   }
 }
