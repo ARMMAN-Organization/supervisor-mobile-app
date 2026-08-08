@@ -1,60 +1,34 @@
 package org.armman.supervisor.data.beneficiaries
 
-import org.armman.supervisor.ui.beneficiaries.BeneficiaryDetail
+import org.armman.supervisor.data.projects.ProjectsRepository
 import org.armman.supervisor.ui.beneficiaries.BeneficiaryListRepository
 import org.armman.supervisor.ui.beneficiaries.SakhiBeneficiaryList
 import javax.inject.Inject
 
-/**
- * Concrete [BeneficiaryListRepository]. No beneficiary-detail endpoint exists yet (no backend
- * fields for EDD/LMP/BMI/birthdate) — data stays local sample data keyed by sakhiId until one is
- * wired up; the interface and its Hilt binding in `di/BeneficiaryListModule.kt` stay unchanged then.
- */
-class BeneficiaryListRepositoryImpl @Inject constructor() : BeneficiaryListRepository {
+/** Concrete [BeneficiaryListRepository]. Backed by beneficiary-service's list endpoint via
+ * [BeneficiaryListApi]. There is no dedicated "address" field on a beneficiary case — the
+ * closest real equivalent, `villageName`, is used instead. [sakhiName]/[projectName] are read off
+ * the first returned case (already enriched server-side); a Sakhi with zero beneficiaries has no
+ * such case to read them from, so [ProjectsRepository] is used as the fallback for that name. */
+class BeneficiaryListRepositoryImpl @Inject constructor(
+  private val api: BeneficiaryListApi,
+  private val projectsRepository: ProjectsRepository,
+) : BeneficiaryListRepository {
 
-  override suspend fun getBeneficiaries(sakhiId: String): SakhiBeneficiaryList =
-    SEEDED_LISTS[sakhiId] ?: throw NoSuchElementException("No beneficiaries found for sakhiId=$sakhiId")
+  override suspend fun getBeneficiaries(sakhiId: String): SakhiBeneficiaryList {
+    val items = fetchAllBeneficiaryPages { cursor -> api.getBeneficiaries(sakhiId, cursor) }
+    val first = items.firstOrNull()
 
-  private companion object {
-    val SEEDED_LISTS: Map<String, SakhiBeneficiaryList> = mapOf(
-      "sakhi-komal" to SakhiBeneficiaryList(
-        sakhiName = "SakhiKomal",
-        projectName = "Test-4",
-        address = "Test",
-        beneficiaries = listOf(
-          BeneficiaryDetail.Child(
-            name = "Child 1 T Test",
-            registrationDate = "04-08-2026",
-            phone = "9898989894",
-            birthdate = "04-07-2026",
-          ),
-          BeneficiaryDetail.Mother(
-            name = "Sushma T Test",
-            registrationDate = "04-08-2026",
-            phone = "9898989893",
-            edd = "06-01-2027",
-            lmp = "01-04-2026",
-            heightCm = 156.0,
-            weightKg = 56.0,
-          ),
-        ),
-      ),
-      "sakhi-meera" to SakhiBeneficiaryList(
-        sakhiName = "SakhiMeera",
-        projectName = "Test-1",
-        address = "Test",
-        beneficiaries = listOf(
-          BeneficiaryDetail.Mother(
-            name = "Meera Sample Mother",
-            registrationDate = "04-08-2026",
-            phone = "9898989891",
-            edd = "12-02-2027",
-            lmp = "07-05-2026",
-            heightCm = 160.0,
-            weightKg = 60.0,
-          ),
-        ),
-      ),
+    val sakhiName = first?.sakhiName
+      ?: runCatching { projectsRepository.getSakhiOption(sakhiId).name }.getOrDefault("")
+    val projectName = first?.projectName
+      ?: runCatching { projectsRepository.getSakhiDetail(sakhiId).projectName }.getOrDefault("")
+
+    return SakhiBeneficiaryList(
+      sakhiName = sakhiName,
+      projectName = projectName,
+      address = first?.villageName.orEmpty(),
+      beneficiaries = items.map { it.toBeneficiaryDetail() },
     )
   }
 }

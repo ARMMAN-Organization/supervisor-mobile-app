@@ -9,8 +9,9 @@ import org.armman.supervisor.data.villagerisksummary.StaticVillageRiskDetailRepo
 import org.armman.supervisor.ui.risksummary.RiskSummaryRepository
 import org.armman.supervisor.ui.villagerisksummary.VillageRiskDetailRepository
 
-/** Binds the Risk Summary detail-screen data source. Per-Sakhi/per-village counts are still
- * local sample data (see [RiskSummaryRepositoryImpl]). */
+/** Binds the Risk Summary detail-screen data source (see [RiskSummaryRepositoryImpl]). Reuses
+ * [org.armman.supervisor.data.beneficiaries.BeneficiaryListApi], provided by
+ * [BeneficiaryListModule]. */
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class RiskSummaryModule {
