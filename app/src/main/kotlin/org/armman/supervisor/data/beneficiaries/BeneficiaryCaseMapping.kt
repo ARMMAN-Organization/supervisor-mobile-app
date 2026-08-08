@@ -10,7 +10,7 @@ private const val CASE_TYPE_MOTHER = "MOTHER"
 
 /** Backend dates arrive as ISO instants (`2027-03-08T00:00:00.000Z`); the UI displays `dd-MM-yyyy`. */
 fun formatDisplayDate(isoDate: String?): String {
-  if (isoDate.isNullOrBlank()) return ""
+  if (isoDate.isNullOrBlank() || isoDate.length < MIN_DATE_LENGTH) return ""
   return try {
     LocalDate.parse(isoDate.substring(0, MIN_DATE_LENGTH)).format(DISPLAY_DATE_FORMATTER)
   } catch (e: DateTimeParseException) {

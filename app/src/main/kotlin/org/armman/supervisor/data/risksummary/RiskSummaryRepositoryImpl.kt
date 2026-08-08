@@ -1,7 +1,10 @@
 package org.armman.supervisor.data.risksummary
 
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import org.armman.supervisor.data.beneficiaries.BeneficiaryCaseDto
 import org.armman.supervisor.data.beneficiaries.BeneficiaryListApi
+import org.armman.supervisor.data.beneficiaries.fetchAllBeneficiaryPages
 import org.armman.supervisor.data.projects.ProjectsRepository
 import org.armman.supervisor.model.LocationOption
 import org.armman.supervisor.ui.risksummary.RiskSummaryRepository
@@ -26,23 +29,20 @@ class RiskSummaryRepositoryImpl @Inject constructor(
 
   override suspend fun getLocations(): List<LocationOption> = projectsRepository.getProjects()
 
-  override suspend fun getRiskSummary(locationId: String?): List<SakhiRiskSummary> {
-    if (locationId == null) return emptyList()
+  override suspend fun getRiskSummary(locationId: String?): List<SakhiRiskSummary> = coroutineScope {
+    if (locationId == null) return@coroutineScope emptyList()
     val sakhis = projectsRepository.getSakhis(locationId)
 
-    return sakhis.mapNotNull { sakhi ->
-      val cases = runCatching { fetchAtRiskCases(sakhi.id) }.getOrNull() ?: return@mapNotNull null
-      SakhiRiskSummary(sakhiName = sakhi.name, villages = groupByVillage(cases))
-    }
+    sakhis
+      .map { sakhi -> sakhi to async { runCatching { fetchAtRiskCases(sakhi.id) } } }
+      .mapNotNull { (sakhi, deferredCases) ->
+        val cases = deferredCases.await().getOrNull() ?: return@mapNotNull null
+        SakhiRiskSummary(sakhiName = sakhi.name, villages = groupByVillage(cases))
+      }
   }
 
-  private suspend fun fetchAtRiskCases(sakhiId: String): List<BeneficiaryCaseDto> {
-    val response = api.getAtRiskBeneficiaries(sakhiId)
-    if (!response.isSuccessful) error("Failed to load at-risk beneficiaries: HTTP ${response.code()}")
-    val body = response.body() ?: error("Empty at-risk beneficiaries response")
-    if (!body.success) error(body.message ?: "Failed to load at-risk beneficiaries")
-    return body.data?.items.orEmpty()
-  }
+  private suspend fun fetchAtRiskCases(sakhiId: String): List<BeneficiaryCaseDto> =
+    fetchAllBeneficiaryPages { cursor -> api.getAtRiskBeneficiaries(sakhiId, cursor = cursor) }
 
   private fun groupByVillage(cases: List<BeneficiaryCaseDto>): List<VillageRiskRow> =
     cases.groupBy { it.villageName.orEmpty() }

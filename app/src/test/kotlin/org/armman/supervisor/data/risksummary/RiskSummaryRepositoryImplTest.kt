@@ -50,17 +50,26 @@ private class FakeProjectsRepository : ProjectsRepository {
 
 private class FakeBeneficiaryListApi : BeneficiaryListApi {
   var atRiskCasesBySakhiId: Map<String, List<BeneficiaryCaseDto>> = emptyMap()
+  /** Second page of at-risk cases for a sakhi, keyed by the cursor returned with their first page. */
+  var secondPageByCursor: Map<String, List<BeneficiaryCaseDto>> = emptyMap()
   var failingSakhiIds: Set<String> = emptySet()
 
-  override suspend fun getBeneficiaries(sakhiId: String): Response<BeneficiaryListEnvelopeDto> = error("not used")
+  override suspend fun getBeneficiaries(sakhiId: String, cursor: String?): Response<BeneficiaryListEnvelopeDto> =
+    error("not used")
 
-  override suspend fun getAtRiskBeneficiaries(sakhiId: String, atRiskOnly: Boolean): Response<BeneficiaryListEnvelopeDto> {
+  override suspend fun getAtRiskBeneficiaries(
+    sakhiId: String,
+    atRiskOnly: Boolean,
+    cursor: String?,
+  ): Response<BeneficiaryListEnvelopeDto> {
     if (sakhiId in failingSakhiIds) return Response.error(500, okhttp3.ResponseBody.create(null, ""))
+    val items = if (cursor == null) atRiskCasesBySakhiId[sakhiId].orEmpty() else secondPageByCursor[cursor].orEmpty()
+    val nextCursor = if (cursor == null && secondPageByCursor.containsKey("cursor-$sakhiId")) "cursor-$sakhiId" else null
     return Response.success(
       BeneficiaryListEnvelopeDto(
         success = true,
         message = "OK",
-        data = BeneficiaryListPageDto(items = atRiskCasesBySakhiId[sakhiId].orEmpty(), nextCursor = null),
+        data = BeneficiaryListPageDto(items = items, nextCursor = nextCursor),
       ),
     )
   }
@@ -110,6 +119,17 @@ class RiskSummaryRepositoryImplTest {
     val summary = repository.getRiskSummary("loc-1").single()
 
     assertEquals(true, summary.villages.isEmpty())
+  }
+
+  @Test
+  fun `getRiskSummary follows nextCursor to collect at-risk beneficiaries across multiple pages`() = runTest {
+    projectsRepository.sakhisByProject = mapOf("loc-1" to listOf(SakhiOption("sakhi-1", "Demo Sakhi")))
+    api.atRiskCasesBySakhiId = mapOf("sakhi-1" to listOf(case("MOTHER", "Village A")))
+    api.secondPageByCursor = mapOf("cursor-sakhi-1" to listOf(case("MOTHER", "Village B")))
+
+    val summary = repository.getRiskSummary("loc-1").single()
+
+    assertEquals(2, summary.villages.sumOf { it.motherCount })
   }
 
   @Test

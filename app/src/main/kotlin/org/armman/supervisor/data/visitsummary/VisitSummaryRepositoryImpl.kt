@@ -1,7 +1,10 @@
 package org.armman.supervisor.data.visitsummary
 
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import org.armman.supervisor.data.beneficiaries.BeneficiaryCaseDto
 import org.armman.supervisor.data.beneficiaries.BeneficiaryListApi
+import org.armman.supervisor.data.beneficiaries.fetchAllBeneficiaryPages
 import org.armman.supervisor.data.lookups.LookupsRepository
 import org.armman.supervisor.data.projects.ProjectsRepository
 import org.armman.supervisor.model.LocationOption
@@ -33,33 +36,38 @@ class VisitSummaryRepositoryImpl @Inject constructor(
 
   override suspend fun getLocations(): List<LocationOption> = projectsRepository.getProjects()
 
-  override suspend fun getVisitSummary(locationId: String?): List<SakhiVisitSummary> {
-    if (locationId == null) return emptyList()
+  override suspend fun getVisitSummary(locationId: String?): List<SakhiVisitSummary> = coroutineScope {
+    if (locationId == null) return@coroutineScope emptyList()
     val sakhis = projectsRepository.getSakhis(locationId)
     val visits = fetchVisits()
     val statusIdsByCode = lookupsRepository.getValueIdsByCode(VISIT_STATUS_CATEGORY)
     val pendingId = statusIdsByCode[VISIT_STATUS_PENDING]
     val missedId = statusIdsByCode[VISIT_STATUS_MISSED]
 
-    return sakhis.mapNotNull { sakhi ->
-      val sakhiVisits = visits.filter { it.sakhiId == sakhi.id }
-      if (sakhiVisits.isEmpty()) return@mapNotNull SakhiVisitSummary(sakhi.name, emptyList())
+    sakhis
+      .map { sakhi ->
+        val sakhiVisits = visits.filter { it.sakhiId == sakhi.id }
+        val deferredCases = if (sakhiVisits.isEmpty()) null else async { runCatching { fetchCases(sakhi.id) } }
+        Triple(sakhi, sakhiVisits, deferredCases)
+      }
+      .mapNotNull { (sakhi, sakhiVisits, deferredCases) ->
+        if (deferredCases == null) return@mapNotNull SakhiVisitSummary(sakhi.name, emptyList())
 
-      val cases = runCatching { fetchCases(sakhi.id) }.getOrNull() ?: return@mapNotNull null
-      val villageByBeneficiaryId = cases.associate { it.id to it.villageName.orEmpty() }
+        val cases = deferredCases.await().getOrNull() ?: return@mapNotNull null
+        val villageByBeneficiaryId = cases.associate { it.id to it.villageName.orEmpty() }
 
-      val villages = sakhiVisits
-        .groupBy { villageByBeneficiaryId[it.beneficiaryId].orEmpty() }
-        .map { (villageName, villageVisits) ->
-          VillageVisitRow(
-            villageName = villageName,
-            total = villageVisits.size,
-            due = villageVisits.count { it.statusLookupValueId == pendingId },
-            missed = villageVisits.count { it.statusLookupValueId == missedId },
-          )
-        }
-      SakhiVisitSummary(sakhiName = sakhi.name, villages = villages)
-    }
+        val villages = sakhiVisits
+          .groupBy { villageByBeneficiaryId[it.beneficiaryId].orEmpty() }
+          .map { (villageName, villageVisits) ->
+            VillageVisitRow(
+              villageName = villageName,
+              total = villageVisits.size,
+              due = villageVisits.count { it.statusLookupValueId == pendingId },
+              missed = villageVisits.count { it.statusLookupValueId == missedId },
+            )
+          }
+        SakhiVisitSummary(sakhiName = sakhi.name, villages = villages)
+      }
   }
 
   private suspend fun fetchVisits(): List<VisitInstanceDto> {
@@ -70,11 +78,6 @@ class VisitSummaryRepositoryImpl @Inject constructor(
     return body.data.orEmpty()
   }
 
-  private suspend fun fetchCases(sakhiId: String): List<BeneficiaryCaseDto> {
-    val response = beneficiaryApi.getBeneficiaries(sakhiId)
-    if (!response.isSuccessful) error("Failed to load beneficiaries: HTTP ${response.code()}")
-    val body = response.body() ?: error("Empty beneficiaries response")
-    if (!body.success) error(body.message ?: "Failed to load beneficiaries")
-    return body.data?.items.orEmpty()
-  }
+  private suspend fun fetchCases(sakhiId: String): List<BeneficiaryCaseDto> =
+    fetchAllBeneficiaryPages { cursor -> beneficiaryApi.getBeneficiaries(sakhiId, cursor) }
 }

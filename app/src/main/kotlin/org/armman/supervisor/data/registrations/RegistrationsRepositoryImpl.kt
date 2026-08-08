@@ -1,7 +1,10 @@
 package org.armman.supervisor.data.registrations
 
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import org.armman.supervisor.data.beneficiaries.BeneficiaryCaseDto
 import org.armman.supervisor.data.beneficiaries.BeneficiaryListApi
+import org.armman.supervisor.data.beneficiaries.fetchAllBeneficiaryPages
 import org.armman.supervisor.data.projects.ProjectsRepository
 import org.armman.supervisor.model.LocationOption
 import org.armman.supervisor.ui.registrations.RegistrationsRepository
@@ -26,30 +29,28 @@ class RegistrationsRepositoryImpl @Inject constructor(
 
   override suspend fun getLocations(): List<LocationOption> = projectsRepository.getProjects()
 
-  override suspend fun getRegistrations(locationId: String?): List<SakhiRegistrationSummary> {
-    if (locationId == null) return emptyList()
-    val sakhis = projectsRepository.getSakhis(locationId)
+  override suspend fun getRegistrations(locationId: String?): List<SakhiRegistrationSummary> =
+    coroutineScope {
+      if (locationId == null) return@coroutineScope emptyList()
+      val sakhis = projectsRepository.getSakhis(locationId)
 
-    return sakhis.mapNotNull { sakhi ->
-      val cases = runCatching { fetchCases(sakhi.id) }.getOrNull() ?: return@mapNotNull null
-      SakhiRegistrationSummary(
-        sakhiId = sakhi.id,
-        sakhiName = sakhi.name,
-        badgeCount = cases.size,
-        motherTarget = 0,
-        childTarget = 0,
-        villages = groupByVillage(cases),
-      )
+      sakhis
+        .map { sakhi -> sakhi to async { runCatching { fetchCases(sakhi.id) } } }
+        .mapNotNull { (sakhi, deferredCases) ->
+          val cases = deferredCases.await().getOrNull() ?: return@mapNotNull null
+          SakhiRegistrationSummary(
+            sakhiId = sakhi.id,
+            sakhiName = sakhi.name,
+            badgeCount = cases.size,
+            motherTarget = 0,
+            childTarget = 0,
+            villages = groupByVillage(cases),
+          )
+        }
     }
-  }
 
-  private suspend fun fetchCases(sakhiId: String): List<BeneficiaryCaseDto> {
-    val response = api.getBeneficiaries(sakhiId)
-    if (!response.isSuccessful) error("Failed to load beneficiaries: HTTP ${response.code()}")
-    val body = response.body() ?: error("Empty beneficiaries response")
-    if (!body.success) error(body.message ?: "Failed to load beneficiaries")
-    return body.data?.items.orEmpty()
-  }
+  private suspend fun fetchCases(sakhiId: String): List<BeneficiaryCaseDto> =
+    fetchAllBeneficiaryPages { cursor -> api.getBeneficiaries(sakhiId, cursor) }
 
   private fun groupByVillage(cases: List<BeneficiaryCaseDto>): List<VillageRegistrationRow> =
     cases.groupBy { it.villageName.orEmpty() }

@@ -46,14 +46,39 @@ data class BeneficiaryListEnvelopeDto(
 )
 
 /** Retrofit contract for beneficiary-service's list endpoint. Path is relative to
- * `API_BASE_URL` (`.../api/v1/`). */
+ * `API_BASE_URL` (`.../api/v1/`). `limit` defaults to 50 server-side, so callers must follow
+ * `nextCursor` (see [fetchAllBeneficiaryPages]) to avoid silently truncating results. */
 interface BeneficiaryListApi {
   @GET("beneficiaries")
-  suspend fun getBeneficiaries(@Query("sakhiId") sakhiId: String): Response<BeneficiaryListEnvelopeDto>
+  suspend fun getBeneficiaries(
+    @Query("sakhiId") sakhiId: String,
+    @Query("cursor") cursor: String? = null,
+  ): Response<BeneficiaryListEnvelopeDto>
 
   @GET("beneficiaries")
   suspend fun getAtRiskBeneficiaries(
     @Query("sakhiId") sakhiId: String,
     @Query("atRiskOnly") atRiskOnly: Boolean = true,
+    @Query("cursor") cursor: String? = null,
   ): Response<BeneficiaryListEnvelopeDto>
+}
+
+/** Follows [BeneficiaryListPageDto.nextCursor] until exhausted, concatenating every page's
+ * items. Shared by all call sites that page through beneficiary-service's list endpoint
+ * (`getBeneficiaries`/`getAtRiskBeneficiaries`), regardless of which query params they fix. */
+suspend fun fetchAllBeneficiaryPages(
+  fetchPage: suspend (cursor: String?) -> Response<BeneficiaryListEnvelopeDto>,
+): List<BeneficiaryCaseDto> {
+  val allItems = mutableListOf<BeneficiaryCaseDto>()
+  var cursor: String? = null
+  do {
+    val response = fetchPage(cursor)
+    if (!response.isSuccessful) error("Failed to load beneficiaries: HTTP ${response.code()}")
+    val body = response.body() ?: error("Empty beneficiaries response")
+    if (!body.success) error(body.message ?: "Failed to load beneficiaries")
+    val page = body.data
+    allItems += page?.items.orEmpty()
+    cursor = page?.nextCursor
+  } while (cursor != null)
+  return allItems
 }

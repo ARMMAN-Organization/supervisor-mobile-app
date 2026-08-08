@@ -16,11 +16,7 @@ class BeneficiaryListRepositoryImpl @Inject constructor(
 ) : BeneficiaryListRepository {
 
   override suspend fun getBeneficiaries(sakhiId: String): SakhiBeneficiaryList {
-    val response = api.getBeneficiaries(sakhiId)
-    if (!response.isSuccessful) error("Failed to load beneficiaries: HTTP ${response.code()}")
-    val body = response.body() ?: error("Empty beneficiaries response")
-    if (!body.success) error(body.message ?: "Failed to load beneficiaries")
-    val items = body.data?.items.orEmpty()
+    val items = fetchAllBeneficiaryPages { cursor -> api.getBeneficiaries(sakhiId, cursor) }
     val first = items.firstOrNull()
 
     val sakhiName = first?.sakhiName

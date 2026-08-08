@@ -68,18 +68,26 @@ private class FakeVisitApi : VisitApi {
 
 private class FakeBeneficiaryListApi : BeneficiaryListApi {
   var casesBySakhiId: Map<String, List<BeneficiaryCaseDto>> = emptyMap()
+  /** Second page of cases for a sakhi, keyed by the cursor returned alongside their first page. */
+  var secondPageByCursor: Map<String, List<BeneficiaryCaseDto>> = emptyMap()
 
-  override suspend fun getBeneficiaries(sakhiId: String): Response<BeneficiaryListEnvelopeDto> =
-    Response.success(
+  override suspend fun getBeneficiaries(sakhiId: String, cursor: String?): Response<BeneficiaryListEnvelopeDto> {
+    val items = if (cursor == null) casesBySakhiId[sakhiId].orEmpty() else secondPageByCursor[cursor].orEmpty()
+    val nextCursor = if (cursor == null && secondPageByCursor.containsKey("cursor-$sakhiId")) "cursor-$sakhiId" else null
+    return Response.success(
       BeneficiaryListEnvelopeDto(
         success = true,
         message = "OK",
-        data = BeneficiaryListPageDto(items = casesBySakhiId[sakhiId].orEmpty(), nextCursor = null),
+        data = BeneficiaryListPageDto(items = items, nextCursor = nextCursor),
       ),
     )
+  }
 
-  override suspend fun getAtRiskBeneficiaries(sakhiId: String, atRiskOnly: Boolean): Response<BeneficiaryListEnvelopeDto> =
-    error("not used")
+  override suspend fun getAtRiskBeneficiaries(
+    sakhiId: String,
+    atRiskOnly: Boolean,
+    cursor: String?,
+  ): Response<BeneficiaryListEnvelopeDto> = error("not used")
 }
 
 private class FakeLookupsApi : LookupsApi {
@@ -182,6 +190,21 @@ class VisitSummaryRepositoryImplTest {
     val summary = repository.getVisitSummary("loc-1").single()
 
     assertEquals(true, summary.villages.isEmpty())
+  }
+
+  @Test
+  fun `getVisitSummary follows nextCursor to resolve villages across multiple beneficiary pages`() = runTest {
+    projectsRepository.sakhisByProject = mapOf("loc-1" to listOf(SakhiOption("sakhi-1", "Demo Sakhi")))
+    beneficiaryApi.casesBySakhiId = mapOf("sakhi-1" to listOf(case("ben-1", "Village A")))
+    beneficiaryApi.secondPageByCursor = mapOf("cursor-sakhi-1" to listOf(case("ben-2", "Village B")))
+    visitApi.visits = listOf(
+      VisitInstanceDto(beneficiaryId = "ben-1", sakhiId = "sakhi-1", statusLookupValueId = PENDING_ID),
+      VisitInstanceDto(beneficiaryId = "ben-2", sakhiId = "sakhi-1", statusLookupValueId = MISSED_ID),
+    )
+
+    val summary = repository.getVisitSummary("loc-1").single()
+
+    assertEquals(setOf("Village A", "Village B"), summary.villages.map { it.villageName }.toSet())
   }
 
   @Test

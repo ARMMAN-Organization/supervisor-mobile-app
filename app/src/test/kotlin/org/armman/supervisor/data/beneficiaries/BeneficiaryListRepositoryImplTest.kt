@@ -46,22 +46,28 @@ private fun childCase(id: String = "case-child-1") = BeneficiaryCaseDto(
 
 private class FakeBeneficiaryListApi : BeneficiaryListApi {
   var items: List<BeneficiaryCaseDto> = emptyList()
+  /** Maps a page's cursor (null = first page) to (items, nextCursor), for pagination tests. */
+  var pagesByCursor: Map<String?, Pair<List<BeneficiaryCaseDto>, String?>>? = null
   var httpErrorCode: Int? = null
   var envelopeSuccess = true
 
-  override suspend fun getBeneficiaries(sakhiId: String): Response<BeneficiaryListEnvelopeDto> {
+  override suspend fun getBeneficiaries(sakhiId: String, cursor: String?): Response<BeneficiaryListEnvelopeDto> {
     httpErrorCode?.let { return Response.error(it, okhttp3.ResponseBody.create(null, "")) }
+    val (pageItems, nextCursor) = pagesByCursor?.get(cursor) ?: (items to null)
     return Response.success(
       BeneficiaryListEnvelopeDto(
         success = envelopeSuccess,
         message = if (envelopeSuccess) "OK" else "boom",
-        data = BeneficiaryListPageDto(items = items, nextCursor = null),
+        data = BeneficiaryListPageDto(items = pageItems, nextCursor = nextCursor),
       ),
     )
   }
 
-  override suspend fun getAtRiskBeneficiaries(sakhiId: String, atRiskOnly: Boolean): Response<BeneficiaryListEnvelopeDto> =
-    error("not used")
+  override suspend fun getAtRiskBeneficiaries(
+    sakhiId: String,
+    atRiskOnly: Boolean,
+    cursor: String?,
+  ): Response<BeneficiaryListEnvelopeDto> = error("not used")
 }
 
 private class FakeProjectsRepository : ProjectsRepository {
@@ -144,6 +150,23 @@ class BeneficiaryListRepositoryImplTest {
     val mother = repository.getBeneficiaries("sakhi-1").beneficiaries.filterIsInstance<BeneficiaryDetail.Mother>().single()
 
     assertEquals("", mother.phone)
+  }
+
+  @Test
+  fun `getBeneficiaries follows nextCursor to collect beneficiaries across multiple pages`() = runTest {
+    api.pagesByCursor = mapOf(
+      null to (listOf(motherCase(id = "case-1")) to "cursor-2"),
+      "cursor-2" to (listOf(motherCase(id = "case-2")) to null),
+    )
+
+    val result = repository.getBeneficiaries("sakhi-1")
+
+    assertEquals(2, result.beneficiaries.size)
+  }
+
+  @Test
+  fun `formatDisplayDate returns empty string instead of crashing on a too-short non-blank date`() {
+    assertEquals("", formatDisplayDate("2026"))
   }
 
   @Test
