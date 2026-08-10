@@ -23,28 +23,15 @@
 # whole-class -keep, R8 drops the class from the dex entirely — GsonConverterFactory then hands
 # Response.body() a type that isn't there, and reading it throws ClassCastException
 # (RemoteAuthRepository.loginOnline / SessionStore / OfflineCredentialCache).
--keep class org.armman.supervisor.data.auth.** { *; }
-
-# Same reflection-based Gson risk as data.auth above, for the projects/Sakhi roster DTOs
-# (ProjectDto, SakhiDto, ProjectsEnvelopeDto, SakhisEnvelopeDto) — without this, R8 strips/renames
-# their fields in release builds and Gson silently mis-populates them, surfacing as the Dashboard's
-# generic error state right after login (DashboardRepositoryImpl -> ProjectsRepository.getProjects).
--keep class org.armman.supervisor.data.projects.** { *; }
-
-# Same reflection-based Gson risk as data.projects above, for inventory-items/transactions DTOs
-# and request bodies (InventoryItemDto, InventoryTransactionDto, CreateInventoryTransactionRequest,
-# UpdateInventoryTransactionRequest, envelope types) and supervisor-events DTOs/requests
-# (SupervisorEventDto, CreateSupervisorEventRequest, envelope types) — without this, R8
-# strips/renames their fields in release builds, silently breaking Assign Item and
-# Meetings/Training (e.g. "Failed to load sakhi detail", HTTP 403-looking failures that are
-# actually malformed request bodies / mis-populated response fields, not real server rejections).
--keep class org.armman.supervisor.data.inventory.** { *; }
--keep class org.armman.supervisor.data.events.** { *; }
-
-# Same reflection-based Gson risk as data.inventory/data.events above, for the call-logs DTOs
-# (CallLogDto, CreateCallLogRequestDto, envelope types) — without this, R8 strips/renames their
-# fields in release builds, silently breaking Call Sheet ("Failed to load call sheet").
--keep class org.armman.supervisor.data.calllog.** { *; }
+#
+# Deliberately a single blanket rule over ALL of data.** rather than one -keep per feature
+# package: the per-package version of this rule (one line added per new data/<feature> module)
+# is exactly what caused the release-only "ClassCastException: null" on Visit Summary, Quick
+# Response, and any other screen under data.beneficiaries/data.lookups/data.quickresponse/
+# data.visitsummary — those packages' DTOs were never added to the per-package list as the
+# features shipped, so R8 stripped them in release with no compile-time signal. A single
+# forward-covering rule can't silently miss a future feature package the same way.
+-keep class org.armman.supervisor.data.** { *; }
 
 # Room entities are constructed via reflection by Room's generated *_Impl DAOs, invisible to R8's
 # reachability analysis the same way Gson-constructed DTOs are — without this, field
@@ -74,3 +61,20 @@
 -dontwarn com.google.errorprone.annotations.CheckReturnValue
 -dontwarn com.google.errorprone.annotations.Immutable
 -dontwarn com.google.errorprone.annotations.RestrictedApi
+
+# Root cause of the release-only "Something went wrong" on every authenticated screen right after
+# login (reproduced on git HEAD with no other changes applied — this predates and is unrelated to
+# TokenAuthenticator/refresh work). SessionStore/OfflineCredentialCache read/write through
+# EncryptedSharedPreferencesStore (androidx.security.crypto), which resolves its AEAD/key-manager
+# implementations via Tink's internal registries (KeyParser/KeySerializer/ParametersParser/
+# ParametersSerializer/PrimitiveConstructor, SharedPrefKeysetWriter, AndroidKeystoreKmsClient) at
+# runtime rather than through direct code references R8's reachability analysis can see. Without
+# a keep rule, R8 shrinking removes these classes entirely (confirmed via mapping.txt:
+# R8$$REMOVED$$CLASS$$ entries for com.google.crypto.tink.internal.KeyParser and siblings), so
+# EncryptedSharedPreferences.create(...) throws the first time any screen touches SessionStore —
+# with no message reaching the UI, since the failure originates deep in Tink, not from this app's
+# own descriptive `error(...)` calls. Confirmed via bisection: isMinifyEnabled=false fixes it,
+# -dontobfuscate does not, -dontoptimize does not — isolating shrinking specifically.
+-keep class com.google.crypto.tink.** { *; }
+-keepclassmembers class com.google.crypto.tink.** { *; }
+-dontwarn com.google.crypto.tink.**
