@@ -7,8 +7,9 @@ class FakeSecureKeyValueStore : SecureKeyValueStore {
 
   override fun getString(key: String): String? = values[key]
 
-  override fun putString(key: String, value: String) {
+  override fun putString(key: String, value: String): Boolean {
     values[key] = value
+    return true
   }
 
   override fun remove(key: String) {

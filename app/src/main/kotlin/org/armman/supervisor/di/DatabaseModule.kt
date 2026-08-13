@@ -46,8 +46,13 @@ object DatabaseModule {
   @Provides
   @Singleton
   fun provideAppDatabase(@ApplicationContext context: Context, secureStore: SecureKeyValueStore): AppDatabase {
-    val passphrase = secureStore.getString(PASSPHRASE_KEY) ?: generatePassphrase().also {
-      secureStore.putString(PASSPHRASE_KEY, it)
+    val passphrase = secureStore.getString(PASSPHRASE_KEY) ?: generatePassphrase().also { generated ->
+      // An unpersisted passphrase would open the DB fine this launch but generate a *different*
+      // random passphrase next launch, permanently locking out the existing encrypted DB file —
+      // fail fast here instead of silently proceeding with a passphrase that won't survive restart.
+      check(secureStore.putString(PASSPHRASE_KEY, generated)) {
+        "Unable to persist local DB passphrase to secure storage"
+      }
     }
     val factory = SupportFactory(SQLiteDatabase.getBytes(passphrase.toCharArray()))
     val builder = Room.databaseBuilder(context, AppDatabase::class.java, DATABASE_NAME)
