@@ -89,12 +89,13 @@ class TokenAuthenticator @Inject constructor(
         if (!httpResponse.isSuccessful) null else httpResponse.body?.string()
       }
     } catch (e: IOException) {
-      // Network failure during refresh — treat as refresh failure, not a crash.
-      null
+      // Network failure during refresh — the refresh token itself may still be valid, so leave
+      // the stored session alone; the next attempt can retry once connectivity returns.
+      return null
     }
     if (bodyJson == null) {
-      // Refresh token itself is invalid/expired (or the call failed outright) — the session
-      // cannot be recovered; clear it so the next login starts clean.
+      // Server responded and rejected the refresh token (expired/invalid) — the session cannot
+      // be recovered; clear it so the next login starts clean.
       sessionStore.clearSession()
       return null
     }

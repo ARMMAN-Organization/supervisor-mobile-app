@@ -123,6 +123,18 @@ class TokenAuthenticatorTest {
   }
 
   @Test
+  fun `network failure during refresh leaves the session intact for a later retry`() {
+    sessionStore.saveSession(fakeSession(accessToken = "expired-token"))
+    refreshInterceptor.thrown = IOException("no connectivity")
+    val failedRequest = request(bearerToken = "expired-token")
+
+    val retried = authenticator.authenticate(null, unauthorizedResponse(failedRequest))
+
+    assertNull(retried)
+    assertEquals("expired-token", sessionStore.readSession()?.accessToken)
+  }
+
+  @Test
   fun `no stored session gives up without calling refresh`() {
     val failedRequest = request(bearerToken = "expired-token")
 
