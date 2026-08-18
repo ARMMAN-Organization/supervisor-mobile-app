@@ -44,3 +44,10 @@ val ShadowTint = Color(0x26000000)
 val DashboardHeaderGreen = Color(0xFF1E4B3E)
 val DashboardKpiGreen = Color(0xFF4ADE80)
 val DashboardPillNeutral = Color(0xFFC9D6E3)
+
+// Download Master Data screen — per-card status colors, measured from the reference design.
+// Reused by the Download Beneficiary Data screen, which shares the same row-status visuals.
+val MasterDataPending = Color(0xFFE37D4A)
+val MasterDataDownloading = Color(0xFFF08A50)
+val MasterDataDownloadingTrack = Color(0xFFFFF3E5)
+val MasterDataCompleted = Color(0xFF3FBE72)

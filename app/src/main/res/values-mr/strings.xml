@@ -392,4 +392,42 @@
   <string name="settings_logout_confirm_cancel">रद्द करा</string>
   <string name="cd_show_password">पासवर्ड दाखवा</string>
   <string name="cd_hide_password">पासवर्ड लपवा</string>
+  <!-- Download Beneficiary Data screen -->
+  <string name="beneficiary_data_download_title">लाभार्थी डेटा डाउनलोड करा</string>
+  <!-- Accessibility label for a row, combining its table name and current status, e.g. "Beneficiaries List: Completed". -->
+  <string name="beneficiary_data_download_row_content_description">%1$s: %2$s</string>
+  <string name="beneficiary_data_download_status_pending">प्रलंबित</string>
+  <string name="beneficiary_data_download_status_downloading">डाउनलोड होत आहे</string>
+  <string name="beneficiary_data_download_status_completed">पूर्ण झाले</string>
+  <string name="beneficiary_data_download_status_empty">डेटा उपलब्ध नाही</string>
+  <string name="beneficiary_data_download_status_not_available">अद्याप उपलब्ध नाही</string>
+  <string name="beneficiary_data_download_quit_title">डाउनलोड थांबवायचे?</string>
+  <string name="beneficiary_data_download_quit_message">लाभार्थी डेटा डाउनलोड अजूनही सुरू आहे. आता बाहेर पडल्यास ते रद्द होईल.</string>
+  <string name="beneficiary_data_download_quit_confirm">थांबवा</string>
+  <string name="beneficiary_data_download_quit_cancel">रद्द करा</string>
+  <string name="beneficiary_data_download_network_error_title">इंटरनेट कनेक्शन नाही</string>
+  <string name="beneficiary_data_download_network_error_message">तुमचे कनेक्शन तपासा आणि पुन्हा प्रयत्न करा. पुन्हा प्रयत्न केल्यास डाउनलोड सुरुवातीपासून पुन्हा सुरू होईल.</string>
+  <string name="beneficiary_data_download_retry">पुन्हा प्रयत्न करा</string>
+  <string name="beneficiary_data_download_stop">थांबवा</string>
+  <string name="beneficiary_data_download_completion_title">सर्व डाउनलोड पूर्ण झाले</string>
+  <string name="beneficiary_data_download_completion_message">डेटा अद्ययावत झाला!</string>
+  <string name="beneficiary_data_download_ok">ठीक आहे</string>
+
+  <!-- Download Beneficiary Data — table names -->
+  <string name="beneficiary_data_download_arogya_sakhi">आरोग्य सखी</string>
+  <string name="beneficiary_data_download_registration_target">नोंदणी उद्दिष्ट</string>
+  <string name="beneficiary_data_download_beneficiaries_list">लाभार्थ्यांची यादी</string>
+  <string name="beneficiary_data_download_beneficiary_risk">लाभार्थी जोखीम</string>
+  <string name="beneficiary_data_download_beneficiary_visit">लाभार्थी भेट</string>
+  <string name="beneficiary_data_download_risk_monitoring">जोखीम देखरेख</string>
+  <string name="beneficiary_data_download_sakhi_not_uploaded_data">सखीचा अपलोड न झालेला डेटा</string>
+  <string name="beneficiary_data_download_sakhi_item_transaction">सखी वस्तू व्यवहार</string>
+  <string name="beneficiary_data_download_sakhi_item_transaction_detail">सखी वस्तू व्यवहार तपशील</string>
+  <string name="beneficiary_data_download_gathering_list">सभा यादी</string>
+  <string name="beneficiary_data_download_gathering_attendance">सभा उपस्थिती</string>
+  <string name="beneficiary_data_download_gathering_training_marks">सभा प्रशिक्षण गुण</string>
+  <string name="beneficiary_data_download_gathering_images">सभा छायाचित्रे</string>
+  <string name="beneficiary_data_download_call_details">कॉल तपशील</string>
+  <string name="beneficiary_data_download_beneficiary_risk_referral_header">लाभार्थी जोखीम संदर्भ शीर्षक</string>
+  <string name="beneficiary_data_download_beneficiary_risk_referral_details">लाभार्थी जोखीम संदर्भ तपशील</string>
 </resources>
