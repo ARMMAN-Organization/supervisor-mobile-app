@@ -1,6 +1,8 @@
 package org.armman.supervisor.data.meetingtraining
 
 import kotlinx.coroutines.test.runTest
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.ResponseBody.Companion.toResponseBody
 import org.armman.supervisor.data.events.CreateSupervisorEventRequest
 import org.armman.supervisor.data.events.PendingSupervisorEventDao
 import org.armman.supervisor.data.events.PendingSupervisorEventEntity
@@ -54,17 +56,19 @@ private class ExecutorFakeApi : SupervisorEventsApi {
   var createFailure: (() -> Nothing)? = null
   var createErrorResponse: Response<SupervisorEventEnvelopeDto>? = null
   var createCallCount = 0
+  var lastRequest: CreateSupervisorEventRequest? = null
 
   override suspend fun getEvents(): Response<SupervisorEventsEnvelopeDto> = error("not used")
 
   override suspend fun createEvent(request: CreateSupervisorEventRequest): Response<SupervisorEventEnvelopeDto> {
     createCallCount++
+    lastRequest = request
     createFailure?.invoke()
     createErrorResponse?.let { return it }
     val event = SupervisorEventDto(
       id = "srv-event-1",
       projectId = request.projectId,
-      supervisorId = request.supervisorId,
+      supervisorId = "sup-1",
       eventType = request.eventType,
       eventDate = request.eventDate,
       topicsJson = request.topicsJson,
@@ -193,5 +197,52 @@ class SupervisorEventSyncExecutorTest {
     assertEquals(SupervisorEventSyncOutcome.COMPLETED, outcome)
     assertEquals(1, api.createCallCount)
     assertEquals("SYNCED", pendingDao.entities["event-1"]?.syncStatus)
+  }
+
+  @Test
+  fun `sends eventDate as an ISO-8601 timestamp, not the dd MMM yyyy display string`() = runTest {
+    pendingDao.upsert(createRow().copy(eventDate = "22 Jul 2026"))
+
+    executor.run()
+
+    assertEquals("2026-07-22T00:00:00Z", api.lastRequest?.eventDate)
+  }
+
+  @Test
+  fun `a row with an unparseable eventDate is marked FAILED without calling the API`() = runTest {
+    pendingDao.upsert(createRow().copy(eventDate = "not-a-date"))
+
+    val outcome = executor.run()
+
+    assertEquals(SupervisorEventSyncOutcome.RETRYABLE_FAILURE, outcome)
+    assertEquals("FAILED", pendingDao.entities["event-1"]?.syncStatus)
+    assertEquals(0, api.createCallCount)
+  }
+
+  @Test
+  fun `a non-2xx failure surfaces the server's own error message, not just the HTTP code`() = runTest {
+    pendingDao.upsert(createRow())
+    val errorJson = """{"success":false,"message":"An event already exists for this project on this date","errorCode":"CONFLICT"}"""
+    api.createErrorResponse = Response.error(
+      409,
+      errorJson.toResponseBody("application/json".toMediaType()),
+    )
+
+    executor.run()
+
+    assertEquals(
+      "Failed to schedule event: An event already exists for this project on this date",
+      pendingDao.entities["event-1"]?.lastErrorMessage,
+    )
+  }
+
+  @Test
+  fun `a non-2xx failure with an unparseable error body falls back to the bare HTTP code`() = runTest {
+    pendingDao.upsert(createRow())
+    api.createErrorResponse = Response.error(500, "not json".toResponseBody("text/plain".toMediaType()))
+
+    executor.run()
+
+    assertEquals("Failed to schedule event: HTTP 500", pendingDao.entities["event-1"]?.lastErrorMessage)
   }
 }

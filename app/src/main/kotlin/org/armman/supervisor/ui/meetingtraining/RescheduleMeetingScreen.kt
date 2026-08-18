@@ -102,6 +102,7 @@ private fun FormContent(state: RescheduleMeetingUiState.Success, viewModel: Resc
         value = state.newStartDate?.let { runCatching { LocalDate.parse(it, formatter) }.getOrNull() },
         onDateSelected = { viewModel.onNewStartDateSelected(it.format(formatter)) },
         modifier = Modifier.weight(1f),
+        minDate = LocalDate.now(),
       )
       AppDateField(
         label = stringResource(R.string.meeting_detail_end_date),
@@ -109,6 +110,7 @@ private fun FormContent(state: RescheduleMeetingUiState.Success, viewModel: Resc
         value = state.newEndDate?.let { runCatching { LocalDate.parse(it, formatter) }.getOrNull() },
         onDateSelected = { viewModel.onNewEndDateSelected(it.format(formatter)) },
         modifier = Modifier.weight(1f),
+        minDate = LocalDate.now(),
       )
     }
     if (state.invalidRange) {

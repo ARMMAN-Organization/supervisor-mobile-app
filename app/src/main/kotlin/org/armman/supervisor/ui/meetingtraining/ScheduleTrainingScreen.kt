@@ -110,6 +110,7 @@ private fun FormContent(state: ScheduleTrainingUiState.Success, viewModel: Sched
         value = state.startDate?.let { runCatching { LocalDate.parse(it, formatter) }.getOrNull() },
         onDateSelected = { viewModel.onStartDateSelected(it.format(formatter)) },
         modifier = Modifier.weight(1f),
+        minDate = LocalDate.now(),
       )
       AppDateField(
         label = stringResource(R.string.meeting_detail_end_date),
@@ -117,6 +118,7 @@ private fun FormContent(state: ScheduleTrainingUiState.Success, viewModel: Sched
         value = state.endDate?.let { runCatching { LocalDate.parse(it, formatter) }.getOrNull() },
         onDateSelected = { viewModel.onEndDateSelected(it.format(formatter)) },
         modifier = Modifier.weight(1f),
+        minDate = LocalDate.now(),
       )
     }
     Row(

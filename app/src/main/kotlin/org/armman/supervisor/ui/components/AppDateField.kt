@@ -24,8 +24,15 @@ import org.armman.supervisor.ui.theme.NeutralG400
 import org.armman.supervisor.ui.theme.NeutralG75
 import org.armman.supervisor.ui.theme.White
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+
+/** [android.widget.DatePicker.setMinDate]/[android.widget.DatePicker.setMaxDate] compare against
+ * epoch millis in the device's default timezone, not UTC — using the system default zone here
+ * keeps the boundary aligned with the calendar day the picker actually renders. */
+private fun LocalDate.toEpochMillisAtStartOfDay(): Long =
+  atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
 
 /**
  * Label + read-only date box that opens the platform date picker on tap. Mirrors the Sakhi app's
@@ -38,18 +45,32 @@ fun AppDateField(
   value: LocalDate?,
   onDateSelected: (LocalDate) -> Unit,
   modifier: Modifier = Modifier,
+  minDate: LocalDate? = null,
+  maxDate: LocalDate? = null,
 ) {
   val context = LocalContext.current
   val formatter = remember { DateTimeFormatter.ofPattern("dd MMM yyyy", Locale.getDefault()) }
   val openPicker = {
-    val seed = value ?: LocalDate.now()
-    DatePickerDialog(
+    // Today can fall outside [minDate, maxDate] (e.g. scheduling a meeting disallows past
+    // dates) — seeding the picker with today unconditionally would silently open it on a date
+    // it won't even let you pick. Clamp into range first.
+    val seed = (value ?: LocalDate.now()).let { candidate ->
+      when {
+        minDate != null && candidate < minDate -> minDate
+        maxDate != null && candidate > maxDate -> maxDate
+        else -> candidate
+      }
+    }
+    val dialog = DatePickerDialog(
       context,
       { _, year, month, day -> onDateSelected(LocalDate.of(year, month + 1, day)) },
       seed.year,
       seed.monthValue - 1,
       seed.dayOfMonth,
-    ).show()
+    )
+    minDate?.let { dialog.datePicker.minDate = it.toEpochMillisAtStartOfDay() }
+    maxDate?.let { dialog.datePicker.maxDate = it.toEpochMillisAtStartOfDay() }
+    dialog.show()
   }
   Column(modifier = modifier.fillMaxWidth()) {
     Text(

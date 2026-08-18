@@ -35,11 +35,14 @@ data class SupervisorEventEnvelopeDto(
   val data: SupervisorEventDto?,
 )
 
-/** Request body for `POST supervisor-events`. Unlike inventory-transactions, [supervisorId] IS
- * client-supplied here — must be sourced from the current session, never invented. */
+/** Request body for `POST supervisor-events`. [eventDate] must be an ISO-8601/RFC3339 timestamp
+ * (e.g. `2026-08-09T00:00:00.000Z`), matching the field's `format: date-time` in the response
+ * schema — a `dd MMM yyyy` display string here 400s. No `supervisorId` field: the live OpenAPI
+ * spec (`GET /api/v1/docs`) declares this request body with `additionalProperties: false` and
+ * without `supervisorId` in its properties, so the server derives the supervisor from the auth
+ * token, and sending it as an extra field 400s the whole request. */
 data class CreateSupervisorEventRequest(
   val projectId: String,
-  val supervisorId: String,
   val eventType: String,
   val eventDate: String,
   val topicsJson: String,

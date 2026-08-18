@@ -27,8 +27,8 @@ android {
     applicationId = "org.armman.supervisor"
     minSdk = 29
     targetSdk = 34
-    versionCode = 2
-    versionName = "1.1.0"
+    versionCode = 4
+    versionName = "1.5.0"
     buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
   }
 

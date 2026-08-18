@@ -176,7 +176,7 @@ private class FakeSupervisorEventsApi : SupervisorEventsApi {
     val event = SupervisorEventDto(
       id = "srv-event-${nextId++}",
       projectId = request.projectId,
-      supervisorId = request.supervisorId,
+      supervisorId = "sup-1",
       eventType = request.eventType,
       eventDate = request.eventDate,
       topicsJson = request.topicsJson,
