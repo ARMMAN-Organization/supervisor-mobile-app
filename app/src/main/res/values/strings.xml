@@ -392,6 +392,56 @@
   <string name="settings_logout_confirm_cancel">Cancel</string>
   <string name="cd_show_password">Show password</string>
   <string name="cd_hide_password">Hide password</string>
+  <!-- Download Master Data screen -->
+  <string name="master_data_download_title">Download Master Data</string>
+  <!-- Accessibility label for a row, combining its table name and current status, e.g. "Block: Completed". -->
+  <string name="master_data_row_content_description">%1$s: %2$s</string>
+  <string name="master_data_status_pending">PENDING</string>
+  <string name="master_data_status_downloading">DOWNLOADING</string>
+  <string name="master_data_status_completed">COMPLETED</string>
+  <string name="master_data_status_empty">EMPTY DATA</string>
+  <string name="master_data_status_not_available">NOT AVAILABLE YET</string>
+  <string name="master_data_quit_title">Quit download?</string>
+  <string name="master_data_quit_message">Master data download is still in progress. If you leave now, it will be cancelled.</string>
+  <string name="master_data_quit_confirm">Quit</string>
+  <string name="master_data_quit_cancel">Cancel</string>
+  <string name="master_data_network_error_title">No internet connection</string>
+  <string name="master_data_network_error_message">Check your connection and try again. Retrying restarts the download from the beginning.</string>
+  <string name="master_data_retry">Retry</string>
+  <string name="master_data_stop">Stop</string>
+  <string name="master_data_completion_title">All Downloads Completed</string>
+  <string name="master_data_completion_message">Data Updated!</string>
+  <string name="master_data_ok">OK</string>
+
+  <!-- Download Master Data — table names -->
+  <string name="master_data_state">State</string>
+  <string name="master_data_district">District</string>
+  <string name="master_data_block">Block</string>
+  <string name="master_data_phc">PHC</string>
+  <string name="master_data_sub_center">Sub-Center</string>
+  <string name="master_data_village">Village</string>
+  <string name="master_data_village_list">Village List</string>
+  <string name="master_data_project_geography">Project Geography</string>
+  <string name="master_data_funders">Funders</string>
+  <string name="master_data_projects">Projects</string>
+  <string name="master_data_sakhi">Sakhi</string>
+  <string name="master_data_risk_category">Risk Category</string>
+  <string name="master_data_risk">Risk</string>
+  <string name="master_data_risk_language">Risk Language</string>
+  <string name="master_data_risk_parameter">Risk Parameter</string>
+  <string name="master_data_risk_type">Risk Type</string>
+  <string name="master_data_incentive_rate">Incentive Rate</string>
+  <string name="master_data_visit_category">Visit Category</string>
+  <string name="master_data_item_category">Item Category</string>
+  <string name="master_data_uom_list">UOM List</string>
+  <string name="master_data_item_master_list">Item Master List</string>
+  <string name="master_data_visit_master">Visit Master</string>
+  <string name="master_data_transaction_type">Transaction Type</string>
+  <string name="master_data_training_topic_master">Training Topic Master</string>
+  <string name="master_data_gathering_status">Gathering Status</string>
+  <string name="master_data_gathering_types">Gathering Types</string>
+  <string name="master_data_ddl_item">DDL Item</string>
+  <string name="master_data_application_parameter">Application Parameter</string>
   <!-- Download Beneficiary Data screen -->
   <string name="beneficiary_data_download_title">Download Beneficiary Data</string>
   <!-- Accessibility label for a row, combining its table name and current status, e.g. "Beneficiaries List: Completed". -->
