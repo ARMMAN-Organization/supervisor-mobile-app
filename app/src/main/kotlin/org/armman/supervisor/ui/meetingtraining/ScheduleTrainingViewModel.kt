@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.armman.supervisor.R
+import org.armman.supervisor.data.meetingtraining.EventScheduleResult
 import org.armman.supervisor.model.LocationOption
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -20,7 +21,7 @@ import javax.inject.Inject
 private val DATE_FORMATTER = DateTimeFormatter.ofPattern("dd MMM yyyy", Locale.getDefault())
 
 /** Which form field failed validation on submit, so the screen can show the right message. */
-enum class ScheduleTrainingFormError { PROJECT_REQUIRED, START_DATE_REQUIRED, INVALID_DATE_RANGE }
+enum class ScheduleTrainingFormError { PROJECT_REQUIRED, START_DATE_REQUIRED, INVALID_DATE_RANGE, TOPIC_REQUIRED }
 
 /** UI state for the Schedule Training screen. */
 sealed interface ScheduleTrainingUiState {
@@ -36,9 +37,17 @@ sealed interface ScheduleTrainingUiState {
     val endDate: String?,
     val prePostMarksApplicable: Boolean,
     val remarks: String,
+    /** Per FR-SV-2.2, a Training's first session's topic list is collected here, at scheduling
+     * time, rather than requiring a separate "Add Topics" step afterward. */
+    val catalog: List<TrainingTopic>,
+    val selectedTopicIds: Set<String>,
     val formError: ScheduleTrainingFormError?,
     val isSubmitting: Boolean,
     val submitted: Boolean,
+    /** Set when [onSubmit]'s network call fails — shown inline (red text) without discarding the
+     * form, unlike [Error] which replaces the whole screen and is reserved for [load] failures,
+     * where there's no form to preserve. Mirrors AddReasonViewModel's submitErrorMessage. */
+    val submitErrorMessage: String? = null,
   ) : ScheduleTrainingUiState
 }
 
@@ -57,15 +66,26 @@ class ScheduleTrainingViewModel @Inject constructor(
     load()
   }
 
-  fun onProjectSelected(projectId: String) = updateSuccess { it.copy(selectedProjectId = projectId, formError = null) }
+  fun onProjectSelected(projectId: String) =
+    updateSuccess { it.copy(selectedProjectId = projectId, formError = null, submitErrorMessage = null) }
 
-  fun onStartDateSelected(date: String) = updateSuccess { it.copy(startDate = date, formError = null) }
+  fun onStartDateSelected(date: String) =
+    updateSuccess { it.copy(startDate = date, formError = null, submitErrorMessage = null) }
 
-  fun onEndDateSelected(date: String) = updateSuccess { it.copy(endDate = date, formError = null) }
+  fun onEndDateSelected(date: String) =
+    updateSuccess { it.copy(endDate = date, formError = null, submitErrorMessage = null) }
 
-  fun onPrePostMarksToggled(checked: Boolean) = updateSuccess { it.copy(prePostMarksApplicable = checked) }
+  fun onPrePostMarksToggled(checked: Boolean) =
+    updateSuccess { it.copy(prePostMarksApplicable = checked, submitErrorMessage = null) }
 
-  fun onRemarksChanged(remarks: String) = updateSuccess { it.copy(remarks = remarks) }
+  fun onRemarksChanged(remarks: String) = updateSuccess { it.copy(remarks = remarks, submitErrorMessage = null) }
+
+  fun onTopicToggled(topicId: String) = updateSuccess { state ->
+    val updated = state.selectedTopicIds.toMutableSet().apply {
+      if (!add(topicId)) remove(topicId)
+    }
+    state.copy(selectedTopicIds = updated, formError = null, submitErrorMessage = null)
+  }
 
   fun onSubmit() {
     val state = _uiState.value as? ScheduleTrainingUiState.Success ?: return
@@ -77,7 +97,7 @@ class ScheduleTrainingViewModel @Inject constructor(
       return
     }
 
-    _uiState.value = state.copy(isSubmitting = true, formError = null)
+    _uiState.value = state.copy(isSubmitting = true, formError = null, submitErrorMessage = null)
     viewModelScope.launch {
       try {
         val project = state.projects.first { it.id == state.selectedProjectId }
@@ -89,12 +109,20 @@ class ScheduleTrainingViewModel @Inject constructor(
           prePostMarksApplicable = state.prePostMarksApplicable,
           remarks = state.remarks,
         )
-        repository.scheduleTraining(request)
-        _uiState.value = state.copy(isSubmitting = false, submitted = true)
+        val scheduled = repository.scheduleTraining(request)
+        val eventId = when (scheduled) {
+          is EventScheduleResult.Synced -> scheduled.entry.id
+          is EventScheduleResult.QueuedOffline -> scheduled.entry.id
+        }
+        val topicNames = state.catalog.filter { it.id in state.selectedTopicIds }.map { it.name }
+        repository.addGathering(eventId, topicNames, request.startDate)
+        _uiState.value = state.copy(isSubmitting = false, submitted = true, submitErrorMessage = null)
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {
-        _uiState.value = ScheduleTrainingUiState.Error(R.string.meeting_training_error_submit, e.message)
+        // Inline, not the full-screen Error state — that would discard everything the user
+        // entered. Error stays reserved for load() failures, where there's no form to preserve.
+        _uiState.value = state.copy(isSubmitting = false, submitErrorMessage = e.message ?: "")
       }
     }
   }
@@ -104,6 +132,7 @@ class ScheduleTrainingViewModel @Inject constructor(
     viewModelScope.launch {
       try {
         val projects = repository.getProjects()
+        val catalog = repository.getTrainingTopicsCatalog()
         _uiState.value = ScheduleTrainingUiState.Success(
           projects = projects,
           selectedProjectId = null,
@@ -111,6 +140,8 @@ class ScheduleTrainingViewModel @Inject constructor(
           endDate = null,
           prePostMarksApplicable = false,
           remarks = "",
+          catalog = catalog,
+          selectedTopicIds = emptySet(),
           formError = null,
           isSubmitting = false,
           submitted = false,
@@ -127,6 +158,7 @@ class ScheduleTrainingViewModel @Inject constructor(
     state.selectedProjectId == null -> ScheduleTrainingFormError.PROJECT_REQUIRED
     state.startDate.isNullOrBlank() -> ScheduleTrainingFormError.START_DATE_REQUIRED
     state.endDate != null && parseDate(state.endDate) < parseDate(state.startDate) -> ScheduleTrainingFormError.INVALID_DATE_RANGE
+    state.selectedTopicIds.isEmpty() -> ScheduleTrainingFormError.TOPIC_REQUIRED
     else -> null
   }
 

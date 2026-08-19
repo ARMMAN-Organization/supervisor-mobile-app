@@ -162,6 +162,8 @@
   <string name="schedule_training_remarks_label">Remarks (optional)</string>
   <string name="schedule_training_submit">Schedule Training</string>
   <string name="schedule_training_error_start_date_required">Please select a training date</string>
+  <string name="schedule_training_topics_label">Topics</string>
+  <string name="schedule_training_error_topic_required">Please select at least one topic</string>
   <string name="schedule_training_added">Training Added</string>
 
   <string name="training_detail_title">Training Detail</string>
@@ -182,6 +184,8 @@
   <string name="add_training_topics_date_label">Date</string>
   <string name="add_training_topics_date_placeholder">Select Date</string>
   <string name="add_training_topics_label">Topics</string>
+  <string name="add_training_topics_empty_catalog">No training topics are available yet. Contact your administrator.</string>
+  <string name="add_training_topics_select_at_least_one">Select at least one topic before saving.</string>
   <string name="action_save">Save</string>
 
   <string name="attendance_title">Attendance</string>

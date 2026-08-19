@@ -2,6 +2,8 @@ package org.armman.supervisor.data.local
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
+import org.armman.supervisor.data.events.PendingGatheringDao
+import org.armman.supervisor.data.events.PendingGatheringEntity
 import org.armman.supervisor.data.events.PendingSupervisorEventDao
 import org.armman.supervisor.data.events.PendingSupervisorEventEntity
 import org.armman.supervisor.data.events.SupervisorEventCacheDao
@@ -33,8 +35,9 @@ import org.armman.supervisor.data.inventory.InventoryItemCacheEntity
     PendingInventoryTransactionEntity::class,
     PendingInventoryTransactionItemEntity::class,
     PendingSupervisorEventEntity::class,
+    PendingGatheringEntity::class,
   ],
-  version = 8,
+  version = 10,
 )
 abstract class AppDatabase : RoomDatabase() {
   abstract fun transactionDao(): TransactionDao
@@ -43,4 +46,5 @@ abstract class AppDatabase : RoomDatabase() {
   abstract fun supervisorEventCacheDao(): SupervisorEventCacheDao
   abstract fun pendingInventoryTransactionDao(): PendingInventoryTransactionDao
   abstract fun pendingSupervisorEventDao(): PendingSupervisorEventDao
+  abstract fun pendingGatheringDao(): PendingGatheringDao
 }

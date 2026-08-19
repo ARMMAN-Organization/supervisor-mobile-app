@@ -130,6 +130,13 @@ private fun FormContent(state: ScheduleMeetingUiState.Success, viewModel: Schedu
         color = MaterialTheme.colorScheme.error,
       )
     }
+    state.submitErrorMessage?.let { message ->
+      Text(
+        text = message.ifBlank { stringResource(R.string.meeting_training_error_submit) },
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.error,
+      )
+    }
     PrimaryButton(
       text = stringResource(R.string.schedule_meeting_submit),
       onClick = viewModel::onSubmit,

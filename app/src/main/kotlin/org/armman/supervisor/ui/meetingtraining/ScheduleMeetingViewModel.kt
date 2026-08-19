@@ -38,6 +38,10 @@ sealed interface ScheduleMeetingUiState {
     val formError: ScheduleMeetingFormError?,
     val isSubmitting: Boolean,
     val submitted: Boolean,
+    /** Set when [onSubmit]'s network call fails — shown inline (red text) without discarding the
+     * form, unlike [Error] which replaces the whole screen and is reserved for [load] failures,
+     * where there's no form to preserve. Mirrors AddReasonViewModel's submitErrorMessage. */
+    val submitErrorMessage: String? = null,
   ) : ScheduleMeetingUiState
 }
 
@@ -56,13 +60,16 @@ class ScheduleMeetingViewModel @Inject constructor(
     load()
   }
 
-  fun onProjectSelected(projectId: String) = updateSuccess { it.copy(selectedProjectId = projectId, formError = null) }
+  fun onProjectSelected(projectId: String) =
+    updateSuccess { it.copy(selectedProjectId = projectId, formError = null, submitErrorMessage = null) }
 
-  fun onStartDateSelected(date: String) = updateSuccess { it.copy(startDate = date, formError = null) }
+  fun onStartDateSelected(date: String) =
+    updateSuccess { it.copy(startDate = date, formError = null, submitErrorMessage = null) }
 
-  fun onEndDateSelected(date: String) = updateSuccess { it.copy(endDate = date, formError = null) }
+  fun onEndDateSelected(date: String) =
+    updateSuccess { it.copy(endDate = date, formError = null, submitErrorMessage = null) }
 
-  fun onRemarksChanged(remarks: String) = updateSuccess { it.copy(remarks = remarks) }
+  fun onRemarksChanged(remarks: String) = updateSuccess { it.copy(remarks = remarks, submitErrorMessage = null) }
 
   fun onSubmit() {
     val state = _uiState.value as? ScheduleMeetingUiState.Success ?: return
@@ -74,7 +81,7 @@ class ScheduleMeetingViewModel @Inject constructor(
       return
     }
 
-    _uiState.value = state.copy(isSubmitting = true, formError = null)
+    _uiState.value = state.copy(isSubmitting = true, formError = null, submitErrorMessage = null)
     viewModelScope.launch {
       try {
         val project = state.projects.first { it.id == state.selectedProjectId }
@@ -86,11 +93,13 @@ class ScheduleMeetingViewModel @Inject constructor(
           remarks = state.remarks,
         )
         repository.scheduleMeeting(request)
-        _uiState.value = state.copy(isSubmitting = false, submitted = true)
+        _uiState.value = state.copy(isSubmitting = false, submitted = true, submitErrorMessage = null)
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {
-        _uiState.value = ScheduleMeetingUiState.Error(R.string.meeting_training_error_submit, e.message)
+        // Inline, not the full-screen Error state — that would discard everything the user
+        // entered. Error stays reserved for load() failures, where there's no form to preserve.
+        _uiState.value = state.copy(isSubmitting = false, submitErrorMessage = e.message ?: "")
       }
     }
   }

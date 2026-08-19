@@ -104,12 +104,29 @@ private fun FormContent(state: AddTrainingTopicsUiState.Success, viewModel: AddT
       style = MaterialTheme.typography.labelLarge,
       modifier = Modifier.padding(top = Dimens.ItemSpacing, bottom = Dimens.SmallSpacing),
     )
-    LazyColumn(modifier = Modifier.weight(1f)) {
-      items(state.catalog, key = { it.id }) { topic ->
-        TopicRow(
-          topic = topic,
-          checked = topic.id in state.selectedTopicIds,
-          onToggle = { viewModel.onTopicToggled(topic.id) },
+    if (state.catalog.isEmpty()) {
+      Text(
+        text = stringResource(R.string.add_training_topics_empty_catalog),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.error,
+        modifier = Modifier.weight(1f).padding(top = Dimens.SmallSpacing),
+      )
+    } else {
+      LazyColumn(modifier = Modifier.weight(1f)) {
+        items(state.catalog, key = { it.id }) { topic ->
+          TopicRow(
+            topic = topic,
+            checked = topic.id in state.selectedTopicIds,
+            onToggle = { viewModel.onTopicToggled(topic.id) },
+          )
+        }
+      }
+      if (state.selectedTopicIds.isEmpty()) {
+        Text(
+          text = stringResource(R.string.add_training_topics_select_at_least_one),
+          style = MaterialTheme.typography.labelLarge,
+          color = MaterialTheme.colorScheme.error,
+          modifier = Modifier.padding(top = Dimens.SmallSpacing),
         )
       }
     }
@@ -125,7 +142,7 @@ private fun FormContent(state: AddTrainingTopicsUiState.Success, viewModel: AddT
 }
 
 @Composable
-private fun TopicRow(topic: TrainingTopic, checked: Boolean, onToggle: () -> Unit) {
+internal fun TopicRow(topic: TrainingTopic, checked: Boolean, onToggle: () -> Unit) {
   Row(
     verticalAlignment = Alignment.CenterVertically,
     modifier = Modifier.fillMaxWidth().toggleable(value = checked, role = Role.Checkbox, onValueChange = { onToggle() }),

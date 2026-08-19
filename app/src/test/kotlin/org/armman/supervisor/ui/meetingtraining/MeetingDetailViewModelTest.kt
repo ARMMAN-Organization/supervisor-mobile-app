@@ -47,6 +47,11 @@ class MeetingDetailViewModelTest {
     var cancelCallCount = 0
       private set
 
+    /** When > 0, the next that many [completeMeeting] calls fail; decremented on each attempt.
+     * Lets a test simulate "complete fails once (e.g. missing attendance), then succeeds on
+     * retry" without failing every repository call the way [shouldFail] does. */
+    var failCompleteCallsRemaining = 0
+
     fun setDetail(newDetail: MeetingDetail) {
       detail = newDetail
     }
@@ -85,6 +90,10 @@ class MeetingDetailViewModelTest {
 
     override suspend fun completeMeeting(eventId: String) {
       completeCallCount++
+      if (failCompleteCallsRemaining > 0) {
+        failCompleteCallsRemaining--
+        error("Missing attendance")
+      }
       detail = detail.copy(status = EventStatus.COMPLETED)
     }
 
@@ -225,6 +234,40 @@ class MeetingDetailViewModelTest {
     dispatcher.scheduler.advanceUntilIdle()
 
     assertTrue(viewModel.uiState.value is MeetingDetailUiState.Error)
+  }
+
+  @Test
+  fun `retrying a failed complete re-attempts complete itself, not just a reload`() = runTest(dispatcher) {
+    val repo = TestRepository()
+    val viewModel = MeetingDetailViewModel(repo, savedStateHandle())
+    readyState(viewModel)
+    viewModel.onAddPhoto("/data/1.jpg")
+    dispatcher.scheduler.advanceUntilIdle()
+    repo.failCompleteCallsRemaining = 1
+    viewModel.onComplete()
+    dispatcher.scheduler.advanceUntilIdle()
+    assertTrue(viewModel.uiState.value is MeetingDetailUiState.Error)
+
+    viewModel.onRetry()
+    dispatcher.scheduler.advanceUntilIdle()
+
+    assertEquals(2, repo.completeCallCount)
+    assertEquals(EventStatus.COMPLETED, (viewModel.uiState.value as MeetingDetailUiState.Success).detail.status)
+  }
+
+  @Test
+  fun `retrying an error from initial load just reloads, not any prior action`() = runTest(dispatcher) {
+    val repo = TestRepository(shouldFail = true)
+    val viewModel = MeetingDetailViewModel(repo, savedStateHandle())
+    dispatcher.scheduler.advanceUntilIdle()
+    assertTrue(viewModel.uiState.value is MeetingDetailUiState.Error)
+
+    repo.failNextCalls(false)
+    viewModel.onRetry()
+    dispatcher.scheduler.advanceUntilIdle()
+
+    assertTrue(viewModel.uiState.value is MeetingDetailUiState.Success)
+    assertEquals(0, repo.completeCallCount)
   }
 
   // --- Edge cases ---

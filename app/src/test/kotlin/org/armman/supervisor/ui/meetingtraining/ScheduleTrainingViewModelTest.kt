@@ -32,11 +32,18 @@ class ScheduleTrainingViewModelTest {
 
   private class TestRepository(
     private val projects: List<LocationOption> = listOf(LocationOption("loc-1", "Zone A")),
+    private val catalog: List<TrainingTopic> = listOf(TrainingTopic("topic-1", "Nutrition")),
     private var shouldFail: Boolean = false,
   ) : MeetingTrainingRepository {
     var scheduleCallCount = 0
       private set
     var lastRequest: ScheduleTrainingRequest? = null
+      private set
+    var gatheringCallCount = 0
+      private set
+    var lastGatheringTopicNames: List<String>? = null
+      private set
+    var lastGatheringDate: String? = null
       private set
 
     fun failNextCalls(fail: Boolean) {
@@ -77,10 +84,15 @@ class ScheduleTrainingViewModelTest {
       return EventScheduleResult.Synced(entry)
     }
 
-    override suspend fun getTrainingTopicsCatalog(): List<TrainingTopic> = error("not used")
+    override suspend fun getTrainingTopicsCatalog(): List<TrainingTopic> = catalog
 
-
-    override suspend fun addGathering(eventId: String, topicNames: List<String>, date: String): String = error("not used")
+    override suspend fun addGathering(eventId: String, topicNames: List<String>, date: String): String {
+      if (shouldFail) error("add gathering failed")
+      gatheringCallCount++
+      lastGatheringTopicNames = topicNames
+      lastGatheringDate = date
+      return "gathering-1"
+    }
 
     override suspend fun saveGatheringAttendance(eventId: String, gatheringId: String, attendance: List<AttendanceEntry>) = error("not used")
 
@@ -112,7 +124,7 @@ class ScheduleTrainingViewModelTest {
   }
 
   @Test
-  fun `submit with valid project and dates succeeds and calls repository once`() = runTest(dispatcher) {
+  fun `submit with valid project, dates and a topic succeeds and calls repository once`() = runTest(dispatcher) {
     val repo = TestRepository()
     val viewModel = ScheduleTrainingViewModel(repo)
     readyState(viewModel)
@@ -120,11 +132,29 @@ class ScheduleTrainingViewModelTest {
     viewModel.onProjectSelected("loc-1")
     viewModel.onStartDateSelected("27 Jul 2026")
     viewModel.onEndDateSelected("30 Jul 2026")
+    viewModel.onTopicToggled("topic-1")
     viewModel.onSubmit()
     dispatcher.scheduler.advanceUntilIdle()
 
     assertEquals(1, repo.scheduleCallCount)
     assertTrue((viewModel.uiState.value as ScheduleTrainingUiState.Success).submitted)
+  }
+
+  @Test
+  fun `submit with a selected topic creates the first gathering with that topic and the start date`() = runTest(dispatcher) {
+    val repo = TestRepository()
+    val viewModel = ScheduleTrainingViewModel(repo)
+    readyState(viewModel)
+
+    viewModel.onProjectSelected("loc-1")
+    viewModel.onStartDateSelected("27 Jul 2026")
+    viewModel.onTopicToggled("topic-1")
+    viewModel.onSubmit()
+    dispatcher.scheduler.advanceUntilIdle()
+
+    assertEquals(1, repo.gatheringCallCount)
+    assertEquals(listOf("Nutrition"), repo.lastGatheringTopicNames)
+    assertEquals("27 Jul 2026", repo.lastGatheringDate)
   }
 
   @Test
@@ -136,6 +166,7 @@ class ScheduleTrainingViewModelTest {
     viewModel.onProjectSelected("loc-1")
     viewModel.onStartDateSelected("27 Jul 2026")
     viewModel.onPrePostMarksToggled(true)
+    viewModel.onTopicToggled("topic-1")
     viewModel.onSubmit()
     dispatcher.scheduler.advanceUntilIdle()
 
@@ -151,6 +182,7 @@ class ScheduleTrainingViewModelTest {
     viewModel.onProjectSelected("loc-1")
     viewModel.onStartDateSelected("27 Jul 2026")
     viewModel.onRemarksChanged("Test remarks")
+    viewModel.onTopicToggled("topic-1")
     viewModel.onSubmit()
     dispatcher.scheduler.advanceUntilIdle()
 
@@ -165,6 +197,7 @@ class ScheduleTrainingViewModelTest {
 
     viewModel.onProjectSelected("loc-1")
     viewModel.onStartDateSelected("27 Jul 2026")
+    viewModel.onTopicToggled("topic-1")
     viewModel.onSubmit()
     dispatcher.scheduler.advanceUntilIdle()
 
@@ -221,8 +254,8 @@ class ScheduleTrainingViewModelTest {
   }
 
   @Test
-  fun `repository failure on submit moves to Error`() = runTest(dispatcher) {
-    val repo = TestRepository(shouldFail = true)
+  fun `submit with no topic selected blocks with TOPIC_REQUIRED`() = runTest(dispatcher) {
+    val repo = TestRepository()
     val viewModel = ScheduleTrainingViewModel(repo)
     readyState(viewModel)
 
@@ -231,7 +264,106 @@ class ScheduleTrainingViewModelTest {
     viewModel.onSubmit()
     dispatcher.scheduler.advanceUntilIdle()
 
-    assertTrue(viewModel.uiState.value is ScheduleTrainingUiState.Error)
+    val state = viewModel.uiState.value as ScheduleTrainingUiState.Success
+    assertEquals(ScheduleTrainingFormError.TOPIC_REQUIRED, state.formError)
+    assertEquals(0, repo.scheduleCallCount)
+  }
+
+  @Test
+  fun `empty topic catalog is exposed on state so the screen can show it has nothing to select`() = runTest(dispatcher) {
+    val repo = TestRepository(catalog = emptyList())
+    val viewModel = ScheduleTrainingViewModel(repo)
+    val state = readyState(viewModel)
+
+    assertTrue(state.catalog.isEmpty())
+  }
+
+  @Test
+  fun `repository failure on submit shows an inline error without discarding the form`() = runTest(dispatcher) {
+    val repo = TestRepository(shouldFail = true)
+    val viewModel = ScheduleTrainingViewModel(repo)
+    readyState(viewModel)
+
+    viewModel.onProjectSelected("loc-1")
+    viewModel.onStartDateSelected("27 Jul 2026")
+    viewModel.onTopicToggled("topic-1")
+    viewModel.onSubmit()
+    dispatcher.scheduler.advanceUntilIdle()
+
+    val state = viewModel.uiState.value as ScheduleTrainingUiState.Success
+    assertEquals("schedule failed", state.submitErrorMessage)
+    assertEquals("loc-1", state.selectedProjectId)
+    assertEquals("27 Jul 2026", state.startDate)
+    assertEquals(setOf("topic-1"), state.selectedTopicIds)
+    assertTrue(!state.isSubmitting)
+    assertTrue(!state.submitted)
+  }
+
+  @Test
+  fun `a submit exception with a blank message still sets a non-null submitErrorMessage`() = runTest(dispatcher) {
+    val repo = TestRepository(shouldFail = true)
+    val viewModel = ScheduleTrainingViewModel(repo)
+    readyState(viewModel)
+    viewModel.onProjectSelected("loc-1")
+    viewModel.onStartDateSelected("27 Jul 2026")
+    viewModel.onTopicToggled("topic-1")
+
+    viewModel.onSubmit()
+    dispatcher.scheduler.advanceUntilIdle()
+
+    val state = viewModel.uiState.value as ScheduleTrainingUiState.Success
+    assertTrue(state.submitErrorMessage != null)
+  }
+
+  @Test
+  fun `editing any field after a submit error clears submitErrorMessage`() = runTest(dispatcher) {
+    val repo = TestRepository(shouldFail = true)
+    val viewModel = ScheduleTrainingViewModel(repo)
+    readyState(viewModel)
+    viewModel.onProjectSelected("loc-1")
+    viewModel.onStartDateSelected("27 Jul 2026")
+    viewModel.onTopicToggled("topic-1")
+    viewModel.onSubmit()
+    dispatcher.scheduler.advanceUntilIdle()
+    assertTrue((viewModel.uiState.value as ScheduleTrainingUiState.Success).submitErrorMessage != null)
+
+    viewModel.onRemarksChanged("updated remarks")
+
+    assertEquals(null, (viewModel.uiState.value as ScheduleTrainingUiState.Success).submitErrorMessage)
+  }
+
+  @Test
+  fun `retrying onSubmit after a failure succeeds once the repository stops failing`() = runTest(dispatcher) {
+    val repo = TestRepository(shouldFail = true)
+    val viewModel = ScheduleTrainingViewModel(repo)
+    readyState(viewModel)
+    viewModel.onProjectSelected("loc-1")
+    viewModel.onStartDateSelected("27 Jul 2026")
+    viewModel.onTopicToggled("topic-1")
+    viewModel.onSubmit()
+    dispatcher.scheduler.advanceUntilIdle()
+    repo.failNextCalls(false)
+
+    viewModel.onSubmit()
+    dispatcher.scheduler.advanceUntilIdle()
+
+    val state = viewModel.uiState.value as ScheduleTrainingUiState.Success
+    assertEquals(null, state.submitErrorMessage)
+    assertTrue(state.submitted)
+  }
+
+  @Test
+  fun `a validation failure never sets submitErrorMessage`() = runTest(dispatcher) {
+    val repo = TestRepository()
+    val viewModel = ScheduleTrainingViewModel(repo)
+    readyState(viewModel)
+
+    viewModel.onSubmit()
+
+    val state = viewModel.uiState.value as ScheduleTrainingUiState.Success
+    assertEquals(ScheduleTrainingFormError.PROJECT_REQUIRED, state.formError)
+    assertEquals(null, state.submitErrorMessage)
+    assertEquals(0, repo.scheduleCallCount)
   }
 
   // --- Edge cases ---
@@ -244,6 +376,7 @@ class ScheduleTrainingViewModelTest {
 
     viewModel.onProjectSelected("loc-1")
     viewModel.onStartDateSelected("27 Jul 2026")
+    viewModel.onTopicToggled("topic-1")
     viewModel.onSubmit()
     viewModel.onSubmit()
     dispatcher.scheduler.advanceUntilIdle()

@@ -14,6 +14,7 @@ import net.sqlcipher.database.SQLiteDatabase
 import net.sqlcipher.database.SupportFactory
 import org.armman.supervisor.BuildConfig
 import org.armman.supervisor.data.auth.session.SecureKeyValueStore
+import org.armman.supervisor.data.events.PendingGatheringDao
 import org.armman.supervisor.data.events.PendingSupervisorEventDao
 import org.armman.supervisor.data.events.SupervisorEventCacheDao
 import org.armman.supervisor.data.inventory.InventoryItemCacheDao
@@ -90,6 +91,9 @@ object DatabaseModule {
   @Provides
   fun providePendingSupervisorEventDao(database: AppDatabase): PendingSupervisorEventDao =
     database.pendingSupervisorEventDao()
+
+  @Provides
+  fun providePendingGatheringDao(database: AppDatabase): PendingGatheringDao = database.pendingGatheringDao()
 
   @Provides
   @Singleton

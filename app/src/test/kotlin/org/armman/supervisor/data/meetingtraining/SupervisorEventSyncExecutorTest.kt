@@ -50,6 +50,8 @@ private class ExecutorFakeCacheDao : SupervisorEventCacheDao {
   }
 
   override suspend fun getById(id: String): SupervisorEventCacheEntity? = entities[id]
+
+  override suspend fun getAll(): List<SupervisorEventCacheEntity> = entities.values.toList()
 }
 
 private class ExecutorFakeApi : SupervisorEventsApi {
