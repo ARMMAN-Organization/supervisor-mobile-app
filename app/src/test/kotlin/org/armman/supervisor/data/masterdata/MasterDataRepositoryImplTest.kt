@@ -4,8 +4,6 @@ import kotlinx.coroutines.test.runTest
 import org.armman.supervisor.data.lookups.LookupCategoryDto
 import org.armman.supervisor.data.lookups.LookupCategoryEnvelopeDto
 import org.armman.supervisor.data.lookups.LookupValueDto
-import org.armman.supervisor.data.lookups.LookupsApi
-import org.armman.supervisor.data.lookups.LookupsEnvelopeDto
 import org.armman.supervisor.data.projects.ProjectsRepository
 import org.armman.supervisor.model.LocationOption
 import org.armman.supervisor.ui.assignitem.SakhiDetail
@@ -147,22 +145,8 @@ private class FakeItemMasterAndTrainingApi : ItemMasterAndTrainingApi {
   }
 }
 
-/** Fakes the generic `/lookups` endpoints; [RISK_CATEGORY][MasterDataEntity.RISK_CATEGORY] downloads
- * via `getCategory("RISK_GRADE")` here rather than [FakeMasterDataCategoryApi]. */
-private class FakeLookupsApi : LookupsApi {
-  var riskGrade = category("RISK_GRADE", 3)
-  var failing = false
-
-  override suspend fun getLookups(): Response<LookupsEnvelopeDto> =
-    throw UnsupportedOperationException("not used by these tests")
-
-  override suspend fun getCategory(categoryCode: String): Response<LookupCategoryEnvelopeDto> {
-    if (failing) error("fail")
-    return Response.success(LookupCategoryEnvelopeDto(true, "OK", riskGrade))
-  }
-}
-
 private class FakeMasterDataCategoryApi : MasterDataCategoryApi {
+  var riskCategories = category("RISK_GRADE", 3)
   var riskTypes = category("RISK_TYPE", 2)
   var riskLanguages = category("LANGUAGE", 2)
   var visitCategories = category("VISIT_CATEGORY", 4)
@@ -176,6 +160,7 @@ private class FakeMasterDataCategoryApi : MasterDataCategoryApi {
 
   private fun envelope(c: LookupCategoryDto) = Response.success(LookupCategoryEnvelopeDto(true, "OK", c))
 
+  override suspend fun getRiskCategories() = if (failing) error("fail") else envelope(riskCategories)
   override suspend fun getRiskTypes() = if (failing) error("fail") else envelope(riskTypes)
   override suspend fun getRiskLanguages() = if (failing) error("fail") else envelope(riskLanguages)
   override suspend fun getVisitCategories() = if (failing) error("fail") else envelope(visitCategories)
@@ -196,7 +181,6 @@ class MasterDataRepositoryImplTest {
   private val geographyApi = FakeGeographyApi()
   private val riskAndFundersApi = FakeRiskAndFundersApi()
   private val categoryApi = FakeMasterDataCategoryApi()
-  private val lookupsApi = FakeLookupsApi()
   private val itemMasterAndTrainingApi = FakeItemMasterAndTrainingApi()
   private val applicationParameterApi = FakeApplicationParameterApi()
 
@@ -206,7 +190,6 @@ class MasterDataRepositoryImplTest {
       geographyApi,
       riskAndFundersApi,
       categoryApi,
-      lookupsApi,
       itemMasterAndTrainingApi,
       applicationParameterApi,
       MockUnreadyMasterDataEntities(enabled = mockUnreadyEntities),
@@ -437,7 +420,7 @@ class MasterDataRepositoryImplTest {
 
   @Test
   fun `a category with no values returns Empty`() = runTest {
-    lookupsApi.riskGrade = category("RISK_GRADE", 0)
+    categoryApi.riskCategories = category("RISK_GRADE", 0)
 
     val result = repository().download(MasterDataEntity.RISK_CATEGORY)
 

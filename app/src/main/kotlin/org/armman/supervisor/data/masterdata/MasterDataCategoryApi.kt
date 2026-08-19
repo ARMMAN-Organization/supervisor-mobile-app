@@ -18,6 +18,9 @@ data class LookupCategoryListEnvelopeDto(
  * for DDL Item, every category). Paths are relative to `API_BASE_URL` (`.../api/v1/`).
  */
 interface MasterDataCategoryApi {
+  @GET("risk-categories")
+  suspend fun getRiskCategories(): Response<LookupCategoryEnvelopeDto>
+
   @GET("risk-types")
   suspend fun getRiskTypes(): Response<LookupCategoryEnvelopeDto>
 

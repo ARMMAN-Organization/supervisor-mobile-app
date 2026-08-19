@@ -119,10 +119,12 @@ class MasterDataDownloadViewModel @Inject constructor(
     startDownload()
   }
 
-  /** Dismisses the network-error dialog without resuming; the partial state stays visible. */
+  /** Dismisses the network-error dialog without resuming; the partial state stays visible, but the
+   * row that was mid-download when the error hit must stop showing as DOWNLOADING now that
+   * activeIndex no longer points at anything in progress. */
   fun onStopClicked() {
     downloadJob?.cancel()
-    _uiState.update { it.copy(showNetworkErrorDialog = false) }
+    _uiState.update { it.copy(activeIndex = -1, showNetworkErrorDialog = false) }
   }
 
   /** Back pressed while still downloading asks for confirmation; once complete, back navigates

@@ -153,6 +153,19 @@ class MasterDataDownloadViewModelTest {
   }
 
   @Test
+  fun `stop clears activeIndex so the failed row no longer shows as downloading`() {
+    repository.enqueue(MasterDataResult.Failure(RuntimeException("no network")))
+    val viewModel = createViewModel()
+    dispatcher.scheduler.advanceUntilIdle()
+    assertTrue(viewModel.content().activeIndex in MasterDataEntity.entries.indices)
+
+    viewModel.onStopClicked()
+
+    assertEquals(-1, viewModel.content().activeIndex)
+    assertFalse(viewModel.content().isDownloading)
+  }
+
+  @Test
   fun `no network at start shows the network error dialog immediately`() {
     connectivityChecker.online = false
     val viewModel = createViewModel()

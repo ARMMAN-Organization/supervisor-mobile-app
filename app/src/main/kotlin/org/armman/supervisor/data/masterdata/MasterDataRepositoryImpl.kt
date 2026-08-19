@@ -5,7 +5,6 @@ import kotlinx.coroutines.delay
 import org.armman.supervisor.BuildConfig
 import org.armman.supervisor.data.lookups.LookupCategoryDto
 import org.armman.supervisor.data.lookups.LookupCategoryEnvelopeDto
-import org.armman.supervisor.data.lookups.LookupsApi
 import org.armman.supervisor.data.projects.ProjectsRepository
 import org.armman.supervisor.ui.masterdata.MasterDataEntity
 import retrofit2.Response
@@ -46,7 +45,6 @@ class MasterDataRepositoryImpl @Inject constructor(
   private val geographyApi: GeographyApi,
   private val riskAndFundersApi: RiskAndFundersApi,
   private val categoryApi: MasterDataCategoryApi,
-  private val lookupsApi: LookupsApi,
   private val itemMasterAndTrainingApi: ItemMasterAndTrainingApi,
   private val applicationParameterApi: ApplicationParameterApi,
   private val mockUnreadyEntities: MockUnreadyMasterDataEntities,
@@ -89,7 +87,7 @@ class MasterDataRepositoryImpl @Inject constructor(
         MasterDataEntity.FUNDERS -> downloadFunders()
         MasterDataEntity.PROJECTS -> projectsRepository.getProjects().size
         MasterDataEntity.SAKHI -> downloadAllSakhis()
-        MasterDataEntity.RISK_CATEGORY -> downloadCategory { lookupsApi.getCategory("RISK_GRADE") }
+        MasterDataEntity.RISK_CATEGORY -> downloadCategory { categoryApi.getRiskCategories() }
         MasterDataEntity.RISK -> downloadRiskConditions()
         MasterDataEntity.RISK_LANGUAGE -> downloadCategory { categoryApi.getRiskLanguages() }
         MasterDataEntity.RISK_PARAMETER -> downloadRiskParameters()
@@ -123,8 +121,11 @@ class MasterDataRepositoryImpl @Inject constructor(
     projectsRepository.getProjects().sumOf { project -> projectsRepository.getSakhis(project.id).size }
 
   /** [MasterDataEntity.STATE] is always the first row downloaded, so it's the signal to start a
-   * fresh geography traversal — clearing any parent ids left over from an earlier run/retry. */
+   * fresh geography traversal — clearing any parent ids left over from an earlier run/retry before
+   * the call even goes out, so a failed roots call can never leave a stale, wrong-run cache behind
+   * for a later level to descend from. */
   private suspend fun downloadGeographyRoots(): Int {
+    geographyParentIds = emptyList()
     val response = geographyApi.getRoots()
     if (!response.isSuccessful) error("Failed to load geography roots: HTTP ${response.code()}")
     val body = response.body() ?: error("Empty geography roots response")
