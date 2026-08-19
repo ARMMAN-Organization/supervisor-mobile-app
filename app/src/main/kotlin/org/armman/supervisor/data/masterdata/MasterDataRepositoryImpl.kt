@@ -1,6 +1,8 @@
 package org.armman.supervisor.data.masterdata
 
-import android.util.Log
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import org.armman.supervisor.BuildConfig
 import org.armman.supervisor.data.lookups.LookupCategoryDto
@@ -48,6 +50,7 @@ class MasterDataRepositoryImpl @Inject constructor(
   private val itemMasterAndTrainingApi: ItemMasterAndTrainingApi,
   private val applicationParameterApi: ApplicationParameterApi,
   private val mockUnreadyEntities: MockUnreadyMasterDataEntities,
+  private val logger: MasterDataLogger,
 ) : MasterDataRepository {
 
   private companion object {
@@ -110,10 +113,29 @@ class MasterDataRepositoryImpl @Inject constructor(
       onFailure = { cause ->
         // No PII/tokens/response bodies — just enough to tell which entity failed and why,
         // safe to leave enabled in release (unlike HttpLoggingInterceptor, which stays NONE).
-        Log.w("MasterDataDownload", "$entity failed: ${cause.javaClass.simpleName}: ${cause.message}")
+        logger.warn("$entity failed: ${cause.javaClass.simpleName}: ${cause.message}")
         MasterDataResult.Failure(cause)
       },
     )
+  }
+
+  /** Shared by every simple master-data endpoint below: check the HTTP status, the envelope's own
+   * `success` flag, then hand the body to [extractCount] for the entity-specific record count.
+   * [label] identifies the entity in error messages only. Collapses the `isSuccessful` →
+   * `body() ?: error(...)` → `body.success` → extract-count triad that used to be copy-pasted once
+   * per envelope type, since the envelopes share no common interface to unwrap generically. */
+  private suspend fun <T> unwrap(
+    label: String,
+    call: suspend () -> Response<T>,
+    isSuccess: (T) -> Boolean,
+    message: (T) -> String?,
+    extractCount: (T) -> Int,
+  ): Int {
+    val response = call()
+    if (!response.isSuccessful) error("Failed to load $label: HTTP ${response.code()}")
+    val body = response.body() ?: error("Empty $label response")
+    if (!isSuccess(body)) error(message(body) ?: "Failed to load $label")
+    return extractCount(body)
   }
 
   /** No single "all Sakhis" endpoint exists — roster is fetched per project and summed. */
@@ -135,104 +157,82 @@ class MasterDataRepositoryImpl @Inject constructor(
     return roots.size
   }
 
-  /** Fetches every unit at [geoType] under each id in [geographyParentIds], then — unless
-   * [advanceCache] is false — replaces [geographyParentIds] with the ids just fetched, so the next
-   * enum entry's call descends one level further. */
-  private suspend fun downloadGeographyLevel(geoType: String, advanceCache: Boolean = true): Int {
-    val units = geographyParentIds.flatMap { parentId ->
-      val response = geographyApi.getUnits(geoType = geoType, parentId = parentId)
-      if (!response.isSuccessful) error("Failed to load $geoType: HTTP ${response.code()}")
-      val body = response.body() ?: error("Empty $geoType response")
-      if (!body.success) error(body.message ?: "Failed to load $geoType")
-      body.data.orEmpty()
+  /** Fetches every unit at [geoType] under each id in [geographyParentIds] — concurrently, since
+   * deep levels (e.g. every sub-center's villages) can hold hundreds of parent ids and a
+   * sequential fetch would be O(n × latency) — then, unless [advanceCache] is false, replaces
+   * [geographyParentIds] with the ids just fetched, so the next enum entry's call descends one
+   * level further. */
+  private suspend fun downloadGeographyLevel(geoType: String, advanceCache: Boolean = true): Int =
+    coroutineScope {
+      val units = geographyParentIds.map { parentId ->
+        async {
+          val response = geographyApi.getUnits(geoType = geoType, parentId = parentId)
+          if (!response.isSuccessful) error("Failed to load $geoType: HTTP ${response.code()}")
+          val body = response.body() ?: error("Empty $geoType response")
+          if (!body.success) error(body.message ?: "Failed to load $geoType")
+          body.data.orEmpty()
+        }
+      }.awaitAll().flatten()
+      if (advanceCache) geographyParentIds = units.map { it.geographyUnitId }
+      units.size
     }
-    if (advanceCache) geographyParentIds = units.map { it.geographyUnitId }
-    return units.size
-  }
 
-  private suspend fun downloadFunders(): Int {
-    val response = riskAndFundersApi.getFunders()
-    if (!response.isSuccessful) error("Failed to load funders: HTTP ${response.code()}")
-    val body = response.body() ?: error("Empty funders response")
-    if (!body.success) error(body.message ?: "Failed to load funders")
-    return body.data.orEmpty().size
-  }
+  private suspend fun downloadFunders(): Int =
+    unwrap("funders", riskAndFundersApi::getFunders, { it.success }, { it.message }) { it.data.orEmpty().size }
 
-  private suspend fun downloadRiskConditions(): Int {
-    val response = riskAndFundersApi.getRiskConditions()
-    if (!response.isSuccessful) error("Failed to load risk conditions: HTTP ${response.code()}")
-    val body = response.body() ?: error("Empty risk conditions response")
-    if (!body.success) error(body.message ?: "Failed to load risk conditions")
-    return body.data.orEmpty().size
-  }
+  private suspend fun downloadRiskConditions(): Int =
+    unwrap("risk conditions", riskAndFundersApi::getRiskConditions, { it.success }, { it.message }) {
+      it.data.orEmpty().size
+    }
 
   /** Shared by every single-category master-data endpoint (Risk Category/Type/Language, Visit
    * Category, Item Category, UOM List, Transaction Type, Gathering Status/Types) — each returns
    * one [LookupCategoryDto], and the row's "record count" is that category's value count. */
-  private suspend fun downloadCategory(call: suspend () -> Response<LookupCategoryEnvelopeDto>): Int {
-    val response = call()
-    if (!response.isSuccessful) error("Failed to load category: HTTP ${response.code()}")
-    val body = response.body() ?: error("Empty category response")
-    if (!body.success) error(body.message ?: "Failed to load category")
-    return body.data?.values?.size ?: 0
-  }
+  private suspend fun downloadCategory(call: suspend () -> Response<LookupCategoryEnvelopeDto>): Int =
+    unwrap("category", call, { it.success }, { it.message }) { it.data?.values?.size ?: 0 }
 
-  private suspend fun downloadDdlItems(): Int {
-    val response = categoryApi.getDdlItems()
-    if (!response.isSuccessful) error("Failed to load DDL items: HTTP ${response.code()}")
-    val body = response.body() ?: error("Empty DDL items response")
-    if (!body.success) error(body.message ?: "Failed to load DDL items")
-    return body.data.orEmpty().sumOf { it.values.size }
-  }
+  private suspend fun downloadDdlItems(): Int =
+    unwrap("DDL items", categoryApi::getDdlItems, { it.success }, { it.message }) {
+      it.data.orEmpty().sumOf { category -> category.values.size }
+    }
 
-  private suspend fun downloadItemMasterList(): Int {
-    val response = itemMasterAndTrainingApi.getItemMasterList()
-    if (!response.isSuccessful) error("Failed to load item master list: HTTP ${response.code()}")
-    val body = response.body() ?: error("Empty item master list response")
-    if (!body.success) error(body.message ?: "Failed to load item master list")
-    return body.data.orEmpty().size
-  }
+  private suspend fun downloadItemMasterList(): Int =
+    unwrap("item master list", itemMasterAndTrainingApi::getItemMasterList, { it.success }, { it.message }) {
+      it.data.orEmpty().size
+    }
 
-  private suspend fun downloadTrainingTopics(): Int {
-    val response = itemMasterAndTrainingApi.getTrainingTopics()
-    if (!response.isSuccessful) error("Failed to load training topics: HTTP ${response.code()}")
-    val body = response.body() ?: error("Empty training topics response")
-    if (!body.success) error(body.message ?: "Failed to load training topics")
-    return body.data.orEmpty().size
-  }
+  private suspend fun downloadTrainingTopics(): Int =
+    unwrap("training topics", itemMasterAndTrainingApi::getTrainingTopics, { it.success }, { it.message }) {
+      it.data.orEmpty().size
+    }
 
-  private suspend fun downloadRiskParameters(): Int {
-    val response = riskAndFundersApi.getRiskParameters()
-    if (!response.isSuccessful) error("Failed to load risk parameters: HTTP ${response.code()}")
-    val body = response.body() ?: error("Empty risk parameters response")
-    if (!body.success) error(body.message ?: "Failed to load risk parameters")
-    return body.data.orEmpty().size
-  }
+  private suspend fun downloadRiskParameters(): Int =
+    unwrap("risk parameters", riskAndFundersApi::getRiskParameters, { it.success }, { it.message }) {
+      it.data.orEmpty().size
+    }
 
-  private suspend fun downloadVisitMasters(): Int {
-    val response = riskAndFundersApi.getVisitMasters()
-    if (!response.isSuccessful) error("Failed to load visit masters: HTTP ${response.code()}")
-    val body = response.body() ?: error("Empty visit masters response")
-    if (!body.success) error(body.message ?: "Failed to load visit masters")
-    return body.data.orEmpty().size
-  }
+  private suspend fun downloadVisitMasters(): Int =
+    unwrap("visit masters", riskAndFundersApi::getVisitMasters, { it.success }, { it.message }) {
+      it.data.orEmpty().size
+    }
 
-  private suspend fun downloadApplicationParameters(): Int {
-    val response = applicationParameterApi.getApplicationParameters()
-    if (!response.isSuccessful) error("Failed to load application parameters: HTTP ${response.code()}")
-    val body = response.body() ?: error("Empty application parameters response")
-    if (!body.success) error(body.message ?: "Failed to load application parameters")
-    return body.data.orEmpty().size
-  }
+  private suspend fun downloadApplicationParameters(): Int =
+    unwrap(
+      "application parameters",
+      applicationParameterApi::getApplicationParameters,
+      { it.success },
+      { it.message },
+    ) { it.data.orEmpty().size }
 
   /** No single "all project geography" endpoint exists — the mapping is fetched per project and
    * summed, same pattern as [downloadAllSakhis]. */
   private suspend fun downloadAllProjectGeography(): Int =
     projectsRepository.getProjects().sumOf { project ->
-      val response = geographyApi.getProjectGeography(project.id)
-      if (!response.isSuccessful) error("Failed to load project geography: HTTP ${response.code()}")
-      val body = response.body() ?: error("Empty project geography response")
-      if (!body.success) error(body.message ?: "Failed to load project geography")
-      body.data.orEmpty().size
+      unwrap(
+        "project geography",
+        { geographyApi.getProjectGeography(project.id) },
+        { it.success },
+        { it.message },
+      ) { it.data.orEmpty().size }
     }
 }

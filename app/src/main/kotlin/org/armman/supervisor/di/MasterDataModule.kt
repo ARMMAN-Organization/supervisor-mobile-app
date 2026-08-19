@@ -6,10 +6,12 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import org.armman.supervisor.BuildConfig
+import org.armman.supervisor.data.masterdata.AndroidMasterDataLogger
 import org.armman.supervisor.data.masterdata.ApplicationParameterApi
 import org.armman.supervisor.data.masterdata.GeographyApi
 import org.armman.supervisor.data.masterdata.ItemMasterAndTrainingApi
 import org.armman.supervisor.data.masterdata.MasterDataCategoryApi
+import org.armman.supervisor.data.masterdata.MasterDataLogger
 import org.armman.supervisor.data.masterdata.MasterDataRepository
 import org.armman.supervisor.data.masterdata.MasterDataRepositoryImpl
 import org.armman.supervisor.data.masterdata.MockUnreadyMasterDataEntities
@@ -24,6 +26,10 @@ abstract class MasterDataModule {
   @Binds
   @Singleton
   abstract fun bindMasterDataRepository(impl: MasterDataRepositoryImpl): MasterDataRepository
+
+  @Binds
+  @Singleton
+  abstract fun bindMasterDataLogger(impl: AndroidMasterDataLogger): MasterDataLogger
 
   companion object {
     /** [BuildConfig.DEBUG] is `false` for every release build (see `app/build.gradle.kts`'s

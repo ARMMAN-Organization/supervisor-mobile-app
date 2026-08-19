@@ -40,6 +40,7 @@ import org.armman.supervisor.ui.theme.Dimens
 import org.armman.supervisor.ui.theme.MasterDataCompleted
 import org.armman.supervisor.ui.theme.MasterDataDownloading
 import org.armman.supervisor.ui.theme.MasterDataDownloadingTrack
+import org.armman.supervisor.ui.theme.MasterDataEmpty
 import org.armman.supervisor.ui.theme.MasterDataPending
 import org.armman.supervisor.ui.theme.NeutralG10
 import org.armman.supervisor.ui.theme.NeutralG200
@@ -186,7 +187,7 @@ private fun statusLabelAndColor(status: DownloadRowStatus): Pair<String, android
     DownloadRowStatus.PENDING -> stringResource(R.string.master_data_status_pending) to MasterDataPending
     DownloadRowStatus.DOWNLOADING -> stringResource(R.string.master_data_status_downloading) to MasterDataDownloading
     DownloadRowStatus.COMPLETED -> stringResource(R.string.master_data_status_completed) to MasterDataCompleted
-    DownloadRowStatus.EMPTY -> stringResource(R.string.master_data_status_empty) to MasterDataDownloading
+    DownloadRowStatus.EMPTY -> stringResource(R.string.master_data_status_empty) to MasterDataEmpty
     DownloadRowStatus.NOT_AVAILABLE -> stringResource(R.string.master_data_status_not_available) to NeutralG200
   }
 
