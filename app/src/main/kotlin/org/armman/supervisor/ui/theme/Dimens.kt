@@ -87,6 +87,11 @@ object Dimens {
   /** Hairline divider width — sub-base-4 by design (any visible divider must render below 4dp). */
   val HairlineWidth = 1.dp
 
+  /** Thin sliding progress-bar height on the Download Master Data screen's row cards —
+   * sub-base-4 by design, same intentional exception as [HairlineWidth] above. Reused by the
+   * Download Beneficiary Data screen, which shares the same row-status visuals. */
+  val MasterDataProgressBarHeight = 3.dp
+
   /** Caps and centers list-style content (e.g. Settings) on tablet instead of stretching full-bleed. */
   val ContentMaxWidthTablet = 600.dp
 

@@ -13,6 +13,7 @@ import org.armman.supervisor.ui.assignitem.AddItemTransactionScreen
 import org.armman.supervisor.ui.assignitem.AssignItemDetailScreen
 import org.armman.supervisor.ui.assignitem.AssignItemScreen
 import org.armman.supervisor.ui.beneficiaries.BeneficiaryListScreen
+import org.armman.supervisor.ui.beneficiarydatadownload.BeneficiaryDataDownloadScreen
 import org.armman.supervisor.ui.callsheet.CallHistoryScreen
 import org.armman.supervisor.ui.callsheet.CallOutcomeScreen
 import org.armman.supervisor.ui.callsheet.CallSheetScreen
@@ -85,6 +86,7 @@ object Routes {
   const val QUICK_RESPONSE_ADD_REASON = "quick_response_add_reason/{$QUICK_RESPONSE_REQUEST_ID_ARG}"
   const val PROFILE = "profile"
   const val SETTINGS = "settings"
+  const val BENEFICIARY_DATA_DOWNLOAD = "beneficiary_data_download"
   const val NOTIFICATIONS = "notifications"
 
   fun sakhiBeneficiaries(sakhiId: String) = "sakhi_beneficiaries/$sakhiId"
@@ -352,7 +354,11 @@ fun AppNavHost() {
             popUpTo(Routes.DASHBOARD) { inclusive = true }
           }
         },
+        onNavigateToBeneficiaryDataDownload = { navController.navigate(Routes.BENEFICIARY_DATA_DOWNLOAD) },
       )
+    }
+    composable(Routes.BENEFICIARY_DATA_DOWNLOAD) {
+      BeneficiaryDataDownloadScreen(onBack = { navController.popBackStack() })
     }
     composable(Routes.NOTIFICATIONS) {
       PlaceholderStub(navController, R.string.notifications_title)

@@ -392,4 +392,42 @@
   <string name="settings_logout_confirm_cancel">Cancel</string>
   <string name="cd_show_password">Show password</string>
   <string name="cd_hide_password">Hide password</string>
+  <!-- Download Beneficiary Data screen -->
+  <string name="beneficiary_data_download_title">Download Beneficiary Data</string>
+  <!-- Accessibility label for a row, combining its table name and current status, e.g. "Beneficiaries List: Completed". -->
+  <string name="beneficiary_data_download_row_content_description">%1$s: %2$s</string>
+  <string name="beneficiary_data_download_status_pending">PENDING</string>
+  <string name="beneficiary_data_download_status_downloading">DOWNLOADING</string>
+  <string name="beneficiary_data_download_status_completed">COMPLETED</string>
+  <string name="beneficiary_data_download_status_empty">EMPTY DATA</string>
+  <string name="beneficiary_data_download_status_not_available">NOT AVAILABLE YET</string>
+  <string name="beneficiary_data_download_quit_title">Quit download?</string>
+  <string name="beneficiary_data_download_quit_message">Beneficiary data download is still in progress. If you leave now, it will be cancelled.</string>
+  <string name="beneficiary_data_download_quit_confirm">Quit</string>
+  <string name="beneficiary_data_download_quit_cancel">Cancel</string>
+  <string name="beneficiary_data_download_network_error_title">No internet connection</string>
+  <string name="beneficiary_data_download_network_error_message">Check your connection and try again. Retrying restarts the download from the beginning.</string>
+  <string name="beneficiary_data_download_retry">Retry</string>
+  <string name="beneficiary_data_download_stop">Stop</string>
+  <string name="beneficiary_data_download_completion_title">All Downloads Completed</string>
+  <string name="beneficiary_data_download_completion_message">Data Updated!</string>
+  <string name="beneficiary_data_download_ok">OK</string>
+
+  <!-- Download Beneficiary Data — table names -->
+  <string name="beneficiary_data_download_arogya_sakhi">ArogyaSakhi</string>
+  <string name="beneficiary_data_download_registration_target">Registration Target</string>
+  <string name="beneficiary_data_download_beneficiaries_list">Beneficiaries List</string>
+  <string name="beneficiary_data_download_beneficiary_risk">Beneficiary Risk</string>
+  <string name="beneficiary_data_download_beneficiary_visit">Beneficiary Visit</string>
+  <string name="beneficiary_data_download_risk_monitoring">Risk Monitoring</string>
+  <string name="beneficiary_data_download_sakhi_not_uploaded_data">Sakhi Not Uploaded Data</string>
+  <string name="beneficiary_data_download_sakhi_item_transaction">Sakhi Item Transaction</string>
+  <string name="beneficiary_data_download_sakhi_item_transaction_detail">Sakhi Item Transaction Detail</string>
+  <string name="beneficiary_data_download_gathering_list">Gathering List</string>
+  <string name="beneficiary_data_download_gathering_attendance">Gathering Attendance</string>
+  <string name="beneficiary_data_download_gathering_training_marks">Gathering Training Marks</string>
+  <string name="beneficiary_data_download_gathering_images">Gathering Images</string>
+  <string name="beneficiary_data_download_call_details">Call Details</string>
+  <string name="beneficiary_data_download_beneficiary_risk_referral_header">Beneficiary Risk Referral Header</string>
+  <string name="beneficiary_data_download_beneficiary_risk_referral_details">Beneficiary Risk Referral Details</string>
 </resources>

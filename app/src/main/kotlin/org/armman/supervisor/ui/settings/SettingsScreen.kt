@@ -54,6 +54,7 @@ import org.armman.supervisor.ui.theme.White
 fun SettingsScreen(
   onBack: () -> Unit,
   onLoggedOut: () -> Unit,
+  onNavigateToBeneficiaryDataDownload: () -> Unit,
   modifier: Modifier = Modifier,
   viewModel: SettingsViewModel = hiltViewModel(),
 ) {
@@ -64,8 +65,10 @@ fun SettingsScreen(
 
   fun onAction(action: SettingsAction) {
     viewModel.onActionTapped(action)
-    if (action != SettingsAction.LANGUAGE_SETUP) {
-      scope.launch { snackbarHostState.showSnackbar(comingSoonMessage) }
+    when (action) {
+      SettingsAction.LANGUAGE_SETUP -> Unit
+      SettingsAction.DOWNLOAD_BENEFICIARY_DATA -> onNavigateToBeneficiaryDataDownload()
+      else -> scope.launch { snackbarHostState.showSnackbar(comingSoonMessage) }
     }
   }
 
