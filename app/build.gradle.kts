@@ -64,6 +64,13 @@ android {
     targetCompatibility = JavaVersion.VERSION_17
   }
   kotlinOptions { jvmTarget = "17" }
+  testOptions {
+    // Plain JVM unit tests run without the real Android framework, so unmocked SDK calls (e.g.
+    // android.util.Log.*) throw by default. This makes them return safe defaults instead — a
+    // Gradle test-execution setting only, never packaged into any APK/AAB or affecting release
+    // behavior.
+    unitTests.isReturnDefaultValues = true
+  }
 }
 
 dependencies {

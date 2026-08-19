@@ -7,6 +7,7 @@ import org.armman.supervisor.data.beneficiaries.BeneficiaryListEnvelopeDto
 import org.armman.supervisor.data.beneficiaries.BeneficiaryListPageDto
 import org.armman.supervisor.data.beneficiaries.BeneficiaryPiiDto
 import org.armman.supervisor.data.lookups.LookupCategoryDto
+import org.armman.supervisor.data.lookups.LookupCategoryEnvelopeDto
 import org.armman.supervisor.data.lookups.LookupValueDto
 import org.armman.supervisor.data.lookups.LookupsApi
 import org.armman.supervisor.data.lookups.LookupsEnvelopeDto
@@ -108,6 +109,9 @@ private class FakeLookupsApi : LookupsApi {
         ),
       ),
     )
+
+  override suspend fun getCategory(categoryCode: String): Response<LookupCategoryEnvelopeDto> =
+    error("not used")
 }
 
 class VisitSummaryRepositoryImplTest {

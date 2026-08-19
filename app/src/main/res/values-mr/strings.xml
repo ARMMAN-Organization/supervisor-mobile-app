@@ -392,6 +392,56 @@
   <string name="settings_logout_confirm_cancel">रद्द करा</string>
   <string name="cd_show_password">पासवर्ड दाखवा</string>
   <string name="cd_hide_password">पासवर्ड लपवा</string>
+  <!-- Download Master Data screen -->
+  <string name="master_data_download_title">मास्टर डेटा डाउनलोड करा</string>
+  <!-- Accessibility label for a row, combining its table name and current status, e.g. "Block: Completed". -->
+  <string name="master_data_row_content_description">%1$s: %2$s</string>
+  <string name="master_data_status_pending">प्रलंबित</string>
+  <string name="master_data_status_downloading">डाउनलोड होत आहे</string>
+  <string name="master_data_status_completed">पूर्ण झाले</string>
+  <string name="master_data_status_empty">डेटा उपलब्ध नाही</string>
+  <string name="master_data_status_not_available">अद्याप उपलब्ध नाही</string>
+  <string name="master_data_quit_title">डाउनलोड थांबवायचे?</string>
+  <string name="master_data_quit_message">मास्टर डेटा डाउनलोड अजूनही सुरू आहे. आता बाहेर पडल्यास ते रद्द होईल.</string>
+  <string name="master_data_quit_confirm">थांबवा</string>
+  <string name="master_data_quit_cancel">रद्द करा</string>
+  <string name="master_data_network_error_title">इंटरनेट कनेक्शन नाही</string>
+  <string name="master_data_network_error_message">तुमचे कनेक्शन तपासा आणि पुन्हा प्रयत्न करा. पुन्हा प्रयत्न केल्यास डाउनलोड सुरुवातीपासून पुन्हा सुरू होईल.</string>
+  <string name="master_data_retry">पुन्हा प्रयत्न करा</string>
+  <string name="master_data_stop">थांबवा</string>
+  <string name="master_data_completion_title">सर्व डाउनलोड पूर्ण झाले</string>
+  <string name="master_data_completion_message">डेटा अद्ययावत झाला!</string>
+  <string name="master_data_ok">ठीक आहे</string>
+
+  <!-- Download Master Data — table names -->
+  <string name="master_data_state">राज्य</string>
+  <string name="master_data_district">जिल्हा</string>
+  <string name="master_data_block">ब्लॉक</string>
+  <string name="master_data_phc">पीएचसी</string>
+  <string name="master_data_sub_center">उपकेंद्र</string>
+  <string name="master_data_village">गाव</string>
+  <string name="master_data_village_list">गावांची यादी</string>
+  <string name="master_data_project_geography">प्रकल्प भूगोल</string>
+  <string name="master_data_funders">निधीदाते</string>
+  <string name="master_data_projects">प्रकल्प</string>
+  <string name="master_data_sakhi">सखी</string>
+  <string name="master_data_risk_category">जोखीम प्रवर्ग</string>
+  <string name="master_data_risk">जोखीम</string>
+  <string name="master_data_risk_language">जोखीम भाषा</string>
+  <string name="master_data_risk_parameter">जोखीम मापदंड</string>
+  <string name="master_data_risk_type">जोखीम प्रकार</string>
+  <string name="master_data_incentive_rate">प्रोत्साहन दर</string>
+  <string name="master_data_visit_category">भेट प्रवर्ग</string>
+  <string name="master_data_item_category">वस्तू प्रवर्ग</string>
+  <string name="master_data_uom_list">मोजमाप एकक यादी</string>
+  <string name="master_data_item_master_list">वस्तू मास्टर यादी</string>
+  <string name="master_data_visit_master">भेट मास्टर</string>
+  <string name="master_data_transaction_type">व्यवहार प्रकार</string>
+  <string name="master_data_training_topic_master">प्रशिक्षण विषय मास्टर</string>
+  <string name="master_data_gathering_status">सभा स्थिती</string>
+  <string name="master_data_gathering_types">सभा प्रकार</string>
+  <string name="master_data_ddl_item">डीडीएल आयटम</string>
+  <string name="master_data_application_parameter">अनुप्रयोग मापदंड</string>
   <!-- Download Beneficiary Data screen -->
   <string name="beneficiary_data_download_title">लाभार्थी डेटा डाउनलोड करा</string>
   <!-- Accessibility label for a row, combining its table name and current status, e.g. "Beneficiaries List: Completed". -->
