@@ -1,5 +1,9 @@
 package org.armman.supervisor.data.beneficiarydatadownload
 
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import org.armman.supervisor.BuildConfig
 import org.armman.supervisor.data.projects.ProjectsRepository
@@ -16,6 +20,12 @@ import javax.inject.Inject
  */
 class MockUnreadyBeneficiaryDataEntities(val enabled: Boolean)
 
+/** HTTP codes treated as "this one record is out of the caller's scope" rather than a download
+ * failure — e.g. seed-data ownership mismatches. Skipping just the affected record lets the rest
+ * of a bulk per-record fetch (per-beneficiary, per-referral, per-transaction) complete instead of
+ * failing the whole entity over one inaccessible row. */
+private val SKIPPABLE_RECORD_HTTP_CODES = setOf(403, 404)
+
 /**
  * Routes each [BeneficiaryDataEntity] to the repository that actually owns its data. Every
  * `ready` entity MUST have a `when` branch below — the `else` branch throws deliberately (rather
@@ -27,6 +37,12 @@ class MockUnreadyBeneficiaryDataEntities(val enabled: Boolean)
  * single scope for (unlike Master Data, which downloads globally) — so every Sakhi-scoped entity
  * sums its result across every Sakhi on every project the Supervisor can see, and every
  * beneficiary-scoped entity additionally sums across every beneficiary in the resulting page.
+ *
+ * The beneficiaries list and gatherings list are each fetched by more than one entity in the same
+ * 16-entity sequence (see [BeneficiaryDataEntity]) — [beneficiariesCache]/[gatheringsCache] hold
+ * each Sakhi/page's result for the lifetime of one sequence so repeat entities reuse it instead of
+ * re-fetching identical data. [startSession] MUST be called once before a sequence starts
+ * (including retries) to clear stale cache from a prior attempt.
  */
 class BeneficiaryDataRepositoryImpl @Inject constructor(
   private val projectsRepository: ProjectsRepository,
@@ -45,6 +61,14 @@ class BeneficiaryDataRepositoryImpl @Inject constructor(
     const val MOCK_RECORD_COUNT = 12
   }
 
+  private var beneficiariesCache: List<BeneficiaryDownloadCaseDto>? = null
+  private val gatheringsCache = java.util.concurrent.ConcurrentHashMap<String, List<GatheringDto>>()
+
+  override fun startSession() {
+    beneficiariesCache = null
+    gatheringsCache.clear()
+  }
+
   override suspend fun download(entity: BeneficiaryDataEntity): BeneficiaryDataResult {
     if (!entity.ready) {
       return if (mockUnreadyEntities.enabled) {
@@ -59,15 +83,15 @@ class BeneficiaryDataRepositoryImpl @Inject constructor(
       when (entity) {
         BeneficiaryDataEntity.AROGYA_SAKHI -> downloadArogyaSakhiRoster()
         BeneficiaryDataEntity.REGISTRATION_TARGET -> forEachSakhi { sakhiId -> downloadRegistrationTargets(sakhiId) }
-        BeneficiaryDataEntity.BENEFICIARIES_LIST -> downloadBeneficiariesList()
+        BeneficiaryDataEntity.BENEFICIARIES_LIST -> loadAllBeneficiaries().size
         BeneficiaryDataEntity.BENEFICIARY_RISK -> forEachSakhiBeneficiary { id -> downloadBeneficiaryRisk(id) }
         BeneficiaryDataEntity.BENEFICIARY_VISIT -> forEachSakhiBeneficiary { id -> downloadBeneficiaryVisits(id) }
         BeneficiaryDataEntity.RISK_MONITORING -> downloadRiskMonitoring()
         BeneficiaryDataEntity.SAKHI_NOT_UPLOADED_DATA -> forEachSakhi { sakhiId -> downloadPendingSyncItems(sakhiId) }
         BeneficiaryDataEntity.SAKHI_ITEM_TRANSACTION -> downloadAllInventoryTransactions()
         BeneficiaryDataEntity.SAKHI_ITEM_TRANSACTION_DETAIL -> downloadInventoryTransactionDetails()
-        BeneficiaryDataEntity.GATHERING_LIST -> forEachSakhi { sakhiId -> downloadGatherings(sakhiId) }
-        BeneficiaryDataEntity.GATHERING_ATTENDANCE -> forEachGathering { 1 }
+        BeneficiaryDataEntity.GATHERING_LIST -> forEachSakhi { sakhiId -> loadGatherings(sakhiId).size }
+        BeneficiaryDataEntity.GATHERING_ATTENDANCE -> forEachGathering { id -> downloadAttendance(id) }
         BeneficiaryDataEntity.GATHERING_TRAINING_MARKS -> forEachGathering { id -> downloadTrainingMarks(id) }
         BeneficiaryDataEntity.GATHERING_IMAGES -> forEachGathering { id -> downloadGatheringImages(id) }
         BeneficiaryDataEntity.CALL_DETAILS -> forEachSakhi { sakhiId -> downloadSakhiCalls(sakhiId) }
@@ -75,6 +99,11 @@ class BeneficiaryDataRepositoryImpl @Inject constructor(
         BeneficiaryDataEntity.BENEFICIARY_RISK_REFERRAL_DETAILS -> downloadRiskReferralDetails()
         else -> error("$entity is marked ready but has no download case wired")
       }
+    }.let { result ->
+      // CancellationException must propagate to unwind the coroutine on quit/back — folding it
+      // into Failure risks a stray "No internet connection" dialog racing the screen's own exit.
+      result.exceptionOrNull()?.let { cause -> if (cause is CancellationException) throw cause }
+      result
     }.fold(
       onSuccess = { count -> if (count > 0) BeneficiaryDataResult.Success(count) else BeneficiaryDataResult.Empty },
       onFailure = { cause -> BeneficiaryDataResult.Failure(cause) },
@@ -97,16 +126,31 @@ class BeneficiaryDataRepositoryImpl @Inject constructor(
     return body.data.orEmpty().size
   }
 
-  private suspend fun downloadBeneficiariesList(): Int {
-    val response = beneficiaryDownloadListApi.getBeneficiariesDownload()
-    if (!response.isSuccessful) error("Failed to load beneficiaries: HTTP ${response.code()}")
-    val body = response.body() ?: error("Empty beneficiaries response")
-    if (!body.success) error(body.message ?: "Failed to load beneficiaries")
-    return body.data?.items?.size ?: 0
+  /** Fetches every page of the bulk beneficiaries list, following `nextCursor` until the backend
+   * reports none left, and caches the full result for the lifetime of the current [download]
+   * sequence (cleared by [startSession]) so every entity routed through [forEachSakhiBeneficiary]
+   * reuses it instead of re-fetching. */
+  private suspend fun loadAllBeneficiaries(): List<BeneficiaryDownloadCaseDto> {
+    beneficiariesCache?.let { return it }
+
+    val items = mutableListOf<BeneficiaryDownloadCaseDto>()
+    var cursor: String? = null
+    do {
+      val response = beneficiaryDownloadListApi.getBeneficiariesDownload(cursor = cursor)
+      if (!response.isSuccessful) error("Failed to load beneficiaries: HTTP ${response.code()}")
+      val body = response.body() ?: error("Empty beneficiaries response")
+      if (!body.success) error(body.message ?: "Failed to load beneficiaries")
+      val page = body.data ?: break
+      items += page.items
+      cursor = page.nextCursor
+    } while (cursor != null)
+
+    return items.also { beneficiariesCache = it }
   }
 
   private suspend fun downloadBeneficiaryRisk(beneficiaryId: String): Int {
     val response = beneficiaryRiskApi.getBeneficiaryRisk(beneficiaryId)
+    if (response.code() in SKIPPABLE_RECORD_HTTP_CODES) return 0
     if (!response.isSuccessful) error("Failed to load beneficiary risk: HTTP ${response.code()}")
     val body = response.body() ?: error("Empty beneficiary risk response")
     if (!body.success) error(body.message ?: "Failed to load beneficiary risk")
@@ -116,6 +160,7 @@ class BeneficiaryDataRepositoryImpl @Inject constructor(
 
   private suspend fun downloadBeneficiaryVisits(beneficiaryId: String): Int {
     val response = beneficiaryVisitApi.getBeneficiaryVisits(beneficiaryId)
+    if (response.code() in SKIPPABLE_RECORD_HTTP_CODES) return 0
     if (!response.isSuccessful) error("Failed to load beneficiary visits: HTTP ${response.code()}")
     val body = response.body() ?: error("Empty beneficiary visits response")
     if (!body.success) error(body.message ?: "Failed to load beneficiary visits")
@@ -162,7 +207,7 @@ class BeneficiaryDataRepositoryImpl @Inject constructor(
     var detailCount = 0
     for (transaction in listBody.data.orEmpty()) {
       val response = beneficiaryDownloadListApi.getInventoryTransactionDetails(transaction.id)
-      if (response.code() == 403 || response.code() == 404) continue
+      if (response.code() in SKIPPABLE_RECORD_HTTP_CODES) continue
       if (!response.isSuccessful) error("Failed to load transaction detail: HTTP ${response.code()}")
       val body = response.body() ?: error("Empty transaction detail response")
       if (!body.success) error(body.message ?: "Failed to load transaction detail")
@@ -171,11 +216,24 @@ class BeneficiaryDataRepositoryImpl @Inject constructor(
     return detailCount
   }
 
-  private suspend fun downloadGatherings(sakhiId: String): Int {
+  /** Fetches one Sakhi's gatherings and caches the result for the lifetime of the current
+   * [download] sequence (cleared by [startSession]) so every entity routed through
+   * [forEachGathering] reuses it instead of re-fetching per entity. */
+  private suspend fun loadGatherings(sakhiId: String): List<GatheringDto> {
+    gatheringsCache[sakhiId]?.let { return it }
+
     val response = gatheringDownloadApi.getGatherings(sakhiId)
     if (!response.isSuccessful) error("Failed to load gatherings: HTTP ${response.code()}")
     val body = response.body() ?: error("Empty gatherings response")
     if (!body.success) error(body.message ?: "Failed to load gatherings")
+    return body.data.orEmpty().also { gatheringsCache[sakhiId] = it }
+  }
+
+  private suspend fun downloadAttendance(gatheringId: String): Int {
+    val response = gatheringDownloadApi.getAttendance(gatheringId)
+    if (!response.isSuccessful) error("Failed to load gathering attendance: HTTP ${response.code()}")
+    val body = response.body() ?: error("Empty gathering attendance response")
+    if (!body.success) error(body.message ?: "Failed to load gathering attendance")
     return body.data.orEmpty().size
   }
 
@@ -205,6 +263,7 @@ class BeneficiaryDataRepositoryImpl @Inject constructor(
 
   private suspend fun downloadRiskReferrals(beneficiaryId: String): Int {
     val response = beneficiaryRiskApi.getRiskReferrals(beneficiaryId)
+    if (response.code() in SKIPPABLE_RECORD_HTTP_CODES) return 0
     if (!response.isSuccessful) error("Failed to load risk referrals: HTTP ${response.code()}")
     val body = response.body() ?: error("Empty risk referrals response")
     if (!body.success) error(body.message ?: "Failed to load risk referrals")
@@ -213,12 +272,14 @@ class BeneficiaryDataRepositoryImpl @Inject constructor(
 
   private suspend fun downloadRiskReferralDetails(): Int = forEachSakhiBeneficiary { beneficiaryId ->
     val referralsResponse = beneficiaryRiskApi.getRiskReferrals(beneficiaryId)
+    if (referralsResponse.code() in SKIPPABLE_RECORD_HTTP_CODES) return@forEachSakhiBeneficiary 0
     if (!referralsResponse.isSuccessful) error("Failed to load risk referrals: HTTP ${referralsResponse.code()}")
     val referralsBody = referralsResponse.body() ?: error("Empty risk referrals response")
     if (!referralsBody.success) error(referralsBody.message ?: "Failed to load risk referrals")
 
     referralsBody.data.orEmpty().sumOf { referral ->
       val response = beneficiaryRiskApi.getRiskReferralDetails(beneficiaryId, referral.id)
+      if (response.code() in SKIPPABLE_RECORD_HTTP_CODES) return@sumOf 0
       if (!response.isSuccessful) error("Failed to load risk referral details: HTTP ${response.code()}")
       val body = response.body() ?: error("Empty risk referral details response")
       if (!body.success) error(body.message ?: "Failed to load risk referral details")
@@ -227,33 +288,38 @@ class BeneficiaryDataRepositoryImpl @Inject constructor(
     }
   }
 
-  /** Sums [block]'s result across every Sakhi on every project the Supervisor can see. */
-  private suspend fun forEachSakhi(block: suspend (sakhiId: String) -> Int): Int =
-    projectsRepository.getProjects().sumOf { project ->
-      projectsRepository.getSakhis(project.id).sumOf { sakhi -> block(sakhi.id) }
-    }
-
-  /** Sums [block]'s result across every beneficiary in the first page of the bulk beneficiaries
-   * list — a bounded stand-in until this screen has its own per-Sakhi/per-project beneficiary
-   * scoping decision (see the class doc comment). */
-  private suspend fun forEachSakhiBeneficiary(block: suspend (beneficiaryId: String) -> Int): Int {
-    val response = beneficiaryDownloadListApi.getBeneficiariesDownload()
-    if (!response.isSuccessful) error("Failed to load beneficiaries: HTTP ${response.code()}")
-    val body = response.body() ?: error("Empty beneficiaries response")
-    if (!body.success) error(body.message ?: "Failed to load beneficiaries")
-    return body.data?.items.orEmpty().sumOf { beneficiary -> block(beneficiary.id) }
+  /** Sums [block]'s result across every Sakhi on every project the Supervisor can see, running
+   * one [block] call per Sakhi concurrently (matching the `async`/`awaitAll` pattern already used
+   * by [org.armman.supervisor.data.risksummary.RiskSummaryRepositoryImpl] and
+   * [org.armman.supervisor.data.registrations.RegistrationsRepositoryImpl]) rather than one HTTP
+   * round trip at a time. */
+  private suspend fun forEachSakhi(block: suspend (sakhiId: String) -> Int): Int = coroutineScope {
+    projectsRepository.getProjects()
+      .flatMap { project -> projectsRepository.getSakhis(project.id) }
+      .map { sakhi -> async { block(sakhi.id) } }
+      .awaitAll()
+      .sum()
   }
 
-  /** Sums [block]'s result across every gathering visible via [GatheringDownloadApi.getGatherings],
-   * scoped per Sakhi same as [forEachSakhi]. */
+  /** Sums [block]'s result across every beneficiary in [loadAllBeneficiaries]'s (fully paginated,
+   * cached) result, one [block] call per beneficiary concurrently — a bounded stand-in until this
+   * screen has its own per-Sakhi/per-project beneficiary scoping decision (see the class doc
+   * comment). */
+  private suspend fun forEachSakhiBeneficiary(block: suspend (beneficiaryId: String) -> Int): Int = coroutineScope {
+    loadAllBeneficiaries()
+      .map { beneficiary -> async { block(beneficiary.id) } }
+      .awaitAll()
+      .sum()
+  }
+
+  /** Sums [block]'s result across every gathering visible via [loadGatherings], scoped per Sakhi
+   * same as [forEachSakhi] (and sharing its cache, so this doesn't re-fetch what [forEachSakhi]
+   * or an earlier gathering-scoped entity already loaded), one [block] call per gathering
+   * concurrently. */
   private suspend fun forEachGathering(block: suspend (gatheringId: String) -> Int): Int =
-    projectsRepository.getProjects().sumOf { project ->
-      projectsRepository.getSakhis(project.id).sumOf { sakhi ->
-        val response = gatheringDownloadApi.getGatherings(sakhi.id)
-        if (!response.isSuccessful) error("Failed to load gatherings: HTTP ${response.code()}")
-        val body = response.body() ?: error("Empty gatherings response")
-        if (!body.success) error(body.message ?: "Failed to load gatherings")
-        body.data.orEmpty().sumOf { gathering -> block(gathering.id) }
+    forEachSakhi { sakhiId ->
+      coroutineScope {
+        loadGatherings(sakhiId).map { gathering -> async { block(gathering.id) } }.awaitAll().sum()
       }
     }
 }

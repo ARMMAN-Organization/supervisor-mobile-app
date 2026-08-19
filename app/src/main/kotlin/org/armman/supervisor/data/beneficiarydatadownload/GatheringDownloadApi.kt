@@ -23,6 +23,15 @@ data class GatheringTrainingMarksEnvelopeDto(
   val data: List<GatheringTrainingMarkDto>?,
 )
 
+/** One attendance row, as returned by `/gatherings/{id}/attendance`. */
+data class GatheringAttendanceDto(val id: String, val gatheringId: String, val sakhiId: String, val present: Boolean)
+
+data class GatheringAttendanceEnvelopeDto(
+  val success: Boolean,
+  val message: String?,
+  val data: List<GatheringAttendanceDto>?,
+)
+
 /** One gathering photo, as returned nested under `/gatherings/{id}/images`. */
 data class GatheringPhotoDto(val id: String, val mediaId: String)
 
@@ -49,6 +58,9 @@ interface GatheringDownloadApi {
 
   @GET("gatherings/{gatheringId}/training-marks")
   suspend fun getTrainingMarks(@Path("gatheringId") gatheringId: String): Response<GatheringTrainingMarksEnvelopeDto>
+
+  @GET("gatherings/{gatheringId}/attendance")
+  suspend fun getAttendance(@Path("gatheringId") gatheringId: String): Response<GatheringAttendanceEnvelopeDto>
 
   @GET("gatherings/{gatheringId}/images")
   suspend fun getGatheringImages(@Path("gatheringId") gatheringId: String): Response<GatheringImagesEnvelopeDto>

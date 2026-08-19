@@ -1,5 +1,6 @@
 package org.armman.supervisor.data.beneficiarydatadownload
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.ResponseBody.Companion.toResponseBody
@@ -10,8 +11,16 @@ import org.armman.supervisor.ui.assignitem.SakhiOption
 import org.armman.supervisor.ui.beneficiarydatadownload.BeneficiaryDataEntity
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Test
 import retrofit2.Response
+import java.util.concurrent.atomic.AtomicInteger
+
+private fun <T> forbiddenResponse(): Response<T> = Response.error(
+  403,
+  "{\"success\":false,\"message\":\"You do not have access to this record.\"}"
+    .toResponseBody("application/json".toMediaType()),
+)
 
 private class FakeProjectsRepository : ProjectsRepository {
   var projects: List<LocationOption> = listOf(LocationOption("proj-1", "Test Project"))
@@ -28,18 +37,27 @@ private class FakeProjectsRepository : ProjectsRepository {
 }
 
 private class FakeBeneficiaryDownloadListApi : BeneficiaryDownloadListApi {
+  /** When set, [getBeneficiariesDownload] serves one of these pages per call, keyed by the
+   * requested cursor (`null` = first page) — lets pagination tests assert the full walk. Takes
+   * priority over [beneficiaries] when non-empty. */
+  var pages: Map<String?, BeneficiaryDownloadPageDto> = emptyMap()
   var beneficiaries = listOf(BeneficiaryDownloadCaseDto("ben-1", "MOTHER"))
   var inventoryTransactions = listOf(InventoryTransactionRowDto("txn-1", "sakhi-1", "item-1"))
   var transactionDetail: InventoryTransactionDetailDto? = InventoryTransactionDetailDto("txn-1", "item-1", 5)
   var sakhiCalls = listOf(SakhiCallDto("call-1", "sakhi-1", "COMPLETED"))
   var forbiddenTransactionIds: Set<String> = emptySet()
   var failing = false
+  val beneficiariesDownloadCallCount = AtomicInteger(0)
 
   override suspend fun getBeneficiariesDownload(limit: Int, cursor: String?): Response<BeneficiaryDownloadEnvelopeDto> {
     if (failing) error("Simulated network failure")
-    return Response.success(
-      BeneficiaryDownloadEnvelopeDto(true, "OK", BeneficiaryDownloadPageDto(beneficiaries, null)),
-    )
+    beneficiariesDownloadCallCount.incrementAndGet()
+    val page = if (pages.isNotEmpty()) {
+      pages[cursor] ?: error("No fake page registered for cursor=$cursor")
+    } else {
+      BeneficiaryDownloadPageDto(beneficiaries, null)
+    }
+    return Response.success(BeneficiaryDownloadEnvelopeDto(true, "OK", page))
   }
 
   override suspend fun getAllInventoryTransactions(): Response<InventoryTransactionsListEnvelopeDto> {
@@ -78,17 +96,25 @@ private class FakeSyncPendingApi : SyncPendingApi {
 private class FakeGatheringDownloadApi : GatheringDownloadApi {
   var gatherings = listOf(GatheringDto("gathering-1", "event-1", "2026-01-01T00:00:00.000Z", "COMPLETED"))
   var trainingMarks = listOf(GatheringTrainingMarkDto("mark-1", "gathering-1", "sakhi-1", "PRE"))
+  var attendance = listOf(GatheringAttendanceDto("att-1", "gathering-1", "sakhi-1", true))
   var images = GatheringImagesDto("gathering-1", "media-1", listOf(GatheringPhotoDto("photo-1", "media-2")))
   var failing = false
+  val getGatheringsCallCount = AtomicInteger(0)
 
   override suspend fun getGatherings(sakhiId: String): Response<GatheringsEnvelopeDto> {
     if (failing) error("Simulated network failure")
+    getGatheringsCallCount.incrementAndGet()
     return Response.success(GatheringsEnvelopeDto(true, "OK", gatherings))
   }
 
   override suspend fun getTrainingMarks(gatheringId: String): Response<GatheringTrainingMarksEnvelopeDto> {
     if (failing) error("Simulated network failure")
     return Response.success(GatheringTrainingMarksEnvelopeDto(true, "OK", trainingMarks))
+  }
+
+  override suspend fun getAttendance(gatheringId: String): Response<GatheringAttendanceEnvelopeDto> {
+    if (failing) error("Simulated network failure")
+    return Response.success(GatheringAttendanceEnvelopeDto(true, "OK", attendance))
   }
 
   override suspend fun getGatheringImages(gatheringId: String): Response<GatheringImagesEnvelopeDto> {
@@ -110,6 +136,7 @@ private class FakeBeneficiaryRiskApi : BeneficiaryRiskApi {
     listOf(ReferralTriggerSourceDto("trigger-1")),
   )
   var failing = false
+  var forbiddenBeneficiaryIds: Set<String> = emptySet()
 
   override suspend fun getBeneficiaryRisk(beneficiaryId: String): Response<BeneficiaryRiskEnvelopeDto> {
     if (failing) error("Simulated network failure")
@@ -118,6 +145,7 @@ private class FakeBeneficiaryRiskApi : BeneficiaryRiskApi {
 
   override suspend fun getRiskReferrals(beneficiaryId: String): Response<RiskReferralsEnvelopeDto> {
     if (failing) error("Simulated network failure")
+    if (beneficiaryId in forbiddenBeneficiaryIds) return forbiddenResponse()
     return Response.success(RiskReferralsEnvelopeDto(true, "OK", referrals))
   }
 
@@ -133,9 +161,11 @@ private class FakeBeneficiaryRiskApi : BeneficiaryRiskApi {
 private class FakeBeneficiaryVisitApi : BeneficiaryVisitApi {
   var visits = listOf(BeneficiaryVisitDto("visit-1", "ben-1", "2026-01-01T00:00:00.000Z"))
   var failing = false
+  var forbiddenBeneficiaryIds: Set<String> = emptySet()
 
   override suspend fun getBeneficiaryVisits(beneficiaryId: String): Response<BeneficiaryVisitsEnvelopeDto> {
     if (failing) error("Simulated network failure")
+    if (beneficiaryId in forbiddenBeneficiaryIds) return forbiddenResponse()
     return Response.success(BeneficiaryVisitsEnvelopeDto(true, "OK", visits))
   }
 }
@@ -187,7 +217,7 @@ class BeneficiaryDataRepositoryImplTest {
       riskMonitoringApi,
       arogyaSakhiRosterApi,
       MockUnreadyBeneficiaryDataEntities(enabled = mockUnreadyEntities),
-    )
+    ).also { it.startSession() }
 
   // Regression test for the exact bug that hit MasterDataRepositoryImpl: a `ready = true` entity
   // with no matching `when` branch falls through to the `else -> error(...)` fallback, which
@@ -417,5 +447,129 @@ class BeneficiaryDataRepositoryImplTest {
     val result = repository().download(BeneficiaryDataEntity.GATHERING_LIST)
 
     assertTrue(result is BeneficiaryDataResult.Failure)
+  }
+
+  @Test
+  fun `downloading Gathering Attendance returns the real per-gathering attendance count, not a stub`() = runTest {
+    gatheringDownloadApi.attendance = listOf(
+      GatheringAttendanceDto("att-1", "gathering-1", "sakhi-1", true),
+      GatheringAttendanceDto("att-2", "gathering-1", "sakhi-1", false),
+    )
+
+    val result = repository().download(BeneficiaryDataEntity.GATHERING_ATTENDANCE)
+
+    assertTrue(result is BeneficiaryDataResult.Success)
+    assertEquals(2, (result as BeneficiaryDataResult.Success).recordCount)
+  }
+
+  @Test
+  fun `downloading Beneficiaries List follows nextCursor across every page`() = runTest {
+    beneficiaryDownloadListApi.pages = mapOf(
+      null to BeneficiaryDownloadPageDto(List(100) { BeneficiaryDownloadCaseDto("ben-$it", "MOTHER") }, "cursor-2"),
+      "cursor-2" to BeneficiaryDownloadPageDto(List(100) { BeneficiaryDownloadCaseDto("ben-100-$it", "MOTHER") }, "cursor-3"),
+      "cursor-3" to BeneficiaryDownloadPageDto(List(50) { BeneficiaryDownloadCaseDto("ben-200-$it", "MOTHER") }, null),
+    )
+
+    val result = repository().download(BeneficiaryDataEntity.BENEFICIARIES_LIST)
+
+    assertTrue(result is BeneficiaryDataResult.Success)
+    assertEquals(250, (result as BeneficiaryDataResult.Success).recordCount)
+  }
+
+  @Test
+  fun `Beneficiary Risk skips a beneficiary whose visits 403, downloading the rest`() = runTest {
+    beneficiaryDownloadListApi.beneficiaries = listOf(
+      BeneficiaryDownloadCaseDto("ben-1", "MOTHER"),
+      BeneficiaryDownloadCaseDto("ben-2", "MOTHER"),
+    )
+    beneficiaryVisitApi.forbiddenBeneficiaryIds = setOf("ben-1")
+
+    val result = repository().download(BeneficiaryDataEntity.BENEFICIARY_VISIT)
+
+    assertTrue(result is BeneficiaryDataResult.Success)
+    // ben-1 is skipped (403), only ben-2's 1 visit counts
+    assertEquals(1, (result as BeneficiaryDataResult.Success).recordCount)
+  }
+
+  @Test
+  fun `Risk Referral Header skips a beneficiary whose referrals 403, downloading the rest`() = runTest {
+    beneficiaryDownloadListApi.beneficiaries = listOf(
+      BeneficiaryDownloadCaseDto("ben-1", "MOTHER"),
+      BeneficiaryDownloadCaseDto("ben-2", "MOTHER"),
+    )
+    beneficiaryRiskApi.forbiddenBeneficiaryIds = setOf("ben-1")
+
+    val result = repository().download(BeneficiaryDataEntity.BENEFICIARY_RISK_REFERRAL_HEADER)
+
+    assertTrue(result is BeneficiaryDataResult.Success)
+    assertEquals(1, (result as BeneficiaryDataResult.Success).recordCount)
+  }
+
+  @Test
+  fun `a CancellationException during download propagates instead of becoming a Failure`() = runTest {
+    val cancellingApi = object : BeneficiaryDownloadListApi by beneficiaryDownloadListApi {
+      override suspend fun getBeneficiariesDownload(limit: Int, cursor: String?): Response<BeneficiaryDownloadEnvelopeDto> {
+        throw CancellationException("download cancelled")
+      }
+    }
+    val cancellingRepo = BeneficiaryDataRepositoryImpl(
+      projectsRepository,
+      cancellingApi,
+      syncPendingApi,
+      gatheringDownloadApi,
+      beneficiaryRiskApi,
+      beneficiaryVisitApi,
+      riskMonitoringApi,
+      arogyaSakhiRosterApi,
+      MockUnreadyBeneficiaryDataEntities(enabled = false),
+    ).also { it.startSession() }
+
+    try {
+      cancellingRepo.download(BeneficiaryDataEntity.BENEFICIARIES_LIST)
+      fail("Expected CancellationException to propagate, but download() returned normally")
+    } catch (e: CancellationException) {
+      // expected: cancellation must unwind the coroutine, not fold into BeneficiaryDataResult.Failure
+    }
+  }
+
+  @Test
+  fun `beneficiaries list is fetched once per session and reused by every dependent entity`() = runTest {
+    beneficiaryDownloadListApi.beneficiaries = listOf(BeneficiaryDownloadCaseDto("ben-1", "MOTHER"))
+    val repo = repository()
+
+    repo.download(BeneficiaryDataEntity.BENEFICIARIES_LIST)
+    repo.download(BeneficiaryDataEntity.BENEFICIARY_RISK)
+    repo.download(BeneficiaryDataEntity.BENEFICIARY_VISIT)
+    repo.download(BeneficiaryDataEntity.BENEFICIARY_RISK_REFERRAL_HEADER)
+    repo.download(BeneficiaryDataEntity.BENEFICIARY_RISK_REFERRAL_DETAILS)
+
+    assertEquals(1, beneficiaryDownloadListApi.beneficiariesDownloadCallCount.get())
+  }
+
+  @Test
+  fun `gatherings are fetched once per Sakhi per session and reused by every gathering entity`() = runTest {
+    val repo = repository()
+
+    repo.download(BeneficiaryDataEntity.GATHERING_LIST)
+    repo.download(BeneficiaryDataEntity.GATHERING_ATTENDANCE)
+    repo.download(BeneficiaryDataEntity.GATHERING_TRAINING_MARKS)
+    repo.download(BeneficiaryDataEntity.GATHERING_IMAGES)
+
+    // 1 project * 1 Sakhi -> exactly one getGatherings call reused across all 4 entities.
+    assertEquals(1, gatheringDownloadApi.getGatheringsCallCount.get())
+  }
+
+  @Test
+  fun `startSession clears the cache so a retry re-fetches fresh data`() = runTest {
+    beneficiaryDownloadListApi.beneficiaries = listOf(BeneficiaryDownloadCaseDto("ben-1", "MOTHER"))
+    val repo = repository()
+
+    repo.download(BeneficiaryDataEntity.BENEFICIARIES_LIST)
+    assertEquals(1, beneficiaryDownloadListApi.beneficiariesDownloadCallCount.get())
+
+    repo.startSession()
+    repo.download(BeneficiaryDataEntity.BENEFICIARIES_LIST)
+
+    assertEquals(2, beneficiaryDownloadListApi.beneficiariesDownloadCallCount.get())
   }
 }

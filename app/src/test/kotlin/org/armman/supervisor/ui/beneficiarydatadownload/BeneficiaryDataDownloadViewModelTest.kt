@@ -25,10 +25,15 @@ class BeneficiaryDataDownloadViewModelTest {
     private val default: BeneficiaryDataResult = BeneficiaryDataResult.Success(1),
   ) : BeneficiaryDataRepository {
     val calls = mutableListOf<BeneficiaryDataEntity>()
+    var startSessionCallCount = 0
     private val queuedResults = ArrayDeque<BeneficiaryDataResult>()
 
     fun enqueue(result: BeneficiaryDataResult) {
       queuedResults.addLast(result)
+    }
+
+    override fun startSession() {
+      startSessionCallCount++
     }
 
     override suspend fun download(entity: BeneficiaryDataEntity): BeneficiaryDataResult {
@@ -142,6 +147,18 @@ class BeneficiaryDataDownloadViewModelTest {
   }
 
   @Test
+  fun `startSession is called once on initial load and again on every retry`() {
+    val viewModel = createViewModel()
+    dispatcher.scheduler.advanceUntilIdle()
+    assertEquals(1, repository.startSessionCallCount)
+
+    viewModel.onRetryClicked()
+    dispatcher.scheduler.advanceUntilIdle()
+
+    assertEquals(2, repository.startSessionCallCount)
+  }
+
+  @Test
   fun `stop dismisses the network error dialog without resuming`() {
     repository.enqueue(BeneficiaryDataResult.Failure(RuntimeException("no network")))
     val viewModel = createViewModel()
@@ -213,6 +230,7 @@ class BeneficiaryDataDownloadViewModelTest {
     val neverCompletes = CompletableDeferred<BeneficiaryDataResult>()
     val suspendingRepository = object : BeneficiaryDataRepository {
       var callCount = 0
+      override fun startSession() = Unit
       override suspend fun download(entity: BeneficiaryDataEntity): BeneficiaryDataResult {
         callCount++
         return neverCompletes.await()

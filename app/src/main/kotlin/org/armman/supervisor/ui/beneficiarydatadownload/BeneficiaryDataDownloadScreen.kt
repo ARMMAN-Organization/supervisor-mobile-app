@@ -40,6 +40,7 @@ import org.armman.supervisor.ui.theme.Dimens
 import org.armman.supervisor.ui.theme.MasterDataCompleted
 import org.armman.supervisor.ui.theme.MasterDataDownloading
 import org.armman.supervisor.ui.theme.MasterDataDownloadingTrack
+import org.armman.supervisor.ui.theme.MasterDataEmpty
 import org.armman.supervisor.ui.theme.MasterDataPending
 import org.armman.supervisor.ui.theme.NeutralG10
 import org.armman.supervisor.ui.theme.NeutralG200
@@ -191,7 +192,7 @@ private fun statusLabelAndColor(status: BeneficiaryDataRowStatus): Pair<String, 
     BeneficiaryDataRowStatus.COMPLETED ->
       stringResource(R.string.beneficiary_data_download_status_completed) to MasterDataCompleted
     BeneficiaryDataRowStatus.EMPTY ->
-      stringResource(R.string.beneficiary_data_download_status_empty) to MasterDataDownloading
+      stringResource(R.string.beneficiary_data_download_status_empty) to MasterDataEmpty
     BeneficiaryDataRowStatus.NOT_AVAILABLE ->
       stringResource(R.string.beneficiary_data_download_status_not_available) to NeutralG200
   }

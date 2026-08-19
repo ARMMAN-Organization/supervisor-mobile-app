@@ -20,5 +20,11 @@ sealed interface BeneficiaryDataResult {
  * [BeneficiaryDataResult.NotAvailable] for entities with no backend endpoint yet.
  */
 interface BeneficiaryDataRepository {
+  /** Clears any state cached across a prior [download] sequence (e.g. the beneficiaries/gatherings
+   * list fetched once and reused by several entities). Callers MUST call this once before running
+   * a fresh full 16-entity sequence — including on retry — so a previous attempt's cached page
+   * isn't reused after a failure or restart. */
+  fun startSession()
+
   suspend fun download(entity: BeneficiaryDataEntity): BeneficiaryDataResult
 }

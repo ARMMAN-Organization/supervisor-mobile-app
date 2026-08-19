@@ -60,6 +60,7 @@ class BeneficiaryDataDownloadViewModel @Inject constructor(
 
   private fun startDownload() {
     downloadJob?.cancel()
+    repository.startSession()
     downloadJob = viewModelScope.launch {
       if (!connectivityChecker.isOnline()) {
         _uiState.update { it.copy(showNetworkErrorDialog = true) }
