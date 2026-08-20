@@ -149,25 +149,7 @@ class MeetingTrainingRepositoryImpl @Inject constructor(
 
   override suspend fun getEvents(status: EventStatus): List<MeetingEntry> {
     reconcileServerEvents()
-    deleteTestCards()
     return eventDao.getByStatus(status.name).map { it.toEntry() }
-  }
-
-  private suspend fun deleteTestCards() {
-    val allEvents = eventDao.getByStatus(EventStatus.SCHEDULED.name) + eventDao.getByStatus(EventStatus.COMPLETED.name)
-    for (eventWithDetails in allEvents) {
-      if (isTestCard(eventWithDetails.toEntry())) {
-        eventDao.deleteEvent(eventWithDetails.event)
-        pendingDao.deleteById(eventWithDetails.event.id)
-      }
-    }
-  }
-
-  private fun isTestCard(entry: MeetingEntry): Boolean {
-    val remarks = entry.remarks.lowercase().trim()
-    if (remarks == "test") return true
-    if (remarks.matches(Regex("""^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$"""))) return true
-    return false
   }
 
   override suspend fun getEventDetail(eventId: String): MeetingDetail {
@@ -208,6 +190,10 @@ class MeetingTrainingRepositoryImpl @Inject constructor(
     val projectNamesById = projectsRepository.getProjects().associate { it.id to it.name }
     for (dto in serverEvents) {
       if (eventDao.getById(dto.id) != null) continue
+      // A self-created event keeps its original client-generated id forever once synced (see
+      // SupervisorEventSyncExecutor), so a match here means this event already exists locally
+      // under a different id and reconciling it again would create a duplicate visible row.
+      if (pendingDao.getByRemoteId(dto.id) != null) continue
       eventCacheDao.upsert(
         SupervisorEventCacheEntity(
           id = dto.id,

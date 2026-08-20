@@ -411,6 +411,9 @@ private class FakePendingSupervisorEventDao : PendingSupervisorEventDao {
 
   override suspend fun getById(id: String): PendingSupervisorEventEntity? = entities[id]
 
+  override suspend fun getByRemoteId(remoteId: String): PendingSupervisorEventEntity? =
+    entities.values.firstOrNull { it.remoteId == remoteId }
+
   override suspend fun deleteById(id: String) {
     entities.remove(id)
   }
@@ -691,6 +694,22 @@ class MeetingTrainingRepositoryImplTest {
     // The richer local row (with attendance) must survive untouched, not be replaced by the
     // reconciled shadow shape.
     assertEquals(1, repository.getEventDetail(id).attendedCount)
+  }
+
+  @Test
+  fun `getEvents does not duplicate a self-created event once it has synced under a different server id`() = runTest {
+    // scheduleSample() syncs immediately: the local row keeps its client-generated "event-..." id
+    // forever, while the server assigns its own distinct "srv-event-1" id, recorded only as this
+    // pending row's remoteId — reproducing the real duplicate-event scenario, not just a same-id one.
+    val localId = scheduleSample()
+    val remoteId = pendingDao.getById(localId)?.remoteId
+    checkNotNull(remoteId) { "sample event should have synced with a remoteId" }
+    eventsApi.serverEvents = listOf(serverEvent(id = remoteId))
+
+    val events = repository.getEvents(EventStatus.SCHEDULED)
+
+    assertEquals(1, events.size)
+    assertEquals(localId, events.single().id)
   }
 
   @Test

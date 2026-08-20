@@ -31,6 +31,9 @@ private class ExecutorFakePendingDao : PendingSupervisorEventDao {
 
   override suspend fun getById(id: String): PendingSupervisorEventEntity? = entities[id]
 
+  override suspend fun getByRemoteId(remoteId: String): PendingSupervisorEventEntity? =
+    entities.values.firstOrNull { it.remoteId == remoteId }
+
   override suspend fun deleteById(id: String) {
     entities.remove(id)
   }
