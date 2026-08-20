@@ -72,6 +72,10 @@ data class EventPhotoEntity(
   val eventId: String,
   val filePath: String,
   val capturedAt: Long,
+  /** Set once this photo has been uploaded and registered via `POST /media` — null means it only
+   * exists on-device. Completing an event re-sends this id (skipping a redundant re-upload) rather
+   * than re-running the upload every retry. */
+  val remoteMediaId: String? = null,
 )
 
 /** One "Gathering Date" for a Training [SupervisorEventEntity] — created by one Add Training
@@ -94,6 +98,12 @@ data class EventGatheringEntity(
   val eventId: String,
   val date: String,
   val createdAt: Long,
+  /** Set once this gathering has been created server-side — null means the id in [id] is only a
+   * local placeholder ("gathering-&lt;uuid&gt;"), which the backend will reject as an invalid
+   * UUID if ever sent to it. [id] remains this row's permanent local identity everywhere else in
+   * the app (attendance/topics/marks all key off it), mirroring how
+   * [org.armman.supervisor.data.events.PendingSupervisorEventEntity.remoteId] works for events. */
+  val remoteId: String? = null,
 )
 
 /** One Training topic added within an [EventGatheringEntity]. Deleted when its parent gathering
@@ -115,6 +125,11 @@ data class EventTopicEntity(
   val gatheringId: String,
   val topicName: String,
   val addedAt: Long,
+  /** Set once this topic has been resolved to its real training-topic catalog UUID server-side —
+   * null means [id] is only a local placeholder ("topic-&lt;uuid&gt;"), which the backend will
+   * reject as an invalid UUID. [id] remains this row's permanent local identity (marks/completion
+   * key off it), same pattern as [EventGatheringEntity.remoteId]. */
+  val remoteId: String? = null,
 )
 
 /** One Sakhi's Pre/Post mark for one Training topic within a gathering. Deleted when its parent

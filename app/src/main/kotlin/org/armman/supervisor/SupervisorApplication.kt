@@ -9,6 +9,7 @@ import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.android.HiltAndroidApp
 import dagger.hilt.components.SingletonComponent
 import org.armman.supervisor.data.assignitem.InventoryTransactionSyncScheduler
+import org.armman.supervisor.data.meetingtraining.GatheringSyncScheduler
 import org.armman.supervisor.data.meetingtraining.SupervisorEventSyncScheduler
 import javax.inject.Inject
 
@@ -31,6 +32,7 @@ class SupervisorApplication : Application(), Configuration.Provider {
   interface SyncSchedulersEntryPoint {
     fun inventoryTransactionSyncScheduler(): InventoryTransactionSyncScheduler
     fun supervisorEventSyncScheduler(): SupervisorEventSyncScheduler
+    fun gatheringSyncScheduler(): GatheringSyncScheduler
   }
 
   override fun onCreate() {
@@ -41,5 +43,6 @@ class SupervisorApplication : Application(), Configuration.Provider {
     // this call site — see InventoryTransactionSyncScheduler/SupervisorEventSyncScheduler.
     entryPoint.inventoryTransactionSyncScheduler().ensurePeriodicSyncScheduled()
     entryPoint.supervisorEventSyncScheduler().ensurePeriodicSyncScheduled()
+    entryPoint.gatheringSyncScheduler().ensurePeriodicSyncScheduled()
   }
 }

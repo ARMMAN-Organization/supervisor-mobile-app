@@ -189,7 +189,7 @@ class ScheduleMeetingViewModelTest {
   }
 
   @Test
-  fun `repository failure on submit moves to Error`() = runTest(dispatcher) {
+  fun `repository failure on submit shows an inline error without discarding the form`() = runTest(dispatcher) {
     val repo = TestRepository(shouldFail = true)
     val viewModel = ScheduleMeetingViewModel(repo)
     readyState(viewModel)
@@ -199,7 +199,61 @@ class ScheduleMeetingViewModelTest {
     viewModel.onSubmit()
     dispatcher.scheduler.advanceUntilIdle()
 
-    assertTrue(viewModel.uiState.value is ScheduleMeetingUiState.Error)
+    val state = viewModel.uiState.value as ScheduleMeetingUiState.Success
+    assertEquals("schedule failed", state.submitErrorMessage)
+    assertEquals("loc-1", state.selectedProjectId)
+    assertEquals("22 Jul 2026", state.startDate)
+    assertTrue(!state.isSubmitting)
+    assertTrue(!state.submitted)
+  }
+
+  @Test
+  fun `editing any field after a submit error clears submitErrorMessage`() = runTest(dispatcher) {
+    val repo = TestRepository(shouldFail = true)
+    val viewModel = ScheduleMeetingViewModel(repo)
+    readyState(viewModel)
+    viewModel.onProjectSelected("loc-1")
+    viewModel.onStartDateSelected("22 Jul 2026")
+    viewModel.onSubmit()
+    dispatcher.scheduler.advanceUntilIdle()
+    assertTrue((viewModel.uiState.value as ScheduleMeetingUiState.Success).submitErrorMessage != null)
+
+    viewModel.onRemarksChanged("updated remarks")
+
+    assertEquals(null, (viewModel.uiState.value as ScheduleMeetingUiState.Success).submitErrorMessage)
+  }
+
+  @Test
+  fun `retrying onSubmit after a failure succeeds once the repository stops failing`() = runTest(dispatcher) {
+    val repo = TestRepository(shouldFail = true)
+    val viewModel = ScheduleMeetingViewModel(repo)
+    readyState(viewModel)
+    viewModel.onProjectSelected("loc-1")
+    viewModel.onStartDateSelected("22 Jul 2026")
+    viewModel.onSubmit()
+    dispatcher.scheduler.advanceUntilIdle()
+    repo.failNextCalls(false)
+
+    viewModel.onSubmit()
+    dispatcher.scheduler.advanceUntilIdle()
+
+    val state = viewModel.uiState.value as ScheduleMeetingUiState.Success
+    assertEquals(null, state.submitErrorMessage)
+    assertTrue(state.submitted)
+  }
+
+  @Test
+  fun `a validation failure never sets submitErrorMessage`() = runTest(dispatcher) {
+    val repo = TestRepository()
+    val viewModel = ScheduleMeetingViewModel(repo)
+    readyState(viewModel)
+
+    viewModel.onSubmit()
+
+    val state = viewModel.uiState.value as ScheduleMeetingUiState.Success
+    assertEquals(ScheduleMeetingFormError.PROJECT_REQUIRED, state.formError)
+    assertEquals(null, state.submitErrorMessage)
+    assertEquals(0, repo.scheduleCallCount)
   }
 
   // --- Edge cases ---

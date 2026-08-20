@@ -27,6 +27,16 @@ data class GatheringWithTopics(
   val topics: List<EventTopicEntity>,
 )
 
+/** Projection for [SupervisorEventDao.getTopicAndGatheringRemoteIds] — the local and (if resolved)
+ * real server ids for a topic and its parent gathering, needed together to send a valid marks
+ * save/complete request. */
+data class TopicAndGatheringRemoteIds(
+  val topicId: String,
+  val topicRemoteId: String?,
+  val gatheringId: String,
+  val gatheringRemoteId: String?,
+)
+
 @Dao
 interface SupervisorEventDao {
   @Transaction
@@ -55,11 +65,27 @@ interface SupervisorEventDao {
   @Insert
   suspend fun insertPhoto(photo: EventPhotoEntity)
 
+  /** Marks a photo as uploaded once `POST /media` has registered it — so a retried complete
+   * reuses this id instead of re-uploading the same file. */
+  @Query("UPDATE event_photos SET remoteMediaId = :remoteMediaId WHERE rowId = :rowId")
+  suspend fun setPhotoRemoteMediaId(rowId: Long, remoteMediaId: String)
+
   @Insert
   suspend fun insertGathering(gathering: EventGatheringEntity)
 
   @Insert
   suspend fun insertTopics(topics: List<EventTopicEntity>)
+
+  /** Marks a gathering as created server-side once its `PendingGatheringEntity` row syncs — so
+   * `saveMarks`/`completeMarks` can send this real id instead of the local placeholder. */
+  @Query("UPDATE event_gatherings SET remoteId = :remoteId WHERE id = :gatheringId")
+  suspend fun setGatheringRemoteId(gatheringId: String, remoteId: String)
+
+  /** Same as [setGatheringRemoteId], for the one topic within that gathering matching [topicName]
+   * — topics are resolved to their real training-topic catalog UUID by name, same lookup already
+   * used when creating the gathering online. */
+  @Query("UPDATE event_topics SET remoteId = :remoteId WHERE gatheringId = :gatheringId AND topicName = :topicName")
+  suspend fun setTopicRemoteId(gatheringId: String, topicName: String, remoteId: String)
 
   @Transaction
   @Query("SELECT * FROM event_gatherings WHERE id = :gatheringId LIMIT 1")
@@ -76,6 +102,28 @@ interface SupervisorEventDao {
     """,
   )
   suspend fun getTopicIdsForGathering(gatheringId: String): List<String>
+
+  /** Reverse lookup for the marks fan-out to the real backend, which needs a `gatheringId` per
+   * mark save/complete call — [org.armman.supervisor.data.local.EventTopicEntity] already ties
+   * one topic to exactly one gathering, so this is a direct column read, not a new relationship. */
+  @Query("SELECT gatheringId FROM event_topics WHERE id = :topicId LIMIT 1")
+  suspend fun getGatheringIdForTopic(topicId: String): String?
+
+  /** The topic and its parent gathering, together — [saveMarks]/[completeMarks] need both rows'
+   * `remoteId` before attempting a remote call, since the backend requires a real topic UUID
+   * ([EventTopicEntity.remoteId]) and a real gathering UUID ([EventGatheringEntity.remoteId]) in
+   * the same request; sending either as a local placeholder id is rejected as an invalid UUID. */
+  @Query(
+    """
+    SELECT et.id AS topicId, et.remoteId AS topicRemoteId,
+           eg.id AS gatheringId, eg.remoteId AS gatheringRemoteId
+    FROM event_topics et
+    INNER JOIN event_gatherings eg ON eg.id = et.gatheringId
+    WHERE et.id = :topicId
+    LIMIT 1
+    """,
+  )
+  suspend fun getTopicAndGatheringRemoteIds(topicId: String): TopicAndGatheringRemoteIds?
 
   @Insert
   suspend fun insertMarks(rows: List<EventMarksEntity>)
@@ -104,7 +152,11 @@ interface SupervisorEventDao {
   @Delete
   suspend fun deleteEvent(entity: SupervisorEventEntity)
 
-  private suspend fun requireScheduled(eventId: String): SupervisorEventEntity {
+  /** Public so callers (e.g. [org.armman.supervisor.data.meetingtraining.MeetingTrainingRepositoryImpl])
+   * can pre-validate a state transition before attempting a remote call, without performing the
+   * local write yet — used by remote-gated ops (cancel/complete/reschedule) that must not commit
+   * locally ahead of server confirmation. */
+  suspend fun requireScheduled(eventId: String): SupervisorEventEntity {
     val event = getById(eventId)?.event ?: error("Unknown event id: $eventId")
     check(event.status == EventStatus.SCHEDULED.name) { "Event $eventId is not SCHEDULED (status=${event.status})" }
     return event
@@ -185,14 +237,22 @@ interface SupervisorEventDao {
     insertMarksCompletion(EventMarksCompletionEntity(topicId = topicId, marksType = marksType, completedAt = completedAt))
   }
 
-  @Transaction
-  suspend fun completeEvent(eventId: String) {
+  /** Same pre-check [completeEvent] performs before its write — public for the same reason as
+   * [requireScheduled]: remote-gated completion needs to validate locally before attempting the
+   * remote call, without writing yet. */
+  suspend fun requireScheduledWithPhotoForComplete(eventId: String): SupervisorEventEntity {
     val details = getById(eventId) ?: error("Unknown event id: $eventId")
     check(details.event.status == EventStatus.SCHEDULED.name) {
       "Event $eventId is not SCHEDULED (status=${details.event.status})"
     }
     check(details.photos.isNotEmpty()) { "Cannot complete event $eventId without at least one photo" }
-    updateEvent(details.event.copy(status = EventStatus.COMPLETED.name))
+    return details.event
+  }
+
+  @Transaction
+  suspend fun completeEvent(eventId: String) {
+    val event = requireScheduledWithPhotoForComplete(eventId)
+    updateEvent(event.copy(status = EventStatus.COMPLETED.name))
   }
 
   companion object {

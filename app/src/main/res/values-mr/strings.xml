@@ -162,6 +162,8 @@
   <string name="schedule_training_remarks_label">शेरा (ऐच्छिक)</string>
   <string name="schedule_training_submit">प्रशिक्षण नियोजित करा</string>
   <string name="schedule_training_error_start_date_required">कृपया प्रशिक्षणाची तारीख निवडा</string>
+  <string name="schedule_training_topics_label">विषय</string>
+  <string name="schedule_training_error_topic_required">कृपया किमान एक विषय निवडा</string>
   <string name="schedule_training_added">प्रशिक्षण जोडले</string>
 
   <string name="training_detail_title">प्रशिक्षणाचा तपशील</string>
@@ -182,6 +184,8 @@
   <string name="add_training_topics_date_label">तारीख</string>
   <string name="add_training_topics_date_placeholder">तारीख निवडा</string>
   <string name="add_training_topics_label">विषय</string>
+  <string name="add_training_topics_empty_catalog">अद्याप कोणतेही प्रशिक्षण विषय उपलब्ध नाहीत. आपल्या प्रशासकाशी संपर्क साधा.</string>
+  <string name="add_training_topics_select_at_least_one">जतन करण्यापूर्वी किमान एक विषय निवडा.</string>
   <string name="action_save">जतन करा</string>
 
   <string name="attendance_title">उपस्थिती</string>

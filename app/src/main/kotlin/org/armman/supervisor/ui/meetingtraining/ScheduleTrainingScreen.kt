@@ -7,7 +7,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -92,7 +94,7 @@ private fun FormContent(state: ScheduleTrainingUiState.Success, viewModel: Sched
   val formatter = remember { DateTimeFormatter.ofPattern("dd MMM yyyy", Locale.getDefault()) }
 
   Column(
-    modifier = Modifier.fillMaxSize().padding(Dimens.ScreenPadding),
+    modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Dimens.ScreenPadding),
     verticalArrangement = Arrangement.spacedBy(Dimens.ItemSpacing),
   ) {
     SingleSelectDropdown(
@@ -145,9 +147,37 @@ private fun FormContent(state: ScheduleTrainingUiState.Success, viewModel: Sched
       label = stringResource(R.string.schedule_training_remarks_label),
       placeholder = stringResource(R.string.add_item_remarks_placeholder),
     )
+    Text(
+      text = stringResource(R.string.schedule_training_topics_label),
+      style = MaterialTheme.typography.labelLarge,
+    )
+    if (state.catalog.isEmpty()) {
+      Text(
+        text = stringResource(R.string.add_training_topics_empty_catalog),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.error,
+      )
+    } else {
+      Column(verticalArrangement = Arrangement.spacedBy(Dimens.SmallSpacing)) {
+        state.catalog.forEach { topic ->
+          TopicRow(
+            topic = topic,
+            checked = topic.id in state.selectedTopicIds,
+            onToggle = { viewModel.onTopicToggled(topic.id) },
+          )
+        }
+      }
+    }
     state.formError?.let { error ->
       Text(
         text = stringResource(error.messageRes()),
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.error,
+      )
+    }
+    state.submitErrorMessage?.let { message ->
+      Text(
+        text = message.ifBlank { stringResource(R.string.meeting_training_error_submit) },
         style = MaterialTheme.typography.labelLarge,
         color = MaterialTheme.colorScheme.error,
       )
@@ -165,4 +195,5 @@ private fun ScheduleTrainingFormError.messageRes(): Int = when (this) {
   ScheduleTrainingFormError.PROJECT_REQUIRED -> R.string.schedule_meeting_error_project_required
   ScheduleTrainingFormError.START_DATE_REQUIRED -> R.string.schedule_training_error_start_date_required
   ScheduleTrainingFormError.INVALID_DATE_RANGE -> R.string.schedule_meeting_error_invalid_range
+  ScheduleTrainingFormError.TOPIC_REQUIRED -> R.string.schedule_training_error_topic_required
 }

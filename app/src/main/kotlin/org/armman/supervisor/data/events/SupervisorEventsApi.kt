@@ -1,9 +1,25 @@
 package org.armman.supervisor.data.events
 
+import com.google.gson.JsonDeserializationContext
+import com.google.gson.JsonDeserializer
+import com.google.gson.JsonElement
+import com.google.gson.JsonPrimitive
+import com.google.gson.annotations.JsonAdapter
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
+import java.lang.reflect.Type
+
+/** [SupervisorEventDto.topicsJson] is documented/typed as a JSON-encoded string (e.g. `"{}"`), but
+ * some live records return it as a raw JSON object instead (e.g. `{"topics":["..."]}`), which the
+ * default String deserializer rejects with "Expected a string but was BEGIN_OBJECT". This
+ * tolerates either shape and normalizes both to the raw JSON text, since this app only ever passes
+ * [SupervisorEventDto.topicsJson] through unchanged — it has no domain model for it yet. */
+private class TopicsJsonDeserializer : JsonDeserializer<String> {
+  override fun deserialize(json: JsonElement, typeOfT: Type, context: JsonDeserializationContext): String =
+    if (json is JsonPrimitive) json.asString else json.toString()
+}
 
 /** One Meeting/Training event as returned/accepted by supervisor-operations-service. Flat shape —
  * no gatherings/attendance/marks/photos concept exists server-side (those remain local-only, see
@@ -15,6 +31,7 @@ data class SupervisorEventDto(
   val supervisorId: String,
   val eventType: String,
   val eventDate: String,
+  @JsonAdapter(TopicsJsonDeserializer::class)
   val topicsJson: String,
   val remarks: String?,
   val status: String,

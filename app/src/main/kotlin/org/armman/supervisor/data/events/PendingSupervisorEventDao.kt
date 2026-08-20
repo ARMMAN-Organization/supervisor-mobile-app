@@ -19,6 +19,13 @@ interface PendingSupervisorEventDao {
   @Query("SELECT * FROM pending_supervisor_events WHERE id = :id LIMIT 1")
   suspend fun getById(id: String): PendingSupervisorEventEntity?
 
+  /** Finds the local row for a server event by [PendingSupervisorEventEntity.remoteId] rather than
+   * [PendingSupervisorEventEntity.id] — a self-created event keeps its original client-generated
+   * [PendingSupervisorEventEntity.id] forever once synced, so matching by [id] alone against a
+   * server DTO's id never finds it. */
+  @Query("SELECT * FROM pending_supervisor_events WHERE remoteId = :remoteId LIMIT 1")
+  suspend fun getByRemoteId(remoteId: String): PendingSupervisorEventEntity?
+
   @Query("DELETE FROM pending_supervisor_events WHERE id = :id")
   suspend fun deleteById(id: String)
 
