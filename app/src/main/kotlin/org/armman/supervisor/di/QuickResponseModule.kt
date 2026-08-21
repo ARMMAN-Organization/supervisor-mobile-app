@@ -5,6 +5,8 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import org.armman.supervisor.data.quickresponse.EddNearingApi
+import org.armman.supervisor.data.quickresponse.MissedVisitEscalationApi
 import org.armman.supervisor.data.quickresponse.QuickResponseApi
 import org.armman.supervisor.data.quickresponse.QuickResponseRepositoryImpl
 import org.armman.supervisor.ui.quickresponse.QuickResponseRepository
@@ -23,5 +25,14 @@ abstract class QuickResponseModule {
     @Provides
     @Singleton
     fun provideQuickResponseApi(retrofit: Retrofit): QuickResponseApi = retrofit.create(QuickResponseApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideMissedVisitEscalationApi(retrofit: Retrofit): MissedVisitEscalationApi =
+      retrofit.create(MissedVisitEscalationApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideEddNearingApi(retrofit: Retrofit): EddNearingApi = retrofit.create(EddNearingApi::class.java)
   }
 }

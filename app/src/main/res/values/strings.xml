@@ -277,6 +277,7 @@
   <!-- Dashboard state -->
   <string name="dashboard_error_generic">Something went wrong. Please try again.</string>
   <string name="retry">Retry</string>
+  <string name="cancel">Cancel</string>
 
   <!-- Beneficiary list -->
   <string name="beneficiary_search_placeholder">Enter Beneficiary Name</string>
@@ -321,24 +322,45 @@
   <string name="quick_response_error_load">Unable to load Quick Response requests</string>
   <string name="quick_response_empty">No pending requests</string>
   <string name="quick_response_field_request_type">Request Type:</string>
-  <string name="quick_response_field_project">Project:</string>
+  <string name="quick_response_field_beneficiary_name">Beneficiary:</string>
+  <string name="quick_response_type_lmp_change">LMP Change</string>
+  <string name="quick_response_type_closure_review">Closure Review</string>
+  <string name="quick_response_type_reopen">Reopen Request</string>
+  <string name="quick_response_type_accompanied_referral">Accompanied Referral</string>
+  <string name="quick_response_action_approve">Approve</string>
+  <string name="quick_response_action_reject">Reject</string>
+  <string name="quick_response_error_decision_conflict">This request has already been decided</string>
+  <string name="quick_response_error_decision_failed">Failed to submit decision</string>
+  <string name="quick_response_field_closure_reason">Closure Reason:</string>
+  <string name="quick_response_field_closure_date">Closure Date:</string>
+  <string name="quick_response_field_supervisor_notes">Supervisor Notes</string>
+  <string name="quick_response_supervisor_notes_placeholder">Add a note (optional)</string>
+  <string name="quick_response_field_reopen_reason">Reason for Reopen:</string>
+  <string name="quick_response_field_referral_facility">Facility:</string>
+  <string name="quick_response_field_referral_facility_type">Facility Type:</string>
+  <string name="quick_response_field_referral_date">Referral Date:</string>
+  <string name="quick_response_field_referrals_missed_count">Number of Referrals Missed:</string>
+  <string name="quick_response_field_visit_reference">Visit Reference:</string>
+  <string name="quick_response_field_referral_incomplete_reason">Reason:</string>
   <string name="quick_response_field_sakhi_name">Sakhi Name:</string>
+  <string name="quick_response_field_sakhi_id">Sakhi ID:</string>
+  <string name="quick_response_field_sakhi_contact">Sakhi Contact:</string>
+  <string name="quick_response_field_pada_name">Pada:</string>
   <string name="quick_response_field_request_status">Request Status:</string>
-  <string name="quick_response_type_data_restore">Data Restore</string>
-  <string name="quick_response_status_pending">Pending</string>
-  <string name="quick_response_status_approved">Approved</string>
-  <string name="quick_response_status_rejected">Rejected</string>
-  <string name="quick_response_status_restored">Restored</string>
-  <string name="quick_response_add_reason_title">Add reason</string>
-  <string name="quick_response_reason_label">Reason</string>
-  <string name="quick_response_select_reason">Select Reason</string>
-  <string name="quick_response_reason_restored">Restored</string>
-  <string name="quick_response_reason_pending">Pending</string>
-  <string name="quick_response_reason_reject">Reject</string>
-  <string name="quick_response_reason_approve">Approve</string>
-  <string name="quick_response_submit">Submit</string>
-  <string name="quick_response_error_reason_required">Please select a reason</string>
-  <string name="quick_response_error_submit">Failed to submit reason</string>
+  <string name="quick_response_field_risk_details">Risk Details:</string>
+  <string name="quick_response_field_old_lmp">Old LMP:</string>
+  <string name="quick_response_field_new_lmp">New LMP:</string>
+  <string name="quick_response_type_referral_incomplete">Referral Follow-up Incomplete</string>
+  <string name="quick_response_type_data_restore">Data Restore Request</string>
+  <string name="quick_response_type_missed_visit_escalation">Missed Visit Escalation</string>
+  <string name="quick_response_type_edd_nearing">EDD Nearing</string>
+  <string name="quick_response_action_transfer">Transfer</string>
+  <string name="quick_response_action_close">Close</string>
+  <string name="quick_response_action_okay">Okay</string>
+  <string name="quick_response_error_transfer_unavailable">Transfer isn\'t available yet</string>
+  <string name="quick_response_field_visit_type">Type of Visit Missed:</string>
+  <string name="quick_response_field_edd_date">EDD Date:</string>
+  <string name="quick_response_field_edd_reason">Reason:</string>
 
   <!-- Placeholder destinations -->
   <string name="placeholder_coming_soon">Coming soon</string>

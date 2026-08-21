@@ -49,6 +49,15 @@ object Dimens {
   /** Width breakpoint (dp) at or above which the tablet layout applies. */
   const val TabletMinWidthDp = 600
 
+  /** Max width of a single-column content area on tablet (e.g. Quick Response's card list) —
+   * keeps cards readable instead of stretching phone-width content across the full screen. */
+  val TabletContentMaxWidthDp = 560.dp
+
+  /** Fixed width of a Quick Response card's field label column — sized to fit its longest
+   * label ("Number of Visits Missed:") without wrapping, so every field's value starts at the
+   * same x-position across the whole card. */
+  val QuickResponseFieldLabelWidth = 168.dp
+
   // List-screen tokens measured from the My Beneficiaries designs (150dpi).
   val SearchBarHeight = 52.dp
   val ChipHeight = 40.dp

@@ -5,10 +5,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -30,19 +31,18 @@ import org.armman.supervisor.ui.components.BrandTopAppBar
 import org.armman.supervisor.ui.components.PrimaryButton
 import org.armman.supervisor.ui.theme.Dimens
 
-/** Quick Response list screen: cards for pending approvals/escalations (SRS FR-SV-4.1). */
+/** Quick Response list screen: cards for pending approvals with direct Approve/Reject CTAs
+ * (SRS FR-SV-4.1). */
 @Composable
 fun QuickResponseScreen(
   onBack: () -> Unit,
-  onRequestSelected: (QuickResponseRequest) -> Unit,
   modifier: Modifier = Modifier,
   viewModel: QuickResponseViewModel = hiltViewModel(),
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
   // The ViewModel already fetches once on creation — skip that first resume so this doesn't
-  // fire a redundant second load (and a Loading-flicker) right on screen entry. Only resumes
-  // after the first one (e.g. returning after submitting a reason) should re-fetch.
+  // fire a redundant second load (and a Loading-flicker) right on screen entry.
   var isInitialResume by remember { mutableStateOf(true) }
   LifecycleResumeEffect(Unit) {
     if (isInitialResume) {
@@ -64,7 +64,16 @@ fun QuickResponseScreen(
           message = state.exceptionMessage ?: stringResource(state.fallbackMessageRes),
           onRetry = viewModel::onRetry,
         )
-        is QuickResponseUiState.Success -> SuccessContent(requests = state.requests, onRequestSelected = onRequestSelected)
+        is QuickResponseUiState.Success -> SuccessContent(
+          state = state,
+          onAction = { requestId, action ->
+            when (action) {
+              is QuickResponseCardAction.Decide -> viewModel.onDecide(requestId, action.decision, action.notes)
+              is QuickResponseCardAction.Escalate -> viewModel.onEscalationAction(requestId, action.action)
+              QuickResponseCardAction.Acknowledge -> viewModel.onAcknowledgeEddNearing(requestId)
+            }
+          },
+        )
       }
     }
   }
@@ -90,23 +99,45 @@ private fun ErrorContent(message: String, onRetry: () -> Unit) {
 }
 
 @Composable
-private fun SuccessContent(requests: List<QuickResponseRequest>, onRequestSelected: (QuickResponseRequest) -> Unit) {
-  if (requests.isEmpty()) {
+private fun SuccessContent(
+  state: QuickResponseUiState.Success,
+  onAction: (String, QuickResponseCardAction) -> Unit,
+) {
+  if (state.requests.isEmpty()) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
       Text(text = stringResource(R.string.quick_response_empty), style = MaterialTheme.typography.bodyLarge)
     }
     return
   }
-  BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-    val isTablet = maxWidth >= Dimens.TabletMinWidthDp.dp
-    LazyVerticalGrid(
-      columns = if (isTablet) GridCells.Fixed(2) else GridCells.Fixed(1),
-      horizontalArrangement = Arrangement.spacedBy(Dimens.ItemSpacing),
-      verticalArrangement = Arrangement.spacedBy(Dimens.ItemSpacing),
-      modifier = Modifier.fillMaxSize().padding(Dimens.ScreenPadding),
-    ) {
-      items(requests, key = { it.id }) { request ->
-        QuickResponseRequestCard(request = request, onCardClick = { onRequestSelected(request) })
+  Column(modifier = Modifier.fillMaxSize()) {
+    state.decisionErrorMessageRes?.let { messageRes ->
+      Text(
+        text = stringResource(messageRes),
+        style = MaterialTheme.typography.bodyMedium,
+        modifier = Modifier.padding(horizontal = Dimens.ScreenPadding, vertical = Dimens.SmallSpacing),
+      )
+    }
+    BoxWithConstraints(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+      // Cards vary a lot in height by type (Data Restore: 3 fields; Closure Review: 6+), so a
+      // 2-column grid paired mismatched-height cards side by side and looked uneven. A single
+      // column avoids that regardless of form factor; on tablet the column is width-capped and
+      // centered instead of stretching phone-width cards across the full screen.
+      val isTablet = maxWidth >= Dimens.TabletMinWidthDp.dp
+      LazyColumn(
+        verticalArrangement = Arrangement.spacedBy(Dimens.ItemSpacing),
+        modifier = Modifier
+          .fillMaxSize()
+          .then(if (isTablet) Modifier.widthIn(max = Dimens.TabletContentMaxWidthDp) else Modifier)
+          .padding(Dimens.ScreenPadding),
+      ) {
+        items(state.requests, key = { it.id }) { request ->
+          QuickResponseRequestCard(
+            request = request,
+            onAction = { action -> onAction(request.id, action) },
+            isDeciding = state.decidingRequestId == request.id,
+            modifier = Modifier.fillMaxWidth(),
+          )
+        }
       }
     }
   }
