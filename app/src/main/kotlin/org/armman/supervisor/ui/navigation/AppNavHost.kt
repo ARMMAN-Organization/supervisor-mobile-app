@@ -32,6 +32,7 @@ import org.armman.supervisor.ui.components.PlaceholderScreen
 import org.armman.supervisor.ui.dashboard.DashboardScreen
 import org.armman.supervisor.ui.login.LoginScreen
 import org.armman.supervisor.data.local.MarksType
+import org.armman.supervisor.ui.masterdata.MasterDataDownloadScreen
 import org.armman.supervisor.ui.meetingtraining.AddTrainingTopicsScreen
 import org.armman.supervisor.ui.meetingtraining.AttendanceScreen
 import org.armman.supervisor.ui.meetingtraining.MarksScreen
