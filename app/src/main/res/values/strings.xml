@@ -461,6 +461,8 @@
   <string name="beneficiary_data_download_quit_cancel">Cancel</string>
   <string name="beneficiary_data_download_network_error_title">No internet connection</string>
   <string name="beneficiary_data_download_network_error_message">Check your connection and try again. Retrying restarts the download from the beginning.</string>
+  <string name="beneficiary_data_download_server_error_title">Server is taking too long</string>
+  <string name="beneficiary_data_download_server_error_message">The server is responding slowly right now. Please retry in a moment — your connection is fine.</string>
   <string name="beneficiary_data_download_retry">Retry</string>
   <string name="beneficiary_data_download_stop">Stop</string>
   <string name="beneficiary_data_download_completion_title">All Downloads Completed</string>
