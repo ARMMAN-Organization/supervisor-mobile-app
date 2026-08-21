@@ -49,6 +49,11 @@ object Dimens {
   /** Width breakpoint (dp) at or above which the tablet layout applies. */
   const val TabletMinWidthDp = 600
 
+  /** Fixed width of a Quick Response card's field label column — sized to fit its longest
+   * label ("Number of Visits Missed:") without wrapping, so every field's value starts at the
+   * same x-position across the whole card. */
+  val QuickResponseFieldLabelWidth = 168.dp
+
   // List-screen tokens measured from the My Beneficiaries designs (150dpi).
   val SearchBarHeight = 52.dp
   val ChipHeight = 40.dp
@@ -92,7 +97,8 @@ object Dimens {
    * Download Beneficiary Data screen, which shares the same row-status visuals. */
   val MasterDataProgressBarHeight = 3.dp
 
-  /** Caps and centers list-style content (e.g. Settings) on tablet instead of stretching full-bleed. */
+  /** Caps and centers list-style content (e.g. Settings, Quick Response) on tablet instead of
+   * stretching full-bleed. */
   val ContentMaxWidthTablet = 600.dp
 
   // Login-screen tokens mirrored from the shared design spec (activity_login.xml).

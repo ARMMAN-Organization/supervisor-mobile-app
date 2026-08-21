@@ -1,5 +1,7 @@
 package org.armman.supervisor.data.lookups
 
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -10,21 +12,30 @@ import javax.inject.Singleton
 class LookupsRepository @Inject constructor(
   private val api: LookupsApi,
 ) {
-  @Volatile
   private var cache: Map<String, LookupCategoryDto>? = null
+
+  /** Guards the check-then-fetch in [cacheOrFetch] so concurrent callers (e.g. several Quick
+   * Response cards resolving a lookup label at once) single-flight one `GET /lookups` call
+   * instead of each racing to populate [cache] independently. */
+  private val cacheMutex = Mutex()
 
   /** Returns `categoryCode` -> (`valueCode` -> `id`) for one category, fetching and caching every
    * category the first time any category is requested. */
   suspend fun getValueIdsByCode(categoryCode: String): Map<String, String> {
-    val category = (cache ?: fetchAll().also { cache = it })[categoryCode] ?: return emptyMap()
+    val category = cacheOrFetch()[categoryCode] ?: return emptyMap()
     return category.values.associate { it.valueCode to it.id }
   }
 
   /** Resolves a single lookup-value [id] to its display [LookupValueDto.valueLabel] within
    * [categoryCode], or `null` if the id isn't found in that category. */
   suspend fun getValueLabelById(categoryCode: String, id: String): String? {
-    val category = (cache ?: fetchAll().also { cache = it })[categoryCode] ?: return null
+    val category = cacheOrFetch()[categoryCode] ?: return null
     return category.values.firstOrNull { it.id == id }?.valueLabel
+  }
+
+  private suspend fun cacheOrFetch(): Map<String, LookupCategoryDto> {
+    cache?.let { return it }
+    return cacheMutex.withLock { cache ?: fetchAll().also { cache = it } }
   }
 
   private suspend fun fetchAll(): Map<String, LookupCategoryDto> {
