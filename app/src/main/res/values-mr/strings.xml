@@ -390,6 +390,7 @@
   <string name="quick_response_error_decision_conflict">या विनंतीवर आधीच निर्णय घेतला गेला आहे</string>
   <string name="quick_response_error_decision_failed">निर्णय सबमिट करता आला नाही</string>
   <string name="quick_response_field_closure_reason">क्लोजरचे कारण:</string>
+  <string name="quick_response_field_closure_type">क्लोजरचा प्रकार:</string>
   <string name="quick_response_field_closure_date">क्लोजर दिनांक:</string>
   <string name="quick_response_field_supervisor_notes">सुपरवायझर नोंदी</string>
   <string name="quick_response_supervisor_notes_placeholder">टीप जोडा (ऐच्छिक)</string>

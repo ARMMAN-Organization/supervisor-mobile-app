@@ -390,6 +390,7 @@
   <string name="quick_response_error_decision_conflict">This request has already been decided</string>
   <string name="quick_response_error_decision_failed">Failed to submit decision</string>
   <string name="quick_response_field_closure_reason">Closure Reason:</string>
+  <string name="quick_response_field_closure_type">Closure Type:</string>
   <string name="quick_response_field_closure_date">Closure Date:</string>
   <string name="quick_response_field_supervisor_notes">Supervisor Notes</string>
   <string name="quick_response_supervisor_notes_placeholder">Add a note (optional)</string>

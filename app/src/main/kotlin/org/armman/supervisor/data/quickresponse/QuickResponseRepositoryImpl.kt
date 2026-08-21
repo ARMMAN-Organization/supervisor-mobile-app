@@ -14,6 +14,8 @@ import org.armman.supervisor.ui.quickresponse.QuickResponseRequest
 import org.armman.supervisor.ui.quickresponse.QuickResponseRequestType
 import org.armman.supervisor.ui.quickresponse.QuickResponseRiskCondition
 import java.time.Instant
+import java.time.LocalDateTime
+import java.time.ZoneOffset
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -117,6 +119,7 @@ class QuickResponseRepositoryImpl @Inject constructor(
         reasonLabel = card.closureReasonLookupValueId?.let {
           lookupsRepository.getValueLabelById(CLOSURE_REASON_LOOKUP_CATEGORY, it)
         },
+        closureType = card.closureType,
         closureDateEpochMillis = card.closureDate?.let { parseEpochMillisOrNull(it) },
         supervisorNotes = card.supervisorNotes,
       )
@@ -143,12 +146,16 @@ class QuickResponseRepositoryImpl @Inject constructor(
       QuickResponseRequestType.DATA_RESTORE -> null
     }
 
-  /** Backend date fields come as either a bare date (`"2026-07-15"`) or a full ISO-8601 instant
-   * (`"2026-05-01T00:00:00.000Z"`) depending on the field — [Instant.parse] only accepts the
-   * latter, so a bare date is retried with a midnight-UTC suffix. */
+  /** Backend date fields come in one of three shapes depending on the field: a bare date
+   * (`"2026-07-15"`), a full ISO-8601 instant (`"2026-05-01T00:00:00.000Z"`), or (seen on some
+   * fields) an offset-less local datetime (`"2026-07-15T10:30:00"`) — [Instant.parse] only
+   * accepts the instant form, so the other two are retried in turn: first as a bare date with a
+   * midnight-UTC suffix, then (if that still fails, i.e. it already had a time component) as a
+   * local datetime assumed to be UTC. */
   private fun parseEpochMillisOrNull(dateString: String): Long? =
     runCatching { Instant.parse(dateString).toEpochMilli() }
       .recoverCatching { Instant.parse("${dateString}T00:00:00.000Z").toEpochMilli() }
+      .recoverCatching { LocalDateTime.parse(dateString).toInstant(ZoneOffset.UTC).toEpochMilli() }
       .getOrNull()
 
   override suspend fun decide(requestId: String, decision: QuickResponseDecision, notes: String?) {

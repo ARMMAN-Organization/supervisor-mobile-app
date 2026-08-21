@@ -263,10 +263,33 @@ class QuickResponseRepositoryImplTest {
   }
 
   @Test
+  fun `getRequests parses an offset-less local datetime date field`() = runTest {
+    api.listResult = Response.success(listOf1("card-1", "LMP_CHANGE"))
+    api.detailResultsById = mapOf(
+      "card-1" to detail("card-1", "LMP_CHANGE", oldLmpDate = "2026-07-15T10:30:00", newLmpDate = null),
+    )
+
+    val requests = repository.getRequests()
+
+    val detail = requests[0].detail as QuickResponseCardDetail.LmpChange
+    assertEquals(
+      java.time.LocalDateTime.parse("2026-07-15T10:30:00").toInstant(java.time.ZoneOffset.UTC).toEpochMilli(),
+      detail.oldLmpDateEpochMillis,
+    )
+  }
+
+  @Test
   fun `getRequests resolves Closure Review reason label via lookups`() = runTest {
     api.listResult = Response.success(listOf1("card-1", "CLOSURE_REVIEW"))
     api.detailResultsById = mapOf(
-      "card-1" to detail("card-1", "CLOSURE_REVIEW", closureReasonLookupValueId = "reason-1", closureDate = "2026-08-20T00:00:00Z", supervisorNotes = "note"),
+      "card-1" to detail(
+        "card-1",
+        "CLOSURE_REVIEW",
+        closureReasonLookupValueId = "reason-1",
+        closureType = "MOTHER_CLOSURE",
+        closureDate = "2026-08-20T00:00:00Z",
+        supervisorNotes = "note",
+      ),
     )
     lookupsApi.categories = listOf(
       LookupCategoryDto(categoryCode = "CLOSURE_REASON", values = listOf(LookupValueDto(id = "reason-1", valueCode = "MIGRATION", valueLabel = "Migration"))),
@@ -276,6 +299,7 @@ class QuickResponseRepositoryImplTest {
 
     val detail = requests[0].detail as QuickResponseCardDetail.ClosureReview
     assertEquals("Migration", detail.reasonLabel)
+    assertEquals("MOTHER_CLOSURE", detail.closureType)
     assertEquals("note", detail.supervisorNotes)
   }
 

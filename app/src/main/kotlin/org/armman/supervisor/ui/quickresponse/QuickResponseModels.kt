@@ -84,9 +84,13 @@ sealed interface QuickResponseCardDetail {
 
   /** @param reasonLabel resolved via `GET /lookups`; `null` (field simply not shown) if the id
    * isn't found in the `CLOSURE_REASON` category — a raw lookup-value UUID would be meaningless
-   * to a Supervisor, so there's no raw-code fallback. */
+   * to a Supervisor, so there's no raw-code fallback.
+   * @param closureType backend's raw closure-type code (e.g. "MOTHER_CLOSURE"/"CHILD_CLOSURE",
+   * per the SRS event-log field of the same name) — not part of FR-SV-4.4's own card-field list,
+   * but shown anyway since backend already returns it. */
   data class ClosureReview(
     val reasonLabel: String?,
+    val closureType: String?,
     val closureDateEpochMillis: Long?,
     val supervisorNotes: String?,
   ) : QuickResponseCardDetail

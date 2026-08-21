@@ -235,6 +235,7 @@ private fun CardDetailBlocks(detail: QuickResponseCardDetail?) {
     }
     is QuickResponseCardDetail.ClosureReview -> {
       detail.reasonLabel?.let { FieldBlock(labelRes = R.string.quick_response_field_closure_reason, value = it) }
+      detail.closureType?.let { FieldBlock(labelRes = R.string.quick_response_field_closure_type, value = it) }
       detail.closureDateEpochMillis?.let { FieldBlock(labelRes = R.string.quick_response_field_closure_date, value = it.toDisplayDateOnly()) }
       detail.supervisorNotes?.let { FieldBlock(labelRes = R.string.quick_response_field_supervisor_notes, value = it) }
     }
@@ -304,8 +305,12 @@ private fun StatusPill(text: String, containerColor: Color, contentColor: Color)
   }
 }
 
+/** Shared prefix of [toDisplayDate]/[toDisplayDateOnly]'s patterns, so the date portion can't
+ * drift out of sync between the two if one is ever tweaked without the other. */
+private const val DISPLAY_DATE_PATTERN = "MMM d, yyyy"
+
 private fun Long.toDisplayDate(): String =
-  SimpleDateFormat("MMM d, yyyy h:mm a", Locale.getDefault()).format(Date(this))
+  SimpleDateFormat("$DISPLAY_DATE_PATTERN h:mm a", Locale.getDefault()).format(Date(this))
 
 private fun Long.toDisplayDateOnly(): String =
-  SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(Date(this))
+  SimpleDateFormat(DISPLAY_DATE_PATTERN, Locale.getDefault()).format(Date(this))
