@@ -20,6 +20,13 @@ class LookupsRepository @Inject constructor(
     return category.values.associate { it.valueCode to it.id }
   }
 
+  /** Resolves a single lookup-value [id] to its display [LookupValueDto.valueLabel] within
+   * [categoryCode], or `null` if the id isn't found in that category. */
+  suspend fun getValueLabelById(categoryCode: String, id: String): String? {
+    val category = (cache ?: fetchAll().also { cache = it })[categoryCode] ?: return null
+    return category.values.firstOrNull { it.id == id }?.valueLabel
+  }
+
   private suspend fun fetchAll(): Map<String, LookupCategoryDto> {
     val response = api.getLookups()
     if (!response.isSuccessful) error("Failed to load lookups: HTTP ${response.code()}")

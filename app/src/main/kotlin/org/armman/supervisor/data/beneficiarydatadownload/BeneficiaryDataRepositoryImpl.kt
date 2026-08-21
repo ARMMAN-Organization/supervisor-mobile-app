@@ -5,6 +5,9 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.supervisorScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import org.armman.supervisor.BuildConfig
 import org.armman.supervisor.data.projects.ProjectsRepository
 import org.armman.supervisor.ui.beneficiarydatadownload.BeneficiaryDataEntity
@@ -25,6 +28,12 @@ class MockUnreadyBeneficiaryDataEntities(val enabled: Boolean)
  * of a bulk per-record fetch (per-beneficiary, per-referral, per-transaction) complete instead of
  * failing the whole entity over one inaccessible row. */
 private val SKIPPABLE_RECORD_HTTP_CODES = setOf(403, 404)
+
+/** Caps how many per-beneficiary calls (e.g. the ~10s beneficiary risk lookup) run at once in
+ * [BeneficiaryDataRepositoryImpl.forEachSakhiBeneficiary]. Kept low because these calls appear to
+ * compete for the same slow backend/tunnel connection — running too many in parallel was pushing
+ * individual calls past their timeout and triggering 502s that weren't seen when called alone. */
+private const val MAX_CONCURRENT_BENEFICIARY_CALLS = 2
 
 /**
  * Routes each [BeneficiaryDataEntity] to the repository that actually owns its data. Every
@@ -302,12 +311,21 @@ class BeneficiaryDataRepositoryImpl @Inject constructor(
   }
 
   /** Sums [block]'s result across every beneficiary in [loadAllBeneficiaries]'s (fully paginated,
-   * cached) result, one [block] call per beneficiary concurrently — a bounded stand-in until this
-   * screen has its own per-Sakhi/per-project beneficiary scoping decision (see the class doc
-   * comment). */
-  private suspend fun forEachSakhiBeneficiary(block: suspend (beneficiaryId: String) -> Int): Int = coroutineScope {
+   * cached) result, up to [MAX_CONCURRENT_BENEFICIARY_CALLS] [block] calls in flight at once — a
+   * bounded stand-in until this screen has its own per-Sakhi/per-project beneficiary scoping
+   * decision (see the class doc comment).
+   *
+   * Uses [supervisorScope] rather than [coroutineScope] so one beneficiary's failure (e.g. a slow
+   * per-beneficiary risk endpoint timing out) doesn't cancel every other in-flight call — that
+   * cancellation showed up as `IOException: Canceled` on otherwise-healthy sibling requests and
+   * surfaced to the user as a misleading "No internet connection" dialog even though only one
+   * beneficiary's call actually failed. The concurrency cap also reduces how many of these calls
+   * compete for the same connection at once, which is what was pushing some of them past their
+   * timeout in the first place. */
+  private suspend fun forEachSakhiBeneficiary(block: suspend (beneficiaryId: String) -> Int): Int = supervisorScope {
+    val semaphore = Semaphore(MAX_CONCURRENT_BENEFICIARY_CALLS)
     loadAllBeneficiaries()
-      .map { beneficiary -> async { block(beneficiary.id) } }
+      .map { beneficiary -> async { semaphore.withPermit { block(beneficiary.id) } } }
       .awaitAll()
       .sum()
   }

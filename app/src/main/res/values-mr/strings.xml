@@ -461,6 +461,8 @@
   <string name="beneficiary_data_download_quit_cancel">रद्द करा</string>
   <string name="beneficiary_data_download_network_error_title">इंटरनेट कनेक्शन नाही</string>
   <string name="beneficiary_data_download_network_error_message">तुमचे कनेक्शन तपासा आणि पुन्हा प्रयत्न करा. पुन्हा प्रयत्न केल्यास डाउनलोड सुरुवातीपासून पुन्हा सुरू होईल.</string>
+  <string name="beneficiary_data_download_server_error_title">सर्व्हरला जास्त वेळ लागत आहे</string>
+  <string name="beneficiary_data_download_server_error_message">सर्व्हर सध्या हळू प्रतिसाद देत आहे. कृपया थोड्या वेळाने पुन्हा प्रयत्न करा — तुमचे कनेक्शन ठीक आहे.</string>
   <string name="beneficiary_data_download_retry">पुन्हा प्रयत्न करा</string>
   <string name="beneficiary_data_download_stop">थांबवा</string>
   <string name="beneficiary_data_download_completion_title">सर्व डाउनलोड पूर्ण झाले</string>

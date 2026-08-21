@@ -3,6 +3,7 @@ package org.armman.supervisor.ui.beneficiarydatadownload
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.net.UnknownHostException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,6 +20,14 @@ enum class BeneficiaryDataRowStatus { PENDING, DOWNLOADING, COMPLETED, EMPTY, NO
 
 data class BeneficiaryDataRow(val entity: BeneficiaryDataEntity, val status: BeneficiaryDataRowStatus)
 
+/** Distinguishes a genuinely offline device from a slow/erroring server so the dialog shown to
+ * the user matches the actual cause — see [BeneficiaryDataDownloadViewModel.classifyFailure]. A
+ * 5xx, a timeout, or a request cancelled because a sibling call failed (see
+ * [org.armman.supervisor.data.beneficiarydatadownload.BeneficiaryDataRepositoryImpl.forEachSakhiBeneficiary])
+ * all mean the device's connection is fine but the backend isn't responding well, which is a
+ * different problem from the device actually having no network. */
+enum class NetworkErrorKind { OFFLINE, SERVER_ERROR }
+
 /**
  * UI state for the Download Beneficiary Data screen, following the same single-[Content]-variant
  * convention as [org.armman.supervisor.ui.masterdata.MasterDataDownloadUiState].
@@ -29,10 +38,11 @@ sealed interface BeneficiaryDataDownloadUiState {
       BeneficiaryDataRow(it, BeneficiaryDataRowStatus.PENDING)
     },
     val activeIndex: Int = -1,
-    val showNetworkErrorDialog: Boolean = false,
+    val networkErrorKind: NetworkErrorKind? = null,
     val showQuitConfirmation: Boolean = false,
     val showCompletionDialog: Boolean = false,
   ) : BeneficiaryDataDownloadUiState {
+    val showNetworkErrorDialog: Boolean get() = networkErrorKind != null
     val isDownloading: Boolean get() = activeIndex in rows.indices && !showNetworkErrorDialog
   }
 }
@@ -63,7 +73,7 @@ class BeneficiaryDataDownloadViewModel @Inject constructor(
     repository.startSession()
     downloadJob = viewModelScope.launch {
       if (!connectivityChecker.isOnline()) {
-        _uiState.update { it.copy(showNetworkErrorDialog = true) }
+        _uiState.update { it.copy(networkErrorKind = NetworkErrorKind.OFFLINE) }
         return@launch
       }
 
@@ -77,7 +87,8 @@ class BeneficiaryDataDownloadViewModel @Inject constructor(
           is BeneficiaryDataResult.NotAvailable ->
             _uiState.update { it.setStatus(index, BeneficiaryDataRowStatus.NOT_AVAILABLE) }
           is BeneficiaryDataResult.Failure -> {
-            _uiState.update { it.copy(showNetworkErrorDialog = true) }
+            val kind = classifyFailure(result.cause)
+            _uiState.update { it.copy(networkErrorKind = kind) }
             return@launch
           }
         }
@@ -87,13 +98,26 @@ class BeneficiaryDataDownloadViewModel @Inject constructor(
     }
   }
 
+  /** Only [UnknownHostException] (DNS/no-route failures typical of a genuinely offline device) or
+   * an explicit [ConnectivityChecker.isOnline] == false counts as [NetworkErrorKind.OFFLINE].
+   * Everything else — timeouts, HTTP 5xx wrapped as [IllegalStateException], and the
+   * `IOException: Canceled` a beneficiary call gets when a sibling call fails — means the device's
+   * connection is working but the backend itself is slow or erroring, so it's reported as
+   * [NetworkErrorKind.SERVER_ERROR] instead of telling the user to check their own connection. */
+  private fun classifyFailure(cause: Throwable): NetworkErrorKind =
+    if (cause is UnknownHostException || !connectivityChecker.isOnline()) {
+      NetworkErrorKind.OFFLINE
+    } else {
+      NetworkErrorKind.SERVER_ERROR
+    }
+
   /** Restarts the entire sequence from the first row — never resumes mid-chain. */
   fun onRetryClicked() {
     _uiState.update {
       it.copy(
         rows = BeneficiaryDataEntity.entries.map { entity -> BeneficiaryDataRow(entity, BeneficiaryDataRowStatus.PENDING) },
         activeIndex = -1,
-        showNetworkErrorDialog = false,
+        networkErrorKind = null,
       )
     }
     startDownload()
@@ -102,7 +126,7 @@ class BeneficiaryDataDownloadViewModel @Inject constructor(
   /** Dismisses the network-error dialog without resuming; the partial state stays visible. */
   fun onStopClicked() {
     downloadJob?.cancel()
-    _uiState.update { it.copy(showNetworkErrorDialog = false) }
+    _uiState.update { it.copy(networkErrorKind = null) }
   }
 
   /** Back pressed while still downloading asks for confirmation; once complete, back navigates
