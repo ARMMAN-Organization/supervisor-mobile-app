@@ -55,6 +55,7 @@ fun SettingsScreen(
   onBack: () -> Unit,
   onLoggedOut: () -> Unit,
   onNavigateToBeneficiaryDataDownload: () -> Unit,
+  onNavigateToMasterDataDownload: () -> Unit,
   modifier: Modifier = Modifier,
   viewModel: SettingsViewModel = hiltViewModel(),
 ) {
@@ -68,6 +69,7 @@ fun SettingsScreen(
     when (action) {
       SettingsAction.LANGUAGE_SETUP -> Unit
       SettingsAction.DOWNLOAD_BENEFICIARY_DATA -> onNavigateToBeneficiaryDataDownload()
+      SettingsAction.DOWNLOAD_MASTER_DATA -> onNavigateToMasterDataDownload()
       else -> scope.launch { snackbarHostState.showSnackbar(comingSoonMessage) }
     }
   }
