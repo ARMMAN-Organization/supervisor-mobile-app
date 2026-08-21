@@ -52,7 +52,7 @@
   <string name="cd_registration_badge_icon">एकूण नोंदणी</string>
 
   <!-- Stale Sakhi report -->
-  <string name="stale_sakhi_banner_title">सखीने गेल्या ७ किंवा अधिक दिवसांपासून डेटा अपलोड न केल्याचा अहवाल</string>
+  <string name="stale_sakhi_banner_title">सखीने गेल्या ३ किंवा अधिक दिवसांपासून डेटा अपलोड न केल्याचा अहवाल</string>
   <string name="stale_sakhi_table_header_name">सखीचे नाव</string>
   <string name="stale_sakhi_table_header_last_updated">शेवटचे अद्यतन</string>
   <string name="stale_sakhi_table_header_days">दिवस</string>

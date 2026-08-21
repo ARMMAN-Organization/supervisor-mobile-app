@@ -52,7 +52,7 @@
   <string name="cd_registration_badge_icon">Total registrations</string>
 
   <!-- Stale Sakhi report -->
-  <string name="stale_sakhi_banner_title">Sakhi Not Uploaded Data In Last 7 Or More Days Report</string>
+  <string name="stale_sakhi_banner_title">Sakhi Not Uploaded Data In Last 3 Or More Days Report</string>
   <string name="stale_sakhi_table_header_name">Sakhi Name</string>
   <string name="stale_sakhi_table_header_last_updated">Last Updated</string>
   <string name="stale_sakhi_table_header_days">Days</string>
