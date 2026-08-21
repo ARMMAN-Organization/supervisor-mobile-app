@@ -44,3 +44,40 @@ fun CallResponder.labelRes(): Int = when (this) {
   CallResponder.PERSON_WHO_DOES_NOT_KNOW_WOMAN -> R.string.call_responder_person_who_does_not_know_woman
   CallResponder.UNKNOWN -> R.string.call_history_unrecognized_value
 }
+
+/** Display-label string resource for a [RegistrationType]. Resolved to EN/MR text at display time. */
+@StringRes
+fun RegistrationType.labelRes(): Int = when (this) {
+  RegistrationType.WOMEN -> R.string.registration_type_women
+  RegistrationType.CHILD -> R.string.registration_type_child
+  RegistrationType.UNKNOWN -> R.string.call_history_unrecognized_value
+}
+
+/** Display-label string resource for a [FollowupPendingReason]. Resolved to EN/MR text at display time. */
+@StringRes
+fun FollowupPendingReason.labelRes(): Int = when (this) {
+  FollowupPendingReason.BENEFICIARY_NOT_AT_HOME -> R.string.followup_pending_reason_not_at_home
+  FollowupPendingReason.HOSPITALIZE -> R.string.followup_pending_reason_hospitalize
+  FollowupPendingReason.CHILD_NOT_REFERRABLE -> R.string.followup_pending_reason_child_not_referrable
+  FollowupPendingReason.COUNSELLING -> R.string.followup_pending_reason_counselling
+}
+
+/** Display-label string resource for a [ClosurePendingReason]. Resolved to EN/MR text at display time. */
+@StringRes
+fun ClosurePendingReason.labelRes(): Int = when (this) {
+  ClosurePendingReason.INFORMATION_NOT_RECEIVED -> R.string.closure_pending_reason_information_not_received
+  ClosurePendingReason.APP_ISSUES -> R.string.closure_pending_reason_app_issues
+  ClosurePendingReason.TIME_LEFT_TO_CLOSE -> R.string.closure_pending_reason_time_left
+  ClosurePendingReason.BENEFICIARY_NOT_DELIVERED -> R.string.closure_pending_reason_not_delivered
+  ClosurePendingReason.BENEFICIARY_HOSPITALIZED -> R.string.closure_pending_reason_hospitalized
+  ClosurePendingReason.OTHERS -> R.string.closure_pending_reason_others
+}
+
+/** Display-label string resource for a [LastSyncReason]. Resolved to EN/MR text at display time. */
+@StringRes
+fun LastSyncReason.labelRes(): Int = when (this) {
+  LastSyncReason.FORGOT_TO_SYNC -> R.string.last_sync_reason_forgot_to_sync
+  LastSyncReason.NO_LIGHT_IN_VILLAGE -> R.string.last_sync_reason_no_light
+  LastSyncReason.MOBILE_PROBLEM -> R.string.last_sync_reason_mobile_problem
+  LastSyncReason.NO_RECHARGE -> R.string.last_sync_reason_no_recharge
+}

@@ -21,6 +21,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import org.armman.supervisor.R
 import org.armman.supervisor.ui.theme.DashboardHeaderGreen
@@ -40,6 +41,8 @@ fun CallSheetSakhiCard(
   isRecentlyCalled: Boolean,
   onCallClick: () -> Unit,
   onCardClick: () -> Unit,
+  onStatClick: (CallSheetStatKind) -> Unit,
+  onLastSyncDateClick: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
   Surface(
@@ -71,12 +74,12 @@ fun CallSheetSakhiCard(
         verticalArrangement = Arrangement.spacedBy(Dimens.TinySpacing),
       ) {
         StatsHeaderRow()
-        summary.stats.rows.forEach { StatsValueRow(it) }
+        summary.stats.rows.forEach { StatsValueRow(it, onClick = { onStatClick(it.kind) }) }
         Text(
           text = "${stringResource(R.string.call_sheet_stat_last_sync_date)} ${summary.stats.lastDataSyncDate}",
           style = MaterialTheme.typography.labelSmall,
           color = NeutralG400,
-          modifier = Modifier.padding(top = Dimens.TinySpacing),
+          modifier = Modifier.padding(top = Dimens.TinySpacing).clickable(onClick = onLastSyncDateClick),
         )
       }
     }
@@ -111,7 +114,7 @@ private fun StatsHeaderRow() {
 }
 
 @Composable
-private fun StatsValueRow(value: CallSheetStatValue) {
+private fun StatsValueRow(value: CallSheetStatValue, onClick: () -> Unit) {
   Row(modifier = Modifier.fillMaxWidth().padding(horizontal = Dimens.SmallSpacing, vertical = Dimens.TinySpacing)) {
     Text(
       text = stringResource(value.kind.labelRes()),
@@ -119,6 +122,22 @@ private fun StatsValueRow(value: CallSheetStatValue) {
       modifier = Modifier.weight(2f),
     )
     Text(text = "${value.updated}", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-    Text(text = "${value.count}", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+    Row(
+      modifier = Modifier.weight(1f).clickable(onClick = onClick),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(Dimens.TinySpacing),
+    ) {
+      Text(
+        text = "${value.count}",
+        style = MaterialTheme.typography.bodyMedium,
+        color = DashboardHeaderGreen,
+      )
+      Icon(
+        painter = painterResource(R.drawable.ic_arrow_right),
+        contentDescription = null,
+        tint = DashboardHeaderGreen,
+        modifier = Modifier.size(Dimens.InlineIconSize),
+      )
+    }
   }
 }

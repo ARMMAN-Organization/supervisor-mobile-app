@@ -32,6 +32,8 @@ import org.armman.supervisor.ui.theme.Dimens
 fun CallSheetScreen(
   onBack: () -> Unit,
   onSakhiSelected: (SakhiOption) -> Unit,
+  onStatClick: (SakhiOption, CallSheetStatKind) -> Unit,
+  onLastSyncDateClick: (SakhiOption) -> Unit,
   modifier: Modifier = Modifier,
   viewModel: CallSheetViewModel = hiltViewModel(),
 ) {
@@ -58,6 +60,8 @@ fun CallSheetScreen(
           state = state,
           onLocationSelected = viewModel::onLocationSelected,
           onSakhiSelected = onSakhiSelected,
+          onStatClick = onStatClick,
+          onLastSyncDateClick = onLastSyncDateClick,
         )
       }
     }
@@ -88,6 +92,8 @@ private fun SuccessContent(
   state: CallSheetUiState.Success,
   onLocationSelected: (String) -> Unit,
   onSakhiSelected: (SakhiOption) -> Unit,
+  onStatClick: (SakhiOption, CallSheetStatKind) -> Unit,
+  onLastSyncDateClick: (SakhiOption) -> Unit,
 ) {
   Column(modifier = Modifier.fillMaxSize().padding(Dimens.ScreenPadding)) {
     SingleSelectDropdown(
@@ -114,6 +120,8 @@ private fun SuccessContent(
             isRecentlyCalled = isRecentlyCalled,
             onCallClick = { onSakhiSelected(summary.sakhi) },
             onCardClick = { onSakhiSelected(summary.sakhi) },
+            onStatClick = { kind -> onStatClick(summary.sakhi, kind) },
+            onLastSyncDateClick = { onLastSyncDateClick(summary.sakhi) },
           )
         }
       }

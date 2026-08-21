@@ -8,7 +8,11 @@ import org.armman.supervisor.data.calllog.CallLogApi
 import org.armman.supervisor.data.calllog.CallLogDto
 import org.armman.supervisor.data.calllog.CallLogEnvelopeDto
 import org.armman.supervisor.data.calllog.CallLogsEnvelopeDto
+import org.armman.supervisor.data.calllog.CallSheetStatRowDto
+import org.armman.supervisor.data.calllog.CallSheetStatsDto
+import org.armman.supervisor.data.calllog.CallSheetStatsListEnvelopeDto
 import org.armman.supervisor.data.calllog.CreateCallLogRequestDto
+import org.armman.supervisor.data.calllog.UpdateCallLogRequestDto
 import org.armman.supervisor.data.projects.ProjectsRepository
 import org.armman.supervisor.model.LocationOption
 import org.armman.supervisor.ui.assignitem.SakhiDetail
@@ -16,7 +20,10 @@ import org.armman.supervisor.ui.assignitem.SakhiOption
 import org.armman.supervisor.ui.callsheet.CallConnected
 import org.armman.supervisor.ui.callsheet.CallLogSubmission
 import org.armman.supervisor.ui.callsheet.CallResponder
+import org.armman.supervisor.ui.callsheet.CallSheetStatKind
 import org.armman.supervisor.ui.callsheet.FailureReason
+import org.armman.supervisor.ui.callsheet.ReasonContext
+import org.armman.supervisor.ui.callsheet.ReasonSubmission
 import org.armman.supervisor.ui.callsheet.SuccessOutcome
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -68,8 +75,18 @@ private class FakeProjectsRepository : ProjectsRepository {
  * failure branches in [CallSheetRepositoryImpl.logCall]/[CallSheetRepositoryImpl.fetchCallHistory]. */
 private class FakeCallLogApi : CallLogApi {
   private val entries = mutableListOf<CallLogDto>()
+  private val stats = mutableMapOf<String, CallSheetStatsDto>()
   var createCallLogResponse: Response<CallLogEnvelopeDto>? = null
   var getCallLogsResponse: Response<CallLogsEnvelopeDto>? = null
+  var getCallSheetStatsBatchResponse: Response<CallSheetStatsListEnvelopeDto>? = null
+  var updateCallLogResponse: Response<CallLogEnvelopeDto>? = null
+
+  /** Injects the stats card the backend would return for [sakhiId]; a sakhiId with none seeded is
+   * omitted from [getCallSheetStatsBatch]'s response, matching the backend's silent-omit behavior
+   * for an unauthorized/unknown id. */
+  fun seedStats(sakhiId: String, dto: CallSheetStatsDto) {
+    stats[sakhiId] = dto
+  }
 
   /** Injects a raw [CallLogDto] bypassing [createCallLog], for seeding a backend-shaped payload
    * (e.g. an unrecognized `callStatus` or a hand-written timestamp) that this app's own submission
@@ -101,10 +118,39 @@ private class FakeCallLogApi : CallLogApi {
       CallLogsEnvelopeDto(success = true, message = "OK", data = entries.filter { it.sakhiId == sakhiId }),
     )
   }
+
+  override suspend fun updateCallLog(callLogId: String, request: UpdateCallLogRequestDto): Response<CallLogEnvelopeDto> {
+    updateCallLogResponse?.let { return it }
+    val index = entries.indexOfFirst { it.id == callLogId }
+    if (index < 0) return Response.error(404, "".toResponseBody("application/json".toMediaType()))
+    val updated = entries[index].copy(
+      notes = request.notes ?: entries[index].notes,
+      followupAction = request.followupAction ?: entries[index].followupAction,
+    )
+    entries[index] = updated
+    return Response.success(CallLogEnvelopeDto(success = true, message = "OK", data = updated))
+  }
+
+  override suspend fun getCallSheetStatsBatch(sakhiIds: String): Response<CallSheetStatsListEnvelopeDto> {
+    getCallSheetStatsBatchResponse?.let { return it }
+    val requested = sakhiIds.split(",")
+    return Response.success(
+      CallSheetStatsListEnvelopeDto(success = true, message = "OK", data = requested.mapNotNull { stats[it] }),
+    )
+  }
 }
 
 private fun errorResponse(code: Int): Response<CallLogsEnvelopeDto> =
   Response.error(code, "".toResponseBody("application/json".toMediaType()))
+
+private fun statsErrorResponse(code: Int): Response<CallSheetStatsListEnvelopeDto> =
+  Response.error(code, "".toResponseBody("application/json".toMediaType()))
+
+private fun followupPendingStats(sakhiId: String, count: Int) = CallSheetStatsDto(
+  sakhiId = sakhiId,
+  lastDataSyncDate = "2026-08-21",
+  rows = listOf(CallSheetStatRowDto(kind = "FOLLOWUP_PENDING", updated = 0, count = count)),
+)
 
 class CallSheetRepositoryImplTest {
   private val api = FakeCallLogApi()
@@ -339,6 +385,189 @@ class CallSheetRepositoryImplTest {
 
     assertThrows(IllegalStateException::class.java) {
       runBlocking { repository.getCallHistory("sakhi-1") }
+    }
+  }
+
+  @Test
+  fun `getSakhiSummaries reflects real stats from the call-sheet-stats batch endpoint`() = runTest {
+    api.seedStats("sakhi-1", followupPendingStats("sakhi-1", count = 1))
+
+    val summary = repository.getSakhiSummaries("loc-1").first { it.sakhi.id == "sakhi-1" }
+
+    val followupPending = summary.stats.rows.single { it.kind == CallSheetStatKind.FOLLOWUP_PENDING }
+    assertEquals(1, followupPending.count)
+  }
+
+  @Test
+  fun `getSakhiSummaries falls back to empty stats for a sakhi omitted from the batch response`() = runTest {
+    // sakhi-2 has no seeded stats, mirroring the backend silently omitting an unauthorized/unknown id.
+    val summary = repository.getSakhiSummaries("loc-1").first { it.sakhi.id == "sakhi-2" }
+
+    assertTrue(summary.stats.rows.all { it.count == 0 && it.updated == 0 })
+    assertEquals(CallSheetStatKind.entries.toSet(), summary.stats.rows.map { it.kind }.toSet())
+  }
+
+  @Test
+  fun `getSakhiSummaries throws on a non-2xx call-sheet-stats response`() = runTest {
+    api.getCallSheetStatsBatchResponse = statsErrorResponse(500)
+
+    assertThrows(IllegalStateException::class.java) {
+      runBlocking { repository.getSakhiSummaries("loc-1") }
+    }
+  }
+
+  @Test
+  fun `getSakhiSummaries throws when the call-sheet-stats envelope reports success false`() = runTest {
+    api.getCallSheetStatsBatchResponse =
+      Response.success(CallSheetStatsListEnvelopeDto(success = false, message = "Denied", data = null))
+
+    assertThrows(IllegalStateException::class.java) {
+      runBlocking { repository.getSakhiSummaries("loc-1") }
+    }
+  }
+
+  @Test
+  fun `getFollowupPending returns the sakhi's most recent call when it is CALL_BACK`() = runTest {
+    api.seed(
+      CallLogDto(
+        id = "call-followup-1",
+        sakhiId = "sakhi-1",
+        callStatus = "CALL_BACK",
+        notes = "Discussed referral",
+        followupAction = null,
+        callStartAt = "2026-08-20T07:25:05.803Z",
+        callEndAt = null,
+        callDurationSeconds = null,
+        responder = null,
+      ),
+    )
+
+    val items = repository.getFollowupPending("sakhi-1")
+
+    assertEquals(1, items.size)
+    assertEquals("call-followup-1", items.single().callLogId)
+    assertEquals("Discussed referral", items.single().notes)
+  }
+
+  @Test
+  fun `getFollowupPending returns empty when the most recent call is not CALL_BACK`() = runTest {
+    api.seed(
+      CallLogDto(
+        id = "call-not-followup",
+        sakhiId = "sakhi-1",
+        callStatus = "NOT_PICKED_UP",
+        notes = null,
+        followupAction = null,
+        callStartAt = "2026-08-20T07:25:05.803Z",
+        callEndAt = null,
+        callDurationSeconds = null,
+        responder = null,
+      ),
+    )
+
+    assertTrue(repository.getFollowupPending("sakhi-1").isEmpty())
+  }
+
+  @Test
+  fun `getFollowupPending returns empty for a sakhi with no call history`() = runTest {
+    assertTrue(repository.getFollowupPending("sakhi-2").isEmpty())
+  }
+
+  @Test
+  fun `getFollowupPending excludes a CALL_BACK entry that already has a followupAction`() = runTest {
+    api.seed(
+      CallLogDto(
+        id = "call-already-actioned",
+        sakhiId = "sakhi-1",
+        callStatus = "CALL_BACK",
+        notes = "Discussed referral",
+        followupAction = "HOSPITALIZE",
+        callStartAt = "2026-08-20T07:25:05.803Z",
+        callEndAt = null,
+        callDurationSeconds = null,
+        responder = null,
+      ),
+    )
+
+    assertTrue(repository.getFollowupPending("sakhi-1").isEmpty())
+  }
+
+  @Test
+  fun `submitReason for FOLLOWUP_PENDING persists followupAction and notes via PATCH call-logs`() = runTest {
+    api.seed(
+      CallLogDto(
+        id = "call-followup-2",
+        sakhiId = "sakhi-1",
+        callStatus = "CALL_BACK",
+        notes = null,
+        followupAction = null,
+        callStartAt = "2026-08-20T07:25:05.803Z",
+        callEndAt = null,
+        callDurationSeconds = null,
+        responder = null,
+      ),
+    )
+
+    repository.submitReason(
+      ReasonSubmission(
+        context = ReasonContext.FOLLOWUP_PENDING,
+        itemId = "call-followup-2",
+        sakhiId = null,
+        reasonCode = "HOSPITALIZE",
+        remark = "Admitted for delivery",
+      ),
+    )
+
+    val updated = repository.getCallHistory("sakhi-1").single { it.id == "call-followup-2" }
+    assertEquals("HOSPITALIZE", updated.followUpAction)
+    assertEquals("Admitted for delivery", updated.notes)
+  }
+
+  @Test
+  fun `getFollowupPending no longer returns the item after submitReason succeeds for it`() = runTest {
+    api.seed(
+      CallLogDto(
+        id = "call-followup-3",
+        sakhiId = "sakhi-1",
+        callStatus = "CALL_BACK",
+        notes = null,
+        followupAction = null,
+        callStartAt = "2026-08-20T07:25:05.803Z",
+        callEndAt = null,
+        callDurationSeconds = null,
+        responder = null,
+      ),
+    )
+    assertEquals(1, repository.getFollowupPending("sakhi-1").size)
+
+    repository.submitReason(
+      ReasonSubmission(context = ReasonContext.FOLLOWUP_PENDING, itemId = "call-followup-3", sakhiId = null, reasonCode = "HOSPITALIZE", remark = null),
+    )
+
+    assertTrue(repository.getFollowupPending("sakhi-1").isEmpty())
+  }
+
+  @Test
+  fun `submitReason for FOLLOWUP_PENDING throws when itemId is missing`() = runTest {
+    assertThrows(IllegalArgumentException::class.java) {
+      runBlocking {
+        repository.submitReason(
+          ReasonSubmission(context = ReasonContext.FOLLOWUP_PENDING, itemId = null, sakhiId = null, reasonCode = "HOSPITALIZE", remark = null),
+        )
+      }
+    }
+  }
+
+  @Test
+  fun `submitReason for FOLLOWUP_PENDING throws on a non-2xx PATCH response`() = runTest {
+    api.updateCallLogResponse = Response.error(404, "".toResponseBody("application/json".toMediaType()))
+
+    assertThrows(IllegalStateException::class.java) {
+      runBlocking {
+        repository.submitReason(
+          ReasonSubmission(context = ReasonContext.FOLLOWUP_PENDING, itemId = "missing-call", sakhiId = null, reasonCode = "HOSPITALIZE", remark = null),
+        )
+      }
     }
   }
 }
