@@ -52,7 +52,7 @@
   <string name="cd_registration_badge_icon">एकूण नोंदणी</string>
 
   <!-- Stale Sakhi report -->
-  <string name="stale_sakhi_banner_title">सखीने गेल्या ७ किंवा अधिक दिवसांपासून डेटा अपलोड न केल्याचा अहवाल</string>
+  <string name="stale_sakhi_banner_title">सखीने गेल्या ३ किंवा अधिक दिवसांपासून डेटा अपलोड न केल्याचा अहवाल</string>
   <string name="stale_sakhi_table_header_name">सखीचे नाव</string>
   <string name="stale_sakhi_table_header_last_updated">शेवटचे अद्यतन</string>
   <string name="stale_sakhi_table_header_days">दिवस</string>
@@ -230,6 +230,64 @@
   <string name="call_sheet_stat_column_info">माहिती</string>
   <string name="call_sheet_stat_column_updated">अद्यतनित</string>
   <string name="call_sheet_stat_column_count">संख्या</string>
+
+  <!-- Call Sheet drill-downs -->
+  <string name="call_sheet_drilldown_empty">दाखवण्यासाठी काही नाही</string>
+  <string name="call_sheet_last_sync_reason_title">शेवटची सिंक तारीख कारण</string>
+  <string name="call_sheet_last_sync_reason_empty">या सिंक तारखेसाठी अद्याप कोणतेही कारण नोंदवलेले नाही</string>
+  <string name="call_sheet_last_sync_reason_date">सिंक तारीख</string>
+  <string name="call_sheet_last_sync_reason_label">कारण</string>
+
+  <!-- Drill-down field labels -->
+  <string name="drilldown_field_beneficiary_name">लाभार्थीचे नाव:</string>
+  <string name="drilldown_field_village_name">गावाचे नाव:</string>
+  <string name="drilldown_field_unique_id">विशिष्ट आयडी:</string>
+  <string name="drilldown_field_registration_type">नोंदणी प्रकार:</string>
+  <string name="drilldown_field_visit">भेट:</string>
+  <string name="drilldown_field_scheduled_date">नियोजित तारीख:</string>
+  <string name="drilldown_field_balanced_days">शिल्लक दिवस:</string>
+  <string name="drilldown_field_risk">जोखीम:</string>
+  <string name="drilldown_field_risk_name">जोखीमेचे नाव:</string>
+  <string name="drilldown_field_date_of_referral">संदर्भाची तारीख:</string>
+  <string name="drilldown_field_registration_date">नोंदणी तारीख:</string>
+  <string name="drilldown_field_date_of_birth">जन्मतारीख:</string>
+  <string name="drilldown_field_overdue_days">मुदत उलटलेले ( दिवसांत ):</string>
+  <string name="drilldown_field_call_date">कॉल तारीख:</string>
+  <string name="drilldown_field_notes">टिपा:</string>
+  <string name="drilldown_add_reason">कारण जोडा</string>
+
+  <!-- Registration types -->
+  <string name="registration_type_women">महिला</string>
+  <string name="registration_type_child">बालक</string>
+
+  <!-- Add Reason (Call Sheet: Followup Pending / Closure Pending / Last Sync) -->
+  <string name="add_reason_title">कारण जोडा</string>
+  <string name="add_reason_reason_label">कारण</string>
+  <string name="add_reason_select_reason">कारण निवडा</string>
+  <string name="add_reason_remark_label">शेरा</string>
+  <string name="add_reason_submit">सबमिट करा</string>
+  <string name="add_reason_error_reason_required">कृपया एक कारण निवडा</string>
+  <string name="add_reason_error_submit">कारण सबमिट करण्यात अयशस्वी</string>
+
+  <!-- Followup Pending reasons -->
+  <string name="followup_pending_reason_not_at_home">लाभार्थी घरी नाही</string>
+  <string name="followup_pending_reason_hospitalize">रुग्णालयात दाखल</string>
+  <string name="followup_pending_reason_child_not_referrable">बालक संदर्भित करण्यायोग्य नाही</string>
+  <string name="followup_pending_reason_counselling">समुपदेशन</string>
+
+  <!-- Closure Pending reasons -->
+  <string name="closure_pending_reason_information_not_received">माहिती मिळाली नाही</string>
+  <string name="closure_pending_reason_app_issues">अॅप समस्या</string>
+  <string name="closure_pending_reason_time_left">फॉर्म बंद करण्यास अजून वेळ आहे</string>
+  <string name="closure_pending_reason_not_delivered">लाभार्थीची प्रसूती झालेली नाही</string>
+  <string name="closure_pending_reason_hospitalized">लाभार्थी रुग्णालयात दाखल</string>
+  <string name="closure_pending_reason_others">इतर</string>
+
+  <!-- Last Sync reasons -->
+  <string name="last_sync_reason_forgot_to_sync">सिंक करण्यास विसरलो</string>
+  <string name="last_sync_reason_no_light">गावात वीज नाही</string>
+  <string name="last_sync_reason_mobile_problem">मोबाईलमध्ये समस्या आहे</string>
+  <string name="last_sync_reason_no_recharge">रिचार्ज नाही</string>
 
   <!-- Call History -->
   <string name="call_history_empty">अद्याप कोणताही कॉल नोंदवलेला नाही</string>
@@ -483,6 +541,8 @@
   <string name="beneficiary_data_download_quit_cancel">रद्द करा</string>
   <string name="beneficiary_data_download_network_error_title">इंटरनेट कनेक्शन नाही</string>
   <string name="beneficiary_data_download_network_error_message">तुमचे कनेक्शन तपासा आणि पुन्हा प्रयत्न करा. पुन्हा प्रयत्न केल्यास डाउनलोड सुरुवातीपासून पुन्हा सुरू होईल.</string>
+  <string name="beneficiary_data_download_server_error_title">सर्व्हरला जास्त वेळ लागत आहे</string>
+  <string name="beneficiary_data_download_server_error_message">सर्व्हर सध्या हळू प्रतिसाद देत आहे. कृपया थोड्या वेळाने पुन्हा प्रयत्न करा — तुमचे कनेक्शन ठीक आहे.</string>
   <string name="beneficiary_data_download_retry">पुन्हा प्रयत्न करा</string>
   <string name="beneficiary_data_download_stop">थांबवा</string>
   <string name="beneficiary_data_download_completion_title">सर्व डाउनलोड पूर्ण झाले</string>

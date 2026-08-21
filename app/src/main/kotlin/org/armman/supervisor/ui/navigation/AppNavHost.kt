@@ -14,13 +14,25 @@ import org.armman.supervisor.ui.assignitem.AssignItemDetailScreen
 import org.armman.supervisor.ui.assignitem.AssignItemScreen
 import org.armman.supervisor.ui.beneficiaries.BeneficiaryListScreen
 import org.armman.supervisor.ui.beneficiarydatadownload.BeneficiaryDataDownloadScreen
+import org.armman.supervisor.ui.masterdata.MasterDataDownloadScreen
+import org.armman.supervisor.ui.callsheet.AddReasonScreen as CallSheetAddReasonScreen
 import org.armman.supervisor.ui.callsheet.CallHistoryScreen
 import org.armman.supervisor.ui.callsheet.CallOutcomeScreen
 import org.armman.supervisor.ui.callsheet.CallSheetScreen
+import org.armman.supervisor.ui.callsheet.CallSheetStatKind
+import org.armman.supervisor.ui.callsheet.ClosurePendingScreen
+import org.armman.supervisor.ui.callsheet.DueVisitKind
+import org.armman.supervisor.ui.callsheet.DueVisitScreen
+import org.armman.supervisor.ui.callsheet.FollowupPendingScreen
+import org.armman.supervisor.ui.callsheet.HighRiskListScreen
+import org.armman.supervisor.ui.callsheet.HighRiskType
+import org.armman.supervisor.ui.callsheet.LastSyncReasonScreen
+import org.armman.supervisor.ui.callsheet.ReasonContext
 import org.armman.supervisor.ui.components.PlaceholderScreen
 import org.armman.supervisor.ui.dashboard.DashboardScreen
 import org.armman.supervisor.ui.login.LoginScreen
 import org.armman.supervisor.data.local.MarksType
+import org.armman.supervisor.ui.masterdata.MasterDataDownloadScreen
 import org.armman.supervisor.ui.meetingtraining.AddTrainingTopicsScreen
 import org.armman.supervisor.ui.meetingtraining.AttendanceScreen
 import org.armman.supervisor.ui.meetingtraining.MarksScreen
@@ -80,10 +92,23 @@ object Routes {
   const val CALL_SHEET_SAKHI_ID_ARG = "sakhiId"
   const val CALL_HISTORY = "call_history/{$CALL_SHEET_SAKHI_ID_ARG}"
   const val CALL_OUTCOME = "call_outcome/{$CALL_SHEET_SAKHI_ID_ARG}"
+  const val DUE_VISIT_KIND_ARG = "dueVisitKind"
+  const val DUE_VISIT = "due_visit/{$CALL_SHEET_SAKHI_ID_ARG}/{$DUE_VISIT_KIND_ARG}"
+  const val FOLLOWUP_PENDING = "followup_pending/{$CALL_SHEET_SAKHI_ID_ARG}"
+  const val CLOSURE_PENDING = "closure_pending/{$CALL_SHEET_SAKHI_ID_ARG}"
+  const val HIGH_RISK_TYPE_ARG = "highRiskType"
+  const val HIGH_RISK_LIST = "high_risk_list/{$CALL_SHEET_SAKHI_ID_ARG}/{$HIGH_RISK_TYPE_ARG}"
+  const val LAST_SYNC_REASON = "last_sync_reason/{$CALL_SHEET_SAKHI_ID_ARG}"
+  const val REASON_CONTEXT_ARG = "reasonContext"
+  const val REASON_ITEM_ID_ARG = "reasonItemId"
+  const val CALL_SHEET_ADD_REASON =
+    "call_sheet_add_reason/{$REASON_CONTEXT_ARG}?$CALL_SHEET_SAKHI_ID_ARG={$CALL_SHEET_SAKHI_ID_ARG}" +
+      "&$REASON_ITEM_ID_ARG={$REASON_ITEM_ID_ARG}"
   const val QUICK_RESPONSE = "quick_response"
   const val PROFILE = "profile"
   const val SETTINGS = "settings"
   const val BENEFICIARY_DATA_DOWNLOAD = "beneficiary_data_download"
+  const val MASTER_DATA_DOWNLOAD = "master_data_download"
   const val NOTIFICATIONS = "notifications"
 
   fun sakhiBeneficiaries(sakhiId: String) = "sakhi_beneficiaries/$sakhiId"
@@ -103,6 +128,27 @@ object Routes {
   fun callHistory(sakhiId: String) = "call_history/$sakhiId"
 
   fun callOutcome(sakhiId: String) = "call_outcome/$sakhiId"
+
+  fun dueVisit(sakhiId: String, kind: DueVisitKind) = "due_visit/$sakhiId/${kind.name}"
+
+  fun followupPending(sakhiId: String) = "followup_pending/$sakhiId"
+
+  fun closurePending(sakhiId: String) = "closure_pending/$sakhiId"
+
+  fun highRiskList(sakhiId: String, type: HighRiskType) = "high_risk_list/$sakhiId/${type.name}"
+
+  fun lastSyncReason(sakhiId: String) = "last_sync_reason/$sakhiId"
+
+  /** [sakhiId]/[itemId] are mutually exclusive per [ReasonContext] — Followup/Closure pass
+   * [itemId], Last Sync passes [sakhiId] (see [org.armman.supervisor.ui.callsheet.ReasonSubmission]). */
+  fun callSheetAddReason(context: ReasonContext, sakhiId: String? = null, itemId: String? = null): String {
+    val base = "call_sheet_add_reason/${context.name}"
+    val query = listOfNotNull(
+      sakhiId?.let { "$CALL_SHEET_SAKHI_ID_ARG=${URLEncoder.encode(it, Charsets.UTF_8.name())}" },
+      itemId?.let { "$REASON_ITEM_ID_ARG=${URLEncoder.encode(it, Charsets.UTF_8.name())}" },
+    ).joinToString("&")
+    return if (query.isEmpty()) base else "$base?$query"
+  }
 
   fun meetingDetail(eventId: String) = "meeting_detail/$eventId"
 
@@ -302,6 +348,89 @@ fun AppNavHost() {
       CallSheetScreen(
         onBack = { navController.popBackStack() },
         onSakhiSelected = { sakhi -> navController.navigate(Routes.callHistory(sakhi.id)) },
+        onStatClick = { sakhi, kind ->
+          val route = when (kind) {
+            CallSheetStatKind.VISIT_DUE -> Routes.dueVisit(sakhi.id, DueVisitKind.DUE)
+            CallSheetStatKind.VISIT_3_DAYS_TO_EXPIRE -> Routes.dueVisit(sakhi.id, DueVisitKind.EXPIRING_SOON)
+            CallSheetStatKind.MISSED_VISIT -> Routes.dueVisit(sakhi.id, DueVisitKind.MISSED)
+            CallSheetStatKind.FOLLOWUP_PENDING -> Routes.followupPending(sakhi.id)
+            CallSheetStatKind.CLOSURE_FORM_PENDING -> Routes.closurePending(sakhi.id)
+            CallSheetStatKind.HIGH_RISK_ANC -> Routes.highRiskList(sakhi.id, HighRiskType.ANC)
+            CallSheetStatKind.HIGH_RISK_PNC -> Routes.highRiskList(sakhi.id, HighRiskType.PNC)
+          }
+          navController.navigate(route)
+        },
+        onLastSyncDateClick = { sakhi -> navController.navigate(Routes.lastSyncReason(sakhi.id)) },
+      )
+    }
+    composable(
+      Routes.DUE_VISIT,
+      arguments = listOf(
+        navArgument(Routes.CALL_SHEET_SAKHI_ID_ARG) { type = NavType.StringType },
+        navArgument(Routes.DUE_VISIT_KIND_ARG) { type = NavType.StringType },
+      ),
+    ) { backStackEntry ->
+      val kind = DueVisitKind.valueOf(checkNotNull(backStackEntry.arguments?.getString(Routes.DUE_VISIT_KIND_ARG)))
+      val titleRes = when (kind) {
+        DueVisitKind.DUE -> R.string.call_sheet_stat_visit_due
+        DueVisitKind.EXPIRING_SOON -> R.string.call_sheet_stat_visit_3_days_expire
+        DueVisitKind.MISSED -> R.string.call_sheet_stat_missed_visit
+      }
+      DueVisitScreen(titleRes = titleRes, onBack = { navController.popBackStack() })
+    }
+    composable(
+      Routes.FOLLOWUP_PENDING,
+      arguments = listOf(navArgument(Routes.CALL_SHEET_SAKHI_ID_ARG) { type = NavType.StringType }),
+    ) { backStackEntry ->
+      val sakhiId = backStackEntry.arguments?.getString(Routes.CALL_SHEET_SAKHI_ID_ARG).orEmpty()
+      FollowupPendingScreen(
+        onBack = { navController.popBackStack() },
+        onAddReason = { itemId ->
+          navController.navigate(Routes.callSheetAddReason(ReasonContext.FOLLOWUP_PENDING, sakhiId = sakhiId, itemId = itemId))
+        },
+      )
+    }
+    composable(
+      Routes.CLOSURE_PENDING,
+      arguments = listOf(navArgument(Routes.CALL_SHEET_SAKHI_ID_ARG) { type = NavType.StringType }),
+    ) {
+      ClosurePendingScreen(
+        onBack = { navController.popBackStack() },
+        onAddReason = { itemId ->
+          navController.navigate(Routes.callSheetAddReason(ReasonContext.CLOSURE_PENDING, itemId = itemId))
+        },
+      )
+    }
+    composable(
+      Routes.HIGH_RISK_LIST,
+      arguments = listOf(
+        navArgument(Routes.CALL_SHEET_SAKHI_ID_ARG) { type = NavType.StringType },
+        navArgument(Routes.HIGH_RISK_TYPE_ARG) { type = NavType.StringType },
+      ),
+    ) {
+      HighRiskListScreen(onBack = { navController.popBackStack() })
+    }
+    composable(
+      Routes.LAST_SYNC_REASON,
+      arguments = listOf(navArgument(Routes.CALL_SHEET_SAKHI_ID_ARG) { type = NavType.StringType }),
+    ) { backStackEntry ->
+      val sakhiId = backStackEntry.arguments?.getString(Routes.CALL_SHEET_SAKHI_ID_ARG).orEmpty()
+      LastSyncReasonScreen(
+        onBack = { navController.popBackStack() },
+        onAddReason = { navController.navigate(Routes.callSheetAddReason(ReasonContext.LAST_SYNC, sakhiId = sakhiId)) },
+      )
+    }
+    composable(
+      Routes.CALL_SHEET_ADD_REASON,
+      arguments = listOf(
+        navArgument(Routes.REASON_CONTEXT_ARG) { type = NavType.StringType },
+        navArgument(Routes.CALL_SHEET_SAKHI_ID_ARG) { type = NavType.StringType; nullable = true },
+        navArgument(Routes.REASON_ITEM_ID_ARG) { type = NavType.StringType; nullable = true },
+      ),
+    ) {
+      CallSheetAddReasonScreen(
+        onBack = { navController.popBackStack() },
+        onSubmitted = { navController.popBackStack() },
       )
     }
     composable(
@@ -338,10 +467,14 @@ fun AppNavHost() {
           }
         },
         onNavigateToBeneficiaryDataDownload = { navController.navigate(Routes.BENEFICIARY_DATA_DOWNLOAD) },
+        onNavigateToMasterDataDownload = { navController.navigate(Routes.MASTER_DATA_DOWNLOAD) },
       )
     }
     composable(Routes.BENEFICIARY_DATA_DOWNLOAD) {
       BeneficiaryDataDownloadScreen(onBack = { navController.popBackStack() })
+    }
+    composable(Routes.MASTER_DATA_DOWNLOAD) {
+      MasterDataDownloadScreen(onBack = { navController.popBackStack() })
     }
     composable(Routes.NOTIFICATIONS) {
       PlaceholderStub(navController, R.string.notifications_title)

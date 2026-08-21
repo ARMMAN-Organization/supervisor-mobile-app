@@ -5,6 +5,9 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.supervisorScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import org.armman.supervisor.BuildConfig
 import org.armman.supervisor.data.projects.ProjectsRepository
 import org.armman.supervisor.ui.beneficiarydatadownload.BeneficiaryDataEntity
@@ -25,6 +28,22 @@ class MockUnreadyBeneficiaryDataEntities(val enabled: Boolean)
  * of a bulk per-record fetch (per-beneficiary, per-referral, per-transaction) complete instead of
  * failing the whole entity over one inaccessible row. */
 private val SKIPPABLE_RECORD_HTTP_CODES = setOf(403, 404)
+
+/** Thrown by [BeneficiaryDataRepositoryImpl.download]'s `else` branch when a `ready` entity has no
+ * `when` case wired — a deliberate client-side wiring bug, not a network or backend problem. Its
+ * own type lets callers (see
+ * [org.armman.supervisor.ui.beneficiarydatadownload.BeneficiaryDataDownloadViewModel.classifyFailure])
+ * tell it apart from a generic [IllegalStateException] like the "Failed to load X" ones thrown
+ * throughout this file for HTTP/response errors, so it keeps failing loudly instead of being
+ * folded into a misleading network-error dialog. */
+class UnwiredDownloadCaseException(entity: BeneficiaryDataEntity) :
+  IllegalStateException("$entity is marked ready but has no download case wired")
+
+/** Caps how many per-beneficiary calls (e.g. the ~10s beneficiary risk lookup) run at once in
+ * [BeneficiaryDataRepositoryImpl.forEachSakhiBeneficiary]. Kept low because these calls appear to
+ * compete for the same slow backend/tunnel connection — running too many in parallel was pushing
+ * individual calls past their timeout and triggering 502s that weren't seen when called alone. */
+private const val MAX_CONCURRENT_BENEFICIARY_CALLS = 2
 
 /**
  * Routes each [BeneficiaryDataEntity] to the repository that actually owns its data. Every
@@ -97,12 +116,17 @@ class BeneficiaryDataRepositoryImpl @Inject constructor(
         BeneficiaryDataEntity.CALL_DETAILS -> forEachSakhi { sakhiId -> downloadSakhiCalls(sakhiId) }
         BeneficiaryDataEntity.BENEFICIARY_RISK_REFERRAL_HEADER -> forEachSakhiBeneficiary { id -> downloadRiskReferrals(id) }
         BeneficiaryDataEntity.BENEFICIARY_RISK_REFERRAL_DETAILS -> downloadRiskReferralDetails()
-        else -> error("$entity is marked ready but has no download case wired")
+        else -> throw UnwiredDownloadCaseException(entity)
       }
     }.let { result ->
       // CancellationException must propagate to unwind the coroutine on quit/back — folding it
       // into Failure risks a stray "No internet connection" dialog racing the screen's own exit.
-      result.exceptionOrNull()?.let { cause -> if (cause is CancellationException) throw cause }
+      // UnwiredDownloadCaseException must propagate too — it's a deliberate client-side wiring
+      // bug, not a network/backend failure, and folding it into Failure would surface it as a
+      // misleading, endlessly-retryable network-error dialog instead of failing loudly.
+      result.exceptionOrNull()?.let { cause ->
+        if (cause is CancellationException || cause is UnwiredDownloadCaseException) throw cause
+      }
       result
     }.fold(
       onSuccess = { count -> if (count > 0) BeneficiaryDataResult.Success(count) else BeneficiaryDataResult.Empty },
@@ -302,12 +326,21 @@ class BeneficiaryDataRepositoryImpl @Inject constructor(
   }
 
   /** Sums [block]'s result across every beneficiary in [loadAllBeneficiaries]'s (fully paginated,
-   * cached) result, one [block] call per beneficiary concurrently — a bounded stand-in until this
-   * screen has its own per-Sakhi/per-project beneficiary scoping decision (see the class doc
-   * comment). */
-  private suspend fun forEachSakhiBeneficiary(block: suspend (beneficiaryId: String) -> Int): Int = coroutineScope {
+   * cached) result, up to [MAX_CONCURRENT_BENEFICIARY_CALLS] [block] calls in flight at once — a
+   * bounded stand-in until this screen has its own per-Sakhi/per-project beneficiary scoping
+   * decision (see the class doc comment).
+   *
+   * Uses [supervisorScope] rather than [coroutineScope] so one beneficiary's failure (e.g. a slow
+   * per-beneficiary risk endpoint timing out) doesn't cancel every other in-flight call — that
+   * cancellation showed up as `IOException: Canceled` on otherwise-healthy sibling requests and
+   * surfaced to the user as a misleading "No internet connection" dialog even though only one
+   * beneficiary's call actually failed. The concurrency cap also reduces how many of these calls
+   * compete for the same connection at once, which is what was pushing some of them past their
+   * timeout in the first place. */
+  private suspend fun forEachSakhiBeneficiary(block: suspend (beneficiaryId: String) -> Int): Int = supervisorScope {
+    val semaphore = Semaphore(MAX_CONCURRENT_BENEFICIARY_CALLS)
     loadAllBeneficiaries()
-      .map { beneficiary -> async { block(beneficiary.id) } }
+      .map { beneficiary -> async { semaphore.withPermit { block(beneficiary.id) } } }
       .awaitAll()
       .sum()
   }

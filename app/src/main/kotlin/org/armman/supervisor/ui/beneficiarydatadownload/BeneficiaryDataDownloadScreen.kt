@@ -120,8 +120,8 @@ private fun ContentScreen(
     QuitConfirmationDialog(onConfirm = { viewModel.onQuitConfirmed(onBack) }, onDismiss = viewModel::onQuitDismissed)
   }
 
-  if (state.showNetworkErrorDialog) {
-    NetworkErrorDialog(onRetry = viewModel::onRetryClicked, onStop = viewModel::onStopClicked)
+  state.networkErrorKind?.let { kind ->
+    NetworkErrorDialog(kind = kind, onRetry = viewModel::onRetryClicked, onStop = viewModel::onStopClicked)
   }
 
   if (state.showCompletionDialog) {
@@ -215,11 +215,17 @@ private fun QuitConfirmationDialog(onConfirm: () -> Unit, onDismiss: () -> Unit)
 }
 
 @Composable
-private fun NetworkErrorDialog(onRetry: () -> Unit, onStop: () -> Unit) {
+private fun NetworkErrorDialog(kind: NetworkErrorKind, onRetry: () -> Unit, onStop: () -> Unit) {
+  val (titleRes, messageRes) = when (kind) {
+    NetworkErrorKind.OFFLINE ->
+      R.string.beneficiary_data_download_network_error_title to R.string.beneficiary_data_download_network_error_message
+    NetworkErrorKind.SERVER_ERROR ->
+      R.string.beneficiary_data_download_server_error_title to R.string.beneficiary_data_download_server_error_message
+  }
   AlertDialog(
     onDismissRequest = onStop,
-    title = { Text(stringResource(R.string.beneficiary_data_download_network_error_title)) },
-    text = { Text(stringResource(R.string.beneficiary_data_download_network_error_message)) },
+    title = { Text(stringResource(titleRes)) },
+    text = { Text(stringResource(messageRes)) },
     confirmButton = { TextButton(onClick = onRetry) { Text(stringResource(R.string.beneficiary_data_download_retry)) } },
     dismissButton = { TextButton(onClick = onStop) { Text(stringResource(R.string.beneficiary_data_download_stop)) } },
   )

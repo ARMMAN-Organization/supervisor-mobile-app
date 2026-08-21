@@ -52,7 +52,7 @@
   <string name="cd_registration_badge_icon">Total registrations</string>
 
   <!-- Stale Sakhi report -->
-  <string name="stale_sakhi_banner_title">Sakhi Not Uploaded Data In Last 7 Or More Days Report</string>
+  <string name="stale_sakhi_banner_title">Sakhi Not Uploaded Data In Last 3 Or More Days Report</string>
   <string name="stale_sakhi_table_header_name">Sakhi Name</string>
   <string name="stale_sakhi_table_header_last_updated">Last Updated</string>
   <string name="stale_sakhi_table_header_days">Days</string>
@@ -230,6 +230,64 @@
   <string name="call_sheet_stat_column_info">Info</string>
   <string name="call_sheet_stat_column_updated">Updated</string>
   <string name="call_sheet_stat_column_count">Count</string>
+
+  <!-- Call Sheet drill-downs -->
+  <string name="call_sheet_drilldown_empty">Nothing to show</string>
+  <string name="call_sheet_last_sync_reason_title">Last Sync Date Reason</string>
+  <string name="call_sheet_last_sync_reason_empty">No reason recorded yet for this sync date</string>
+  <string name="call_sheet_last_sync_reason_date">Sync Date</string>
+  <string name="call_sheet_last_sync_reason_label">Reason</string>
+
+  <!-- Drill-down field labels -->
+  <string name="drilldown_field_beneficiary_name">Beneficiary Name:</string>
+  <string name="drilldown_field_village_name">Village Name:</string>
+  <string name="drilldown_field_unique_id">Unique Id:</string>
+  <string name="drilldown_field_registration_type">Registration Type:</string>
+  <string name="drilldown_field_visit">Visit:</string>
+  <string name="drilldown_field_scheduled_date">Scheduled Date:</string>
+  <string name="drilldown_field_balanced_days">Balanced Days:</string>
+  <string name="drilldown_field_risk">Risk:</string>
+  <string name="drilldown_field_risk_name">Risk Name:</string>
+  <string name="drilldown_field_date_of_referral">Date of referral:</string>
+  <string name="drilldown_field_registration_date">Registration Date:</string>
+  <string name="drilldown_field_date_of_birth">Date of Birth:</string>
+  <string name="drilldown_field_overdue_days">Over Due ( in days ):</string>
+  <string name="drilldown_field_call_date">Call Date:</string>
+  <string name="drilldown_field_notes">Notes:</string>
+  <string name="drilldown_add_reason">Add Reason</string>
+
+  <!-- Registration types -->
+  <string name="registration_type_women">Women</string>
+  <string name="registration_type_child">Child</string>
+
+  <!-- Add Reason (Call Sheet: Followup Pending / Closure Pending / Last Sync) -->
+  <string name="add_reason_title">Add Reason</string>
+  <string name="add_reason_reason_label">Reason</string>
+  <string name="add_reason_select_reason">Select Reason</string>
+  <string name="add_reason_remark_label">Remark</string>
+  <string name="add_reason_submit">Submit</string>
+  <string name="add_reason_error_reason_required">Please select a reason</string>
+  <string name="add_reason_error_submit">Failed to submit reason</string>
+
+  <!-- Followup Pending reasons -->
+  <string name="followup_pending_reason_not_at_home">Beneficiary Not at home</string>
+  <string name="followup_pending_reason_hospitalize">Hospitalize</string>
+  <string name="followup_pending_reason_child_not_referrable">child not referrable</string>
+  <string name="followup_pending_reason_counselling">Counselling</string>
+
+  <!-- Closure Pending reasons -->
+  <string name="closure_pending_reason_information_not_received">Information not received</string>
+  <string name="closure_pending_reason_app_issues">App Issues</string>
+  <string name="closure_pending_reason_time_left">There is time left to close the form</string>
+  <string name="closure_pending_reason_not_delivered">Beneficiary not delivered</string>
+  <string name="closure_pending_reason_hospitalized">Beneficiary hospitalized</string>
+  <string name="closure_pending_reason_others">Others</string>
+
+  <!-- Last Sync reasons -->
+  <string name="last_sync_reason_forgot_to_sync">Forgot to sync</string>
+  <string name="last_sync_reason_no_light">There is no light in the village</string>
+  <string name="last_sync_reason_mobile_problem">There is a problem with the mobile</string>
+  <string name="last_sync_reason_no_recharge">There is no recharge</string>
 
   <!-- Call History -->
   <string name="call_history_empty">No calls logged yet</string>
@@ -483,6 +541,8 @@
   <string name="beneficiary_data_download_quit_cancel">Cancel</string>
   <string name="beneficiary_data_download_network_error_title">No internet connection</string>
   <string name="beneficiary_data_download_network_error_message">Check your connection and try again. Retrying restarts the download from the beginning.</string>
+  <string name="beneficiary_data_download_server_error_title">Server is taking too long</string>
+  <string name="beneficiary_data_download_server_error_message">The server is responding slowly right now. Please retry in a moment — your connection is fine.</string>
   <string name="beneficiary_data_download_retry">Retry</string>
   <string name="beneficiary_data_download_stop">Stop</string>
   <string name="beneficiary_data_download_completion_title">All Downloads Completed</string>
