@@ -181,6 +181,22 @@ class AddItemTransactionViewModelTest {
   // --- Negative / validation ---
 
   @Test
+  fun `submit with a future date shows date-in-future error and does not call repository`() = runTest(dispatcher) {
+    val repo = TestRepository()
+    val viewModel = AddItemTransactionViewModel(repo, savedStateHandle())
+    dispatcher.scheduler.advanceUntilIdle()
+
+    viewModel.onDateSelected("10 Oct 2999")
+    viewModel.onTypeSelected(TransactionType.CONSUMED)
+    viewModel.onQuantityChanged("item-1", 20)
+    viewModel.onSubmit()
+
+    val state = viewModel.uiState.value as AddItemTransactionUiState.Success
+    assertEquals(TransactionFormError.DATE_IN_FUTURE, state.formError)
+    assertEquals(0, repo.submitCallCount)
+  }
+
+  @Test
   fun `submit without date shows date required error and does not call repository`() = runTest(dispatcher) {
     val repo = TestRepository()
     val viewModel = AddItemTransactionViewModel(repo, savedStateHandle())

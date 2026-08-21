@@ -93,6 +93,7 @@
   <string name="add_item_remarks_placeholder">शेरा प्रविष्ट करा</string>
   <string name="add_item_submit">सबमिट करा</string>
   <string name="add_item_error_date_required">कृपया व्यवहार तारीख निवडा</string>
+  <string name="add_item_error_date_in_future">व्यवहाराची तारीख भविष्यातील असू शकत नाही</string>
   <string name="add_item_error_type_required">कृपया व्यवहार प्रकार निवडा</string>
   <string name="add_item_error_no_items">कृपया किमान एका वस्तूसाठी प्रमाण प्रविष्ट करा</string>
   <string name="edit_item_transaction_title">वस्तू व्यवहार संपादित करा</string>
