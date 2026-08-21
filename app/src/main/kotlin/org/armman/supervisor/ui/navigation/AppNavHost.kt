@@ -21,6 +21,7 @@ import org.armman.supervisor.ui.components.PlaceholderScreen
 import org.armman.supervisor.ui.dashboard.DashboardScreen
 import org.armman.supervisor.ui.login.LoginScreen
 import org.armman.supervisor.data.local.MarksType
+import org.armman.supervisor.ui.masterdata.MasterDataDownloadScreen
 import org.armman.supervisor.ui.meetingtraining.AddTrainingTopicsScreen
 import org.armman.supervisor.ui.meetingtraining.AttendanceScreen
 import org.armman.supervisor.ui.meetingtraining.MarksScreen
@@ -87,6 +88,7 @@ object Routes {
   const val PROFILE = "profile"
   const val SETTINGS = "settings"
   const val BENEFICIARY_DATA_DOWNLOAD = "beneficiary_data_download"
+  const val MASTER_DATA_DOWNLOAD = "master_data_download"
   const val NOTIFICATIONS = "notifications"
 
   fun sakhiBeneficiaries(sakhiId: String) = "sakhi_beneficiaries/$sakhiId"
@@ -355,10 +357,14 @@ fun AppNavHost() {
           }
         },
         onNavigateToBeneficiaryDataDownload = { navController.navigate(Routes.BENEFICIARY_DATA_DOWNLOAD) },
+        onNavigateToMasterDataDownload = { navController.navigate(Routes.MASTER_DATA_DOWNLOAD) },
       )
     }
     composable(Routes.BENEFICIARY_DATA_DOWNLOAD) {
       BeneficiaryDataDownloadScreen(onBack = { navController.popBackStack() })
+    }
+    composable(Routes.MASTER_DATA_DOWNLOAD) {
+      MasterDataDownloadScreen(onBack = { navController.popBackStack() })
     }
     composable(Routes.NOTIFICATIONS) {
       PlaceholderStub(navController, R.string.notifications_title)
