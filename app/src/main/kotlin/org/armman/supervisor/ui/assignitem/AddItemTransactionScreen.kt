@@ -104,6 +104,10 @@ private fun FormContent(state: AddItemTransactionUiState.Success, viewModel: Add
         placeholder = stringResource(R.string.add_item_select_date),
         value = state.transactionDate?.let { runCatching { LocalDate.parse(it, formatter) }.getOrNull() },
         onDateSelected = { viewModel.onDateSelected(it.format(formatter)) },
+        // A transaction records something that already happened (a handover/return/etc. that took
+        // place), so the backend rejects a future date with a bare HTTP 400 — capping the picker
+        // here stops that error from being reachable in the first place.
+        maxDate = LocalDate.now(),
       )
       SingleSelectDropdown(
         options = TransactionType.entries,
@@ -163,6 +167,7 @@ private fun SakhiHeader(sakhiName: String, programName: String?) {
 
 private fun TransactionFormError.messageRes(): Int = when (this) {
   TransactionFormError.DATE_REQUIRED -> R.string.add_item_error_date_required
+  TransactionFormError.DATE_IN_FUTURE -> R.string.add_item_error_date_in_future
   TransactionFormError.TYPE_REQUIRED -> R.string.add_item_error_type_required
   TransactionFormError.NO_ITEMS -> R.string.add_item_error_no_items
 }

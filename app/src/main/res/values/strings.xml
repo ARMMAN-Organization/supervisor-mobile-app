@@ -93,6 +93,7 @@
   <string name="add_item_remarks_placeholder">Enter remarks</string>
   <string name="add_item_submit">Submit</string>
   <string name="add_item_error_date_required">Please select a transaction date</string>
+  <string name="add_item_error_date_in_future">Transaction date cannot be in the future</string>
   <string name="add_item_error_type_required">Please select a transaction type</string>
   <string name="add_item_error_no_items">Please enter a quantity for at least one item</string>
   <string name="edit_item_transaction_title">Edit Item Transaction</string>

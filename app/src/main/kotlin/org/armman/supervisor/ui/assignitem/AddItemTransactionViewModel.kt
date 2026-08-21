@@ -14,10 +14,13 @@ import kotlinx.coroutines.launch
 import org.armman.supervisor.R
 import org.armman.supervisor.model.LocationOption
 import org.armman.supervisor.ui.navigation.Routes
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import javax.inject.Inject
 
 /** Which form field failed validation on submit, so the screen can show the right message. */
-enum class TransactionFormError { DATE_REQUIRED, TYPE_REQUIRED, NO_ITEMS }
+enum class TransactionFormError { DATE_REQUIRED, DATE_IN_FUTURE, TYPE_REQUIRED, NO_ITEMS }
 
 /** UI state for the Add Item Transaction screen. */
 sealed interface AddItemTransactionUiState {
@@ -163,12 +166,21 @@ class AddItemTransactionViewModel @Inject constructor(
     }
   }
 
+  /** A transaction records something that already happened (a handover/return/etc. that took
+   * place) — the backend rejects a future [AddItemTransactionUiState.Success.transactionDate]
+   * with a bare HTTP 400, so it's checked client-side for a clear message instead. The date
+   * picker itself is already capped at today (see [org.armman.supervisor.ui.assignitem.AddItemTransactionScreen]),
+   * but this still guards a stale edit-mode date or a device clock change landing here. */
   private fun validate(state: AddItemTransactionUiState.Success): TransactionFormError? = when {
     state.transactionDate.isNullOrBlank() -> TransactionFormError.DATE_REQUIRED
+    parseTransactionDate(state.transactionDate).isAfter(LocalDate.now()) -> TransactionFormError.DATE_IN_FUTURE
     state.selectedType == null -> TransactionFormError.TYPE_REQUIRED
     state.quantities.values.none { it > 0 } -> TransactionFormError.NO_ITEMS
     else -> null
   }
+
+  private fun parseTransactionDate(date: String): LocalDate =
+    LocalDate.parse(date, DateTimeFormatter.ofPattern("dd MMM yyyy", Locale.getDefault()))
 
   private inline fun updateSuccess(transform: (AddItemTransactionUiState.Success) -> AddItemTransactionUiState.Success) {
     _uiState.update { current -> if (current is AddItemTransactionUiState.Success) transform(current) else current }
