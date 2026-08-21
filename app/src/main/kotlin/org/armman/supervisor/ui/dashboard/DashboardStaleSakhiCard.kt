@@ -11,7 +11,7 @@ import org.armman.supervisor.ui.theme.NeutralG50
 import org.armman.supervisor.ui.theme.RiskHigh
 import org.armman.supervisor.ui.theme.White
 
-/** Red "Sakhi not uploaded data in 7+ days" alert card — always shown, even when [entries] is empty. */
+/** Red "Sakhi not uploaded data in 3+ days" alert card — always shown, even when [entries] is empty. */
 @Composable
 fun DashboardStaleSakhiCard(entries: List<StaleSakhiEntry>, modifier: Modifier = Modifier) {
   AlertReportCard(

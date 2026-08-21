@@ -13,7 +13,7 @@ enum class SummaryRowLabel { TOTAL, DUE, UPCOMING, MISSED, COMPLETE, TARGET, TOT
 /** One row of a Mother/Child summary table (e.g. "Total", "Due", "Target"). */
 data class SummaryRow(val label: SummaryRowLabel, val motherValue: Int, val childValue: Int)
 
-/** One row of the "not uploaded in 7+ days" report. */
+/** One row of the "not uploaded in 3+ days" report. */
 data class StaleSakhiEntry(val sakhiName: String, val lastUpdated: String, val daysSinceUpdate: Int)
 
 /** Full payload for the Supervisor dashboard, scoped to one selected location. */
