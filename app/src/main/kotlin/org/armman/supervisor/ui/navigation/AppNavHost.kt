@@ -148,8 +148,8 @@ object Routes {
   fun callSheetAddReason(context: ReasonContext, sakhiId: String? = null, itemId: String? = null): String {
     val base = "call_sheet_add_reason/${context.name}"
     val query = listOfNotNull(
-      sakhiId?.let { "$CALL_SHEET_SAKHI_ID_ARG=$it" },
-      itemId?.let { "$REASON_ITEM_ID_ARG=$it" },
+      sakhiId?.let { "$CALL_SHEET_SAKHI_ID_ARG=${URLEncoder.encode(it, Charsets.UTF_8.name())}" },
+      itemId?.let { "$REASON_ITEM_ID_ARG=${URLEncoder.encode(it, Charsets.UTF_8.name())}" },
     ).joinToString("&")
     return if (query.isEmpty()) base else "$base?$query"
   }

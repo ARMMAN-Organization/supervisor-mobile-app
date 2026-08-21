@@ -1,5 +1,6 @@
 package org.armman.supervisor.data.callsheet
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import org.armman.supervisor.data.calllog.CallLogApi
@@ -85,13 +86,25 @@ class CallSheetRepositoryImpl @Inject constructor(
     )
   }
 
+  /**
+   * A failed/errored stats fetch degrades to an empty map (every Sakhi falls back to
+   * [emptyStats] in [getSakhiSummaries]) rather than throwing — unlike every other fetch in this
+   * file. Stats are one column of the Call Sheet list; the rest of the screen (names, call
+   * buttons, last-called timestamps) has nothing to do with `GET /call-sheet-stats` and a brief
+   * backend outage on that one endpoint shouldn't blank out the whole list.
+   */
   private suspend fun fetchStatsBySakhiId(sakhiIds: List<String>): Map<String, CallSheetStats> {
     if (sakhiIds.isEmpty()) return emptyMap()
-    val response = callLogApi.getCallSheetStatsBatch(sakhiIds.joinToString(","))
-    if (!response.isSuccessful) error("Failed to load call-sheet stats: HTTP ${response.code()}")
-    val body = response.body() ?: error("Empty call-sheet stats response")
-    if (!body.success) error(body.message ?: "Failed to load call-sheet stats")
-    return body.data.orEmpty().associateBy({ it.sakhiId }, { it.toDomain() })
+    return runCatching {
+      val response = callLogApi.getCallSheetStatsBatch(sakhiIds.joinToString(","))
+      if (!response.isSuccessful) error("Failed to load call-sheet stats: HTTP ${response.code()}")
+      val body = response.body() ?: error("Empty call-sheet stats response")
+      if (!body.success) error(body.message ?: "Failed to load call-sheet stats")
+      body.data.orEmpty().associateBy({ it.sakhiId }, { it.toDomain() })
+    }.getOrElse { cause ->
+      if (cause is CancellationException) throw cause
+      emptyMap()
+    }
   }
 
   override suspend fun getLocations(): List<LocationOption> = projectsRepository.getProjects()

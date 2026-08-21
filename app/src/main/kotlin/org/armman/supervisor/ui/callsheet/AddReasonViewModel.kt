@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.armman.supervisor.R
 import org.armman.supervisor.ui.navigation.Routes
+import java.net.URLDecoder
 import javax.inject.Inject
 
 /** One selectable reason option in [AddReasonScreen]'s dropdown — [code] is the wire value sent to
@@ -43,8 +44,8 @@ class AddReasonViewModel @Inject constructor(
   private val repository: CallSheetRepository,
 ) : ViewModel() {
   private val context: ReasonContext = ReasonContext.valueOf(checkNotNull(savedStateHandle[Routes.REASON_CONTEXT_ARG]))
-  private val itemId: String? = savedStateHandle[Routes.REASON_ITEM_ID_ARG]
-  private val sakhiId: String? = savedStateHandle[Routes.CALL_SHEET_SAKHI_ID_ARG]
+  private val itemId: String? = savedStateHandle.get<String>(Routes.REASON_ITEM_ID_ARG)?.let(::decode)
+  private val sakhiId: String? = savedStateHandle.get<String>(Routes.CALL_SHEET_SAKHI_ID_ARG)?.let(::decode)
 
   private val _formState = MutableStateFlow(AddReasonFormState(context = context))
   val formState: StateFlow<AddReasonFormState> = _formState.asStateFlow()
@@ -87,5 +88,13 @@ class AddReasonViewModel @Inject constructor(
         )
       }
     }
+  }
+
+  private companion object {
+    /** [Routes.callSheetAddReason] URL-encodes [sakhiId]/[itemId] before putting them in the
+     * route string (Navigation-Compose does not decode string args itself — see
+     * [org.armman.supervisor.ui.villagerisksummary.VillageRiskDetailViewModel]'s identical
+     * decode step for its own encoded args), so they must be decoded back here. */
+    fun decode(value: String): String = URLDecoder.decode(value, Charsets.UTF_8.name())
   }
 }

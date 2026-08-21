@@ -126,6 +126,21 @@ class AddReasonViewModelTest {
   }
 
   @Test
+  fun `itemId and sakhiId are URL-decoded, matching how callSheetAddReason encodes them`() = runTest(dispatcher) {
+    val repo = TestRepository()
+    val viewModel = AddReasonViewModel(
+      savedStateHandle(sakhiId = "sakhi%2F1", itemId = "item%261"),
+      repo,
+    )
+    viewModel.onReasonSelected(ReasonChoice("HOSPITALIZE", R.string.followup_pending_reason_hospitalize))
+    viewModel.onSubmit()
+    dispatcher.scheduler.advanceUntilIdle()
+
+    assertEquals("sakhi/1", repo.lastSubmission?.sakhiId)
+    assertEquals("item&1", repo.lastSubmission?.itemId)
+  }
+
+  @Test
   fun `LastSync context submits keyed by sakhiId not itemId`() = runTest(dispatcher) {
     val repo = TestRepository()
     val viewModel = AddReasonViewModel(

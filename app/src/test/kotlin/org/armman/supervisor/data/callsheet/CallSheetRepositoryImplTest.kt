@@ -408,22 +408,24 @@ class CallSheetRepositoryImplTest {
   }
 
   @Test
-  fun `getSakhiSummaries throws on a non-2xx call-sheet-stats response`() = runTest {
+  fun `getSakhiSummaries falls back to empty stats for every sakhi on a non-2xx call-sheet-stats response`() = runTest {
     api.getCallSheetStatsBatchResponse = statsErrorResponse(500)
 
-    assertThrows(IllegalStateException::class.java) {
-      runBlocking { repository.getSakhiSummaries("loc-1") }
-    }
+    val summaries = repository.getSakhiSummaries("loc-1")
+
+    assertEquals(setOf("sakhi-1", "sakhi-2"), summaries.map { it.sakhi.id }.toSet())
+    assertTrue(summaries.all { summary -> summary.stats.rows.all { it.count == 0 && it.updated == 0 } })
   }
 
   @Test
-  fun `getSakhiSummaries throws when the call-sheet-stats envelope reports success false`() = runTest {
+  fun `getSakhiSummaries falls back to empty stats for every sakhi when the call-sheet-stats envelope reports success false`() = runTest {
     api.getCallSheetStatsBatchResponse =
       Response.success(CallSheetStatsListEnvelopeDto(success = false, message = "Denied", data = null))
 
-    assertThrows(IllegalStateException::class.java) {
-      runBlocking { repository.getSakhiSummaries("loc-1") }
-    }
+    val summaries = repository.getSakhiSummaries("loc-1")
+
+    assertEquals(setOf("sakhi-1", "sakhi-2"), summaries.map { it.sakhi.id }.toSet())
+    assertTrue(summaries.all { summary -> summary.stats.rows.all { it.count == 0 && it.updated == 0 } })
   }
 
   @Test
