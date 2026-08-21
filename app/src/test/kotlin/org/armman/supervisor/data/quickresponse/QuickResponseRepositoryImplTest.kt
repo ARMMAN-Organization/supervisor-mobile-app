@@ -99,6 +99,7 @@ class QuickResponseRepositoryImplTest {
   private fun detail(
     cardId: String,
     cardType: String,
+    raisedAt: String = "2026-08-07T10:00:00Z",
     beneficiaryName: String? = "Test Beneficiary",
     padaName: String? = null,
     sakhiName: String? = null,
@@ -132,7 +133,7 @@ class QuickResponseRepositoryImplTest {
         cardType = cardType,
         cardSource = "approval_requests",
         beneficiaryId = "ben-1",
-        raisedAt = "2026-08-07T10:00:00Z",
+        raisedAt = raisedAt,
         padaName = padaName,
         sakhiName = sakhiName,
         sakhiId = sakhiId,
@@ -517,7 +518,30 @@ class QuickResponseRepositoryImplTest {
   }
 
   @Test
-  fun `getRequests falls back to the raw label when the closure reason lookup id is unresolved`() = runTest {
+  fun `getRequests drops only the card whose raisedAt is unparseable, keeping the rest`() = runTest {
+    api.listResult = Response.success(
+      QuickResponseListEnvelopeDto(
+        success = true,
+        message = "OK",
+        data = QuickResponseListDto(
+          cards = listOf(card("card-bad", "LMP_CHANGE"), card("card-good", "REOPEN")),
+          nextCursor = null,
+        ),
+      ),
+    )
+    api.detailResultsById = mapOf(
+      "card-bad" to detail("card-bad", "LMP_CHANGE", raisedAt = "not-a-real-date"),
+      "card-good" to detail("card-good", "REOPEN"),
+    )
+
+    val requests = repository.getRequests()
+
+    assertEquals(1, requests.size)
+    assertEquals("card-good", requests[0].id)
+  }
+
+  @Test
+  fun `getRequests leaves reasonLabel null when the closure reason lookup id is unresolved`() = runTest {
     api.listResult = Response.success(listOf1("card-1", "CLOSURE_REVIEW"))
     api.detailResultsById = mapOf("card-1" to detail("card-1", "CLOSURE_REVIEW", closureReasonLookupValueId = "unknown-id"))
     lookupsApi.categories = emptyList()

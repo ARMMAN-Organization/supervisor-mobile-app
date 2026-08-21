@@ -55,12 +55,19 @@ sealed interface QuickResponseCardAction {
  * values (long names, multi-word status codes) into a cramped, wrapping pill next to the label.
  * Reject on a Closure Review card (the only type with an SRS-defined supervisor-notes field)
  * expands an inline notes field with its own confirm step, rather than firing immediately.
+ *
+ * [isDeciding] drives *this* card's button spinner; [actionsEnabled] independently controls
+ * whether *this* card's buttons can be tapped at all — the ViewModel's in-flight guard blocks a
+ * decision on any card while another card's decision is still in flight (avoiding double
+ * submissions racing each other), so every other card must show its buttons as disabled too,
+ * not just the one actually spinning.
  */
 @Composable
 fun QuickResponseRequestCard(
   request: QuickResponseRequest,
   onAction: (QuickResponseCardAction) -> Unit,
   isDeciding: Boolean,
+  actionsEnabled: Boolean,
   modifier: Modifier = Modifier,
 ) {
   var isRejecting by remember(request.id) { mutableStateOf(false) }
@@ -82,7 +89,10 @@ fun QuickResponseRequestCard(
           verticalAlignment = Alignment.CenterVertically,
         ) {
           StatusPill(text = stringResource(request.requestType.labelRes()), containerColor = PrimarySurface, contentColor = RiskLow)
-          request.requestStatus?.let { StatusPill(text = it, containerColor = NeutralG50, contentColor = NeutralG200) }
+          request.requestStatus?.let { status ->
+            val label = status.quickResponseStatusLabelRes()?.let { stringResource(it) } ?: status
+            StatusPill(text = label, containerColor = NeutralG50, contentColor = NeutralG200)
+          }
         }
         Text(text = request.requestedAtEpochMillis.toDisplayDate(), style = MaterialTheme.typography.labelMedium, color = NeutralG200)
       }
@@ -104,6 +114,7 @@ fun QuickResponseRequestCard(
           notes = rejectNotes,
           onNotesChange = { rejectNotes = it },
           isDeciding = isDeciding,
+          enabled = actionsEnabled,
           onCancel = { isRejecting = false },
           onConfirm = { onAction(QuickResponseCardAction.Decide(QuickResponseDecision.REJECT, rejectNotes)) },
         )
@@ -111,6 +122,7 @@ fun QuickResponseRequestCard(
         when (request.requestType.ctaKind()) {
           QuickResponseCtaKind.APPROVE_REJECT -> ApproveRejectRow(
             isDeciding = isDeciding,
+            enabled = actionsEnabled,
             onReject = {
               if (supportsRejectNotes) isRejecting = true else onAction(QuickResponseCardAction.Decide(QuickResponseDecision.REJECT, null))
             },
@@ -118,11 +130,13 @@ fun QuickResponseRequestCard(
           )
           QuickResponseCtaKind.TRANSFER_CLOSE -> TransferCloseRow(
             isDeciding = isDeciding,
+            enabled = actionsEnabled,
             onTransfer = { onAction(QuickResponseCardAction.Escalate(QuickResponseEscalationAction.TRANSFER)) },
             onClose = { onAction(QuickResponseCardAction.Escalate(QuickResponseEscalationAction.CLOSE)) },
           )
           QuickResponseCtaKind.OKAY -> OkayRow(
             isDeciding = isDeciding,
+            enabled = actionsEnabled,
             onOkay = { onAction(QuickResponseCardAction.Acknowledge) },
           )
         }
@@ -132,15 +146,15 @@ fun QuickResponseRequestCard(
 }
 
 @Composable
-private fun ApproveRejectRow(isDeciding: Boolean, onReject: () -> Unit, onApprove: () -> Unit) {
+private fun ApproveRejectRow(isDeciding: Boolean, enabled: Boolean, onReject: () -> Unit, onApprove: () -> Unit) {
   Row(horizontalArrangement = Arrangement.spacedBy(Dimens.SmallSpacing), modifier = Modifier.fillMaxWidth()) {
-    OutlinedButton(onClick = onReject, enabled = !isDeciding, modifier = Modifier.weight(1f)) {
+    OutlinedButton(onClick = onReject, enabled = enabled, modifier = Modifier.weight(1f)) {
       Text(text = stringResource(R.string.quick_response_action_reject))
     }
     PrimaryButton(
       text = stringResource(R.string.quick_response_action_approve),
       onClick = onApprove,
-      enabled = !isDeciding,
+      enabled = enabled,
       loading = isDeciding,
       modifier = Modifier.weight(1f),
     )
@@ -148,15 +162,15 @@ private fun ApproveRejectRow(isDeciding: Boolean, onReject: () -> Unit, onApprov
 }
 
 @Composable
-private fun TransferCloseRow(isDeciding: Boolean, onTransfer: () -> Unit, onClose: () -> Unit) {
+private fun TransferCloseRow(isDeciding: Boolean, enabled: Boolean, onTransfer: () -> Unit, onClose: () -> Unit) {
   Row(horizontalArrangement = Arrangement.spacedBy(Dimens.SmallSpacing), modifier = Modifier.fillMaxWidth()) {
-    OutlinedButton(onClick = onTransfer, enabled = !isDeciding, modifier = Modifier.weight(1f)) {
+    OutlinedButton(onClick = onTransfer, enabled = enabled, modifier = Modifier.weight(1f)) {
       Text(text = stringResource(R.string.quick_response_action_transfer))
     }
     PrimaryButton(
       text = stringResource(R.string.quick_response_action_close),
       onClick = onClose,
-      enabled = !isDeciding,
+      enabled = enabled,
       loading = isDeciding,
       modifier = Modifier.weight(1f),
     )
@@ -164,11 +178,11 @@ private fun TransferCloseRow(isDeciding: Boolean, onTransfer: () -> Unit, onClos
 }
 
 @Composable
-private fun OkayRow(isDeciding: Boolean, onOkay: () -> Unit) {
+private fun OkayRow(isDeciding: Boolean, enabled: Boolean, onOkay: () -> Unit) {
   PrimaryButton(
     text = stringResource(R.string.quick_response_action_okay),
     onClick = onOkay,
-    enabled = !isDeciding,
+    enabled = enabled,
     loading = isDeciding,
     modifier = Modifier.fillMaxWidth(),
   )
@@ -179,6 +193,7 @@ private fun RejectNotesRow(
   notes: String,
   onNotesChange: (String) -> Unit,
   isDeciding: Boolean,
+  enabled: Boolean,
   onCancel: () -> Unit,
   onConfirm: () -> Unit,
 ) {
@@ -188,16 +203,16 @@ private fun RejectNotesRow(
       onValueChange = onNotesChange,
       label = stringResource(R.string.quick_response_field_supervisor_notes),
       placeholder = stringResource(R.string.quick_response_supervisor_notes_placeholder),
-      enabled = !isDeciding,
+      enabled = enabled,
     )
     Row(horizontalArrangement = Arrangement.spacedBy(Dimens.SmallSpacing), modifier = Modifier.fillMaxWidth()) {
-      OutlinedButton(onClick = onCancel, enabled = !isDeciding, modifier = Modifier.weight(1f)) {
+      OutlinedButton(onClick = onCancel, enabled = enabled, modifier = Modifier.weight(1f)) {
         Text(text = stringResource(R.string.cancel))
       }
       PrimaryButton(
         text = stringResource(R.string.quick_response_action_reject),
         onClick = onConfirm,
-        enabled = !isDeciding,
+        enabled = enabled,
         loading = isDeciding,
         modifier = Modifier.weight(1f),
       )

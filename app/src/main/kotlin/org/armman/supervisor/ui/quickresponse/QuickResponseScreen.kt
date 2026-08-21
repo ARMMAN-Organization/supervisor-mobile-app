@@ -127,7 +127,7 @@ private fun SuccessContent(
         verticalArrangement = Arrangement.spacedBy(Dimens.ItemSpacing),
         modifier = Modifier
           .fillMaxSize()
-          .then(if (isTablet) Modifier.widthIn(max = Dimens.TabletContentMaxWidthDp) else Modifier)
+          .then(if (isTablet) Modifier.widthIn(max = Dimens.ContentMaxWidthTablet) else Modifier)
           .padding(Dimens.ScreenPadding),
       ) {
         items(state.requests, key = { it.id }) { request ->
@@ -135,6 +135,10 @@ private fun SuccessContent(
             request = request,
             onAction = { action -> onAction(request.id, action) },
             isDeciding = state.decidingRequestId == request.id,
+            // The ViewModel's guard blocks a decision on ANY card while one is in flight, so
+            // every card's buttons must show as disabled while that's true, not just the one
+            // actually spinning — otherwise every other card looks tappable but silently no-ops.
+            actionsEnabled = state.decidingRequestId == null,
             modifier = Modifier.fillMaxWidth(),
           )
         }

@@ -405,6 +405,9 @@
   <string name="quick_response_field_sakhi_contact">सखीचा संपर्क:</string>
   <string name="quick_response_field_pada_name">पाडा:</string>
   <string name="quick_response_field_request_status">विनंतीची स्थिती:</string>
+  <string name="quick_response_status_pending">प्रलंबित</string>
+  <string name="quick_response_status_approved">मंजूर</string>
+  <string name="quick_response_status_rejected">नाकारले</string>
   <string name="quick_response_field_risk_details">जोखीम तपशील:</string>
   <string name="quick_response_field_old_lmp">जुनी LMP:</string>
   <string name="quick_response_field_new_lmp">नवीन LMP:</string>

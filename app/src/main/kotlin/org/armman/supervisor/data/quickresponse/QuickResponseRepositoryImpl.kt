@@ -1,5 +1,6 @@
 package org.armman.supervisor.data.quickresponse
 
+import android.util.Log
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -39,6 +40,8 @@ private const val STATUS_PENDING = "PENDING"
 
 private const val CLOSURE_REASON_LOOKUP_CATEGORY = "CLOSURE_REASON"
 
+private const val LOG_TAG = "QuickResponseRepository"
+
 /**
  * Backed by approval-service's Quick Response endpoints via [QuickResponseApi]. A single
  * `GET /quick-response/{cardId}` call per card returns every field for every card type — Sakhi
@@ -62,35 +65,46 @@ class QuickResponseRepositoryImpl @Inject constructor(
     if (!body.success) error(body.message ?: "Failed to load Quick Response cards")
     val cards = body.data?.cards.orEmpty()
     cards
-      .mapNotNull { card -> SUPPORTED_CARD_TYPES[card.cardType]?.let { card to it } }
+      .mapNotNull { card ->
+        val type = SUPPORTED_CARD_TYPES[card.cardType]
+        if (type == null) {
+          Log.w(LOG_TAG, "Dropping card ${card.cardId}: unrecognized cardType \"${card.cardType}\"")
+          return@mapNotNull null
+        }
+        card to type
+      }
       .map { (card, type) -> async { fetchCardDetail(card.cardId, type) } }
       .awaitAll()
       .filterNotNull()
   }
 
-  /** Falls back to `null` (card dropped from the list) if the detail call fails entirely — a
-   * card with no data at all can't render anything meaningful, unlike a partial-join failure in
-   * the old per-field-join design. */
-  private suspend fun fetchCardDetail(cardId: String, type: QuickResponseRequestType): QuickResponseRequest? {
-    val response = runCatching { api.getQuickResponseCardDetail(cardId) }.getOrNull()
-    val card = response?.takeIf { it.isSuccessful }?.body()?.takeIf { it.success }?.data ?: return null
-    val riskConditions = card.riskDetails.orEmpty().map {
-      QuickResponseRiskCondition(conditionName = it.conditionName, latestGrade = it.latestGrade)
-    }
-    return QuickResponseRequest(
-      id = card.cardId,
-      requestedAtEpochMillis = Instant.parse(card.raisedAt).toEpochMilli(),
-      requestType = type,
-      beneficiaryName = card.beneficiaryName,
-      sakhiName = card.sakhiName,
-      sakhiId = card.sakhiId,
-      sakhiPhoneNumber = card.sakhiContactNumber,
-      padaName = card.padaName,
-      requestStatus = card.status,
-      riskConditions = riskConditions,
-      detail = fetchDetail(type, card),
-    )
-  }
+  /** Falls back to `null` (card dropped from the list) if the detail call fails, or if anything
+   * else building this card from it throws (a malformed date, a lookup fetch failure inside
+   * [fetchDetail]) — a card with no data at all can't render anything meaningful, unlike a
+   * partial-join failure in the old per-field-join design. */
+  private suspend fun fetchCardDetail(cardId: String, type: QuickResponseRequestType): QuickResponseRequest? =
+    runCatching {
+      val response = api.getQuickResponseCardDetail(cardId)
+      val card = response.takeIf { it.isSuccessful }?.body()?.takeIf { it.success }?.data ?: return null
+      val riskConditions = card.riskDetails.orEmpty().map {
+        QuickResponseRiskCondition(conditionName = it.conditionName, latestGrade = it.latestGrade)
+      }
+      QuickResponseRequest(
+        id = card.cardId,
+        requestedAtEpochMillis = Instant.parse(card.raisedAt).toEpochMilli(),
+        requestType = type,
+        beneficiaryName = card.beneficiaryName,
+        sakhiName = card.sakhiName,
+        sakhiId = card.sakhiId,
+        sakhiPhoneNumber = card.sakhiContactNumber,
+        padaName = card.padaName,
+        requestStatus = card.status,
+        riskConditions = riskConditions,
+        detail = fetchDetail(type, card),
+      )
+    }.onFailure { cause ->
+      Log.w(LOG_TAG, "Dropping card $cardId: failed to build detail", cause)
+    }.getOrNull()
 
   private suspend fun fetchDetail(type: QuickResponseRequestType, card: QuickResponseCardDetailDto): QuickResponseCardDetail? =
     when (type) {

@@ -7,6 +7,10 @@ import org.armman.supervisor.R
  * - [LMP_CHANGE] (FR-SV-4.2), [CLOSURE_REVIEW] (FR-SV-4.4), [REOPEN] (FR-SV-4.7),
  *   [ACCOMPANIED_REFERRAL] (FR-SV-4.9), [REFERRAL_INCOMPLETE] (FR-SV-4.5), [DATA_RESTORE]
  *   (FR-SV-4.6): plain Approve/Reject CTA via `POST /quick-response/{cardId}/decision`.
+ *   [DATA_RESTORE] specifically: SRS FR-SV-4.6 itself flags this flow's Approve/Reject semantics
+ *   as unconfirmed with ARMMAN — this app routes it through the same generic decide endpoint as
+ *   every other type on the assumption approval-service treats it identically, but that
+ *   assumption hasn't been separately verified against backend behavior for this type.
  * - [MISSED_VISIT_ESCALATION] (FR-SV-4.3): Transfer/Close CTA via
  *   `POST /missed-visit-escalations/{id}/decision` — Transfer currently 501s pending a
  *   beneficiary-roster-removal + Manager-email capability that doesn't exist yet. Backend's
@@ -49,6 +53,19 @@ fun QuickResponseRequestType.ctaKind(): QuickResponseCtaKind = when (this) {
  * 4.7, 4.9 CTAs). */
 enum class QuickResponseDecision { APPROVE, REJECT }
 
+/** Resolves [QuickResponseRequest.requestStatus]'s raw backend wire value (e.g. `"PENDING"`) to
+ * a localized display string, or `null` for an unrecognized value — this list only ever fetches
+ * `status = "PENDING"` cards (see [QuickResponseRepositoryImpl][org.armman.supervisor.data.quickresponse.QuickResponseRepositoryImpl.getRequests]),
+ * so in practice every card shows Pending today, but the raw string is still piped through
+ * verbatim rather than mapped, so this exists to avoid ever rendering an unlocalized backend
+ * code if that assumption changes. */
+fun String.quickResponseStatusLabelRes(): Int? = when (this) {
+  "PENDING" -> R.string.quick_response_status_pending
+  "APPROVED" -> R.string.quick_response_status_approved
+  "REJECTED" -> R.string.quick_response_status_rejected
+  else -> null
+}
+
 /** Action a Supervisor can take on a Missed Visit Escalation card (SRS FR-SV-4.3 CTAs). */
 enum class QuickResponseEscalationAction { TRANSFER, CLOSE }
 
@@ -65,7 +82,9 @@ sealed interface QuickResponseCardDetail {
     val sonographyImageAssetId: String?,
   ) : QuickResponseCardDetail
 
-  /** @param reasonLabel resolved via `GET /lookups`; falls back to the raw code if unresolved. */
+  /** @param reasonLabel resolved via `GET /lookups`; `null` (field simply not shown) if the id
+   * isn't found in the `CLOSURE_REASON` category — a raw lookup-value UUID would be meaningless
+   * to a Supervisor, so there's no raw-code fallback. */
   data class ClosureReview(
     val reasonLabel: String?,
     val closureDateEpochMillis: Long?,
