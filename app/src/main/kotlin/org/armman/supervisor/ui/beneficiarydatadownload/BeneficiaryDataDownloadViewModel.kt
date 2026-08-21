@@ -103,7 +103,12 @@ class BeneficiaryDataDownloadViewModel @Inject constructor(
    * Everything else — timeouts, HTTP 5xx wrapped as [IllegalStateException], and the
    * `IOException: Canceled` a beneficiary call gets when a sibling call fails — means the device's
    * connection is working but the backend itself is slow or erroring, so it's reported as
-   * [NetworkErrorKind.SERVER_ERROR] instead of telling the user to check their own connection. */
+   * [NetworkErrorKind.SERVER_ERROR] instead of telling the user to check their own connection.
+   *
+   * [org.armman.supervisor.data.beneficiarydatadownload.UnwiredDownloadCaseException] (a deliberate
+   * client-side wiring bug, not a network/backend failure) never reaches here as a [cause] — it
+   * propagates out of [BeneficiaryDataRepository.download] instead of becoming a
+   * [BeneficiaryDataResult.Failure], so it crashes loudly rather than being classified at all. */
   private fun classifyFailure(cause: Throwable): NetworkErrorKind =
     if (cause is UnknownHostException || !connectivityChecker.isOnline()) {
       NetworkErrorKind.OFFLINE

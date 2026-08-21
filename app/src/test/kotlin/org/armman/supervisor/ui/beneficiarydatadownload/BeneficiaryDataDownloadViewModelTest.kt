@@ -1,5 +1,6 @@
 package org.armman.supervisor.ui.beneficiarydatadownload
 
+import java.net.UnknownHostException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -12,6 +13,7 @@ import org.armman.supervisor.data.connectivity.ConnectivityChecker
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -119,20 +121,54 @@ class BeneficiaryDataDownloadViewModelTest {
   }
 
   @Test
-  fun `network failure mid-chain shows the network error dialog and halts further calls`() {
+  fun `a generic failure mid-chain is classified as SERVER_ERROR and halts further calls`() {
     repository.enqueue(BeneficiaryDataResult.Success(1))
-    repository.enqueue(BeneficiaryDataResult.Failure(RuntimeException("no network")))
+    repository.enqueue(BeneficiaryDataResult.Failure(RuntimeException("HTTP 502")))
     val viewModel = createViewModel()
     dispatcher.scheduler.advanceUntilIdle()
 
     assertTrue(viewModel.content().showNetworkErrorDialog)
+    assertEquals(NetworkErrorKind.SERVER_ERROR, viewModel.content().networkErrorKind)
     assertFalse(viewModel.content().showCompletionDialog)
     assertEquals(2, repository.calls.size)
   }
 
   @Test
+  fun `an UnknownHostException failure mid-chain is classified as OFFLINE`() {
+    repository.enqueue(BeneficiaryDataResult.Failure(UnknownHostException("no route to host")))
+    val viewModel = createViewModel()
+    dispatcher.scheduler.advanceUntilIdle()
+
+    assertTrue(viewModel.content().showNetworkErrorDialog)
+    assertEquals(NetworkErrorKind.OFFLINE, viewModel.content().networkErrorKind)
+  }
+
+  @Test
+  fun `a mid-chain failure with a generic cause is classified as OFFLINE if the device is offline by then`() {
+    // A deferred first row lets the test flip `online` to false after startDownload()'s upfront
+    // isOnline() check (which ran while still online, so it doesn't short-circuit the chain) but
+    // before the failing second row resolves — isolating classifyFailure's own isOnline() check
+    // from that unrelated upfront early-return.
+    val firstRowDownload = CompletableDeferred<BeneficiaryDataResult>()
+    val repository = object : BeneficiaryDataRepository {
+      var callCount = 0
+      override fun startSession() = Unit
+      override suspend fun download(entity: BeneficiaryDataEntity): BeneficiaryDataResult =
+        if (++callCount == 1) firstRowDownload.await() else BeneficiaryDataResult.Failure(RuntimeException("connection reset"))
+    }
+    val viewModel = BeneficiaryDataDownloadViewModel(repository, connectivityChecker)
+    dispatcher.scheduler.advanceUntilIdle()
+    connectivityChecker.online = false
+    firstRowDownload.complete(BeneficiaryDataResult.Success(1))
+    dispatcher.scheduler.advanceUntilIdle()
+
+    assertTrue(viewModel.content().showNetworkErrorDialog)
+    assertEquals(NetworkErrorKind.OFFLINE, viewModel.content().networkErrorKind)
+  }
+
+  @Test
   fun `retry restarts the whole chain from the first row`() {
-    repository.enqueue(BeneficiaryDataResult.Failure(RuntimeException("no network")))
+    repository.enqueue(BeneficiaryDataResult.Failure(RuntimeException("HTTP 502")))
     val viewModel = createViewModel()
     dispatcher.scheduler.advanceUntilIdle()
     assertTrue(viewModel.content().showNetworkErrorDialog)
@@ -142,6 +178,7 @@ class BeneficiaryDataDownloadViewModelTest {
     dispatcher.scheduler.advanceUntilIdle()
 
     assertFalse(viewModel.content().showNetworkErrorDialog)
+    assertNull(viewModel.content().networkErrorKind)
     assertEquals(BeneficiaryDataEntity.entries.first(), repository.calls.first())
     assertTrue(viewModel.content().showCompletionDialog)
   }
@@ -160,7 +197,7 @@ class BeneficiaryDataDownloadViewModelTest {
 
   @Test
   fun `stop dismisses the network error dialog without resuming`() {
-    repository.enqueue(BeneficiaryDataResult.Failure(RuntimeException("no network")))
+    repository.enqueue(BeneficiaryDataResult.Failure(RuntimeException("HTTP 502")))
     val viewModel = createViewModel()
     dispatcher.scheduler.advanceUntilIdle()
 
@@ -171,12 +208,13 @@ class BeneficiaryDataDownloadViewModelTest {
   }
 
   @Test
-  fun `no network at start shows the network error dialog immediately`() {
+  fun `no network at start shows the network error dialog immediately as OFFLINE`() {
     connectivityChecker.online = false
     val viewModel = createViewModel()
     dispatcher.scheduler.advanceUntilIdle()
 
     assertTrue(viewModel.content().showNetworkErrorDialog)
+    assertEquals(NetworkErrorKind.OFFLINE, viewModel.content().networkErrorKind)
     assertTrue(repository.calls.isEmpty())
   }
 
