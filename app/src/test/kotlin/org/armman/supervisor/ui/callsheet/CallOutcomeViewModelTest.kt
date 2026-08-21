@@ -72,6 +72,22 @@ class CallOutcomeViewModelTest {
         followUpAction = submission.followUpAction,
       )
     }
+
+    override suspend fun getDueVisits(sakhiId: String): List<DueVisitItem> = error("not used")
+
+    override suspend fun getVisitsExpiringSoon(sakhiId: String): List<DueVisitItem> = error("not used")
+
+    override suspend fun getMissedVisits(sakhiId: String): List<DueVisitItem> = error("not used")
+
+    override suspend fun getFollowupPending(sakhiId: String): List<FollowupPendingItem> = error("not used")
+
+    override suspend fun getClosurePending(sakhiId: String): List<ClosurePendingItem> = error("not used")
+
+    override suspend fun getHighRisk(sakhiId: String, type: HighRiskType): List<HighRiskItem> = error("not used")
+
+    override suspend fun getLastSyncReason(sakhiId: String): SyncReasonItem? = error("not used")
+
+    override suspend fun submitReason(submission: ReasonSubmission) = error("not used")
   }
 
   private fun savedStateHandle() = SavedStateHandle(mapOf(Routes.CALL_SHEET_SAKHI_ID_ARG to "sakhi-1"))

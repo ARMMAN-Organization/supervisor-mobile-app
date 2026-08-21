@@ -1,10 +1,13 @@
 package org.armman.supervisor.data.callsheet
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import org.armman.supervisor.data.calllog.CallLogApi
 import org.armman.supervisor.data.calllog.CallLogDto
+import org.armman.supervisor.data.calllog.CallSheetStatsDto
 import org.armman.supervisor.data.calllog.CreateCallLogRequestDto
+import org.armman.supervisor.data.calllog.UpdateCallLogRequestDto
 import org.armman.supervisor.data.projects.ProjectsRepository
 import org.armman.supervisor.model.LocationOption
 import org.armman.supervisor.ui.assignitem.SakhiOption
@@ -16,9 +19,18 @@ import org.armman.supervisor.ui.callsheet.CallSheetRepository
 import org.armman.supervisor.ui.callsheet.CallSheetStatKind
 import org.armman.supervisor.ui.callsheet.CallSheetStatValue
 import org.armman.supervisor.ui.callsheet.CallSheetStats
+import org.armman.supervisor.ui.callsheet.ClosurePendingItem
+import org.armman.supervisor.ui.callsheet.DueVisitItem
 import org.armman.supervisor.ui.callsheet.FailureReason
+import org.armman.supervisor.ui.callsheet.FollowupPendingItem
+import org.armman.supervisor.ui.callsheet.HighRiskItem
+import org.armman.supervisor.ui.callsheet.HighRiskType
+import org.armman.supervisor.ui.callsheet.ReasonContext
+import org.armman.supervisor.ui.callsheet.ReasonSubmission
+import org.armman.supervisor.ui.callsheet.RegistrationType
 import org.armman.supervisor.ui.callsheet.SakhiCallSummary
 import org.armman.supervisor.ui.callsheet.SuccessOutcome
+import org.armman.supervisor.ui.callsheet.SyncReasonItem
 import java.text.SimpleDateFormat
 import java.time.Instant
 import java.util.Date
@@ -44,39 +56,56 @@ private const val SECONDS_PER_MINUTE = 60
 
 /**
  * Concrete [CallSheetRepository]. Locations and Sakhis come from the real auth-service roster via
- * [ProjectsRepository] (shared with Dashboard/Assign Item). Per-Sakhi stats (visits due, risk
- * counts, etc.) remain placeholder data — no dashboard/call-sheet-stats endpoint exists yet; only
- * [getSakhiSummaries]'s stats lookup changes when one ships. Call logs are read/written through
- * [CallLogApi] (supervisor-operations-service); the backend models a single flat `callStatus`
- * enum where this app models two ([CallConnected] + [SuccessOutcome] or [FailureReason]) — see
- * [toEntry]/[toCreateRequest] for the mapping.
+ * [ProjectsRepository] (shared with Dashboard/Assign Item). Per-Sakhi stats come from
+ * `GET /call-sheet-stats` (supervisor-operations-service); a sakhiId the caller can't access is
+ * silently omitted by the backend rather than erroring, so it falls back to [emptyStats] here too.
+ * Drill-down lists/reason-submission remain placeholder data — no backend endpoint exists yet for
+ * any of these; swap for a real API call when one ships, matching [getSakhiSummaries]. Call logs
+ * are read/written through [CallLogApi] (supervisor-operations-service); the backend models a
+ * single flat `callStatus` enum where this app models two ([CallConnected] + [SuccessOutcome] or
+ * [FailureReason]) — see [toEntry]/[toCreateRequest] for the mapping.
  */
 class CallSheetRepositoryImpl @Inject constructor(
   private val projectsRepository: ProjectsRepository,
   private val callLogApi: CallLogApi,
 ) : CallSheetRepository {
 
-  private fun sampleStats(
-    visitDue: Int = 0,
-    visitThreeDaysToExpire: Int = 0,
-    followupPending: Int = 0,
-    closureFormPending: Int = 0,
-    missedVisit: Int = 0,
-    highRiskAnc: Int = 0,
-    highRiskPnc: Int = 0,
-    lastDataSyncDate: String = todayDisplayDate(),
-  ) = CallSheetStats(
-    rows = listOf(
-      CallSheetStatValue(CallSheetStatKind.VISIT_DUE, updated = 0, count = visitDue),
-      CallSheetStatValue(CallSheetStatKind.VISIT_3_DAYS_TO_EXPIRE, updated = 0, count = visitThreeDaysToExpire),
-      CallSheetStatValue(CallSheetStatKind.FOLLOWUP_PENDING, updated = 0, count = followupPending),
-      CallSheetStatValue(CallSheetStatKind.CLOSURE_FORM_PENDING, updated = 0, count = closureFormPending),
-      CallSheetStatValue(CallSheetStatKind.MISSED_VISIT, updated = 0, count = missedVisit),
-      CallSheetStatValue(CallSheetStatKind.HIGH_RISK_ANC, updated = 0, count = highRiskAnc),
-      CallSheetStatValue(CallSheetStatKind.HIGH_RISK_PNC, updated = 0, count = highRiskPnc),
-    ),
+  private fun emptyStats(lastDataSyncDate: String = todayDisplayDate()) = CallSheetStats(
+    rows = CallSheetStatKind.entries.map { CallSheetStatValue(it, updated = 0, count = 0) },
     lastDataSyncDate = lastDataSyncDate,
   )
+
+  private fun CallSheetStatsDto.toDomain(): CallSheetStats {
+    val rowsByKind = rows.associateBy { it.kind }
+    return CallSheetStats(
+      rows = CallSheetStatKind.entries.map { kind ->
+        val row = rowsByKind[kind.name]
+        CallSheetStatValue(kind, updated = row?.updated ?: 0, count = row?.count ?: 0)
+      },
+      lastDataSyncDate = lastDataSyncDate,
+    )
+  }
+
+  /**
+   * A failed/errored stats fetch degrades to an empty map (every Sakhi falls back to
+   * [emptyStats] in [getSakhiSummaries]) rather than throwing — unlike every other fetch in this
+   * file. Stats are one column of the Call Sheet list; the rest of the screen (names, call
+   * buttons, last-called timestamps) has nothing to do with `GET /call-sheet-stats` and a brief
+   * backend outage on that one endpoint shouldn't blank out the whole list.
+   */
+  private suspend fun fetchStatsBySakhiId(sakhiIds: List<String>): Map<String, CallSheetStats> {
+    if (sakhiIds.isEmpty()) return emptyMap()
+    return runCatching {
+      val response = callLogApi.getCallSheetStatsBatch(sakhiIds.joinToString(","))
+      if (!response.isSuccessful) error("Failed to load call-sheet stats: HTTP ${response.code()}")
+      val body = response.body() ?: error("Empty call-sheet stats response")
+      if (!body.success) error(body.message ?: "Failed to load call-sheet stats")
+      body.data.orEmpty().associateBy({ it.sakhiId }, { it.toDomain() })
+    }.getOrElse { cause ->
+      if (cause is CancellationException) throw cause
+      emptyMap()
+    }
+  }
 
   override suspend fun getLocations(): List<LocationOption> = projectsRepository.getProjects()
 
@@ -84,9 +113,14 @@ class CallSheetRepositoryImpl @Inject constructor(
     if (locationId == null) return emptyList()
     val sakhis = projectsRepository.getSakhis(locationId)
     return coroutineScope {
+      val statsBySakhiId = async { fetchStatsBySakhiId(sakhis.map { it.id }) }
       sakhis.map { sakhi -> sakhi to async { fetchCallHistory(sakhi.id) } }
         .map { (sakhi, history) ->
-          SakhiCallSummary(sakhi = sakhi, stats = sampleStats(), lastCalledAtEpochMillis = history.await().firstOrNull()?.timestampEpochMillis)
+          SakhiCallSummary(
+            sakhi = sakhi,
+            stats = statsBySakhiId.await()[sakhi.id] ?: emptyStats(),
+            lastCalledAtEpochMillis = history.await().firstOrNull()?.timestampEpochMillis,
+          )
         }
     }
   }
@@ -154,4 +188,144 @@ class CallSheetRepositoryImpl @Inject constructor(
   }
 
   private fun todayDisplayDate(): String = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).format(Date())
+
+  private fun displayDate(epochMillis: Long): String =
+    SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).format(Date(epochMillis))
+
+  // --- Call Sheet drill-downs: placeholder data — no backend endpoint exists yet for any of
+  // these (see class doc). Each mock row is keyed off [sakhiId] only so the UI is fully
+  // navigable/demoable; swap for a real API call when one ships, matching [getSakhiSummaries].
+
+  override suspend fun getDueVisits(sakhiId: String): List<DueVisitItem> = listOf(
+    DueVisitItem(
+      beneficiaryId = "$sakhiId-due-1",
+      beneficiaryName = "Sushma T Test",
+      villageName = "SushilTest",
+      uniqueId = "test4test_taluka1test_phc031W51",
+      registrationType = RegistrationType.WOMEN,
+      visit = "ANC2.1",
+      scheduledDate = "19-08-2026",
+      balancedDays = 10,
+      risk = "Hypertension",
+    ),
+  )
+
+  override suspend fun getVisitsExpiringSoon(sakhiId: String): List<DueVisitItem> = emptyList()
+
+  override suspend fun getMissedVisits(sakhiId: String): List<DueVisitItem> = emptyList()
+
+  /**
+   * The backend's own Followup Pending definition (`countPendingFollowups`) only checks that the
+   * Sakhi's single most recent call is CALL_BACK — it does not know about [submitReason] and never
+   * excludes a call once a reason has been recorded against it. This list adds that missing
+   * exclusion on the app side (a call with [CallLogEntry.followUpAction] already set is treated as
+   * actioned, not pending) so a submitted item disappears here; the stats card's count can still
+   * disagree with an empty list until the backend adopts the same check. [fetchCallHistory]
+   * already returns newest-first.
+   */
+  override suspend fun getFollowupPending(sakhiId: String): List<FollowupPendingItem> {
+    val latest = fetchCallHistory(sakhiId).firstOrNull() ?: return emptyList()
+    if (latest.successOutcome != SuccessOutcome.CALL_BACK) return emptyList()
+    if (!latest.followUpAction.isNullOrBlank()) return emptyList()
+    return listOf(
+      FollowupPendingItem(
+        callLogId = latest.id,
+        callDate = displayDate(latest.timestampEpochMillis),
+        notes = latest.notes,
+      ),
+    )
+  }
+
+  override suspend fun getClosurePending(sakhiId: String): List<ClosurePendingItem> = listOf(
+    ClosurePendingItem(
+      beneficiaryId = "$sakhiId-closure-1",
+      beneficiaryName = "Child 1 K Salvi",
+      villageName = "SushilTest",
+      uniqueId = "test4test_taluka1test_phc031I53",
+      registrationType = RegistrationType.CHILD,
+      registrationDate = "06-08-2026",
+      dateOfBirth = "11-08-2025",
+      risk = "Managed",
+      overdueDays = 3,
+    ),
+    ClosurePendingItem(
+      beneficiaryId = "$sakhiId-closure-2",
+      beneficiaryName = "Child 1 K Salvi",
+      villageName = "SushilTest",
+      uniqueId = "test4test_taluka1test_phc031I54",
+      registrationType = RegistrationType.CHILD,
+      registrationDate = "06-08-2026",
+      dateOfBirth = "11-08-2025",
+      risk = "Managed",
+      overdueDays = 3,
+    ),
+  )
+
+  override suspend fun getHighRisk(sakhiId: String, type: HighRiskType): List<HighRiskItem> = when (type) {
+    HighRiskType.ANC -> listOf(
+      HighRiskItem(
+        beneficiaryId = "$sakhiId-anc-1",
+        beneficiaryName = "Sushma T Test",
+        villageName = "SushilTest",
+        uniqueId = "test4test_taluka1test_phc031W51",
+        riskName = "Hypertension",
+      ),
+      HighRiskItem(
+        beneficiaryId = "$sakhiId-anc-2",
+        beneficiaryName = "Test t test",
+        villageName = "SushilTest",
+        uniqueId = "test4test_taluka1test_phc031W53",
+        riskName = "Age",
+      ),
+    )
+    HighRiskType.PNC -> emptyList()
+  }
+
+  override suspend fun getLastSyncReason(sakhiId: String): SyncReasonItem? =
+    SyncReasonItem(syncDate = "10-08-2026", reason = "Forgot to sync")
+
+  /**
+   * Only [ReasonContext.FOLLOWUP_PENDING] persists for real today, via `PATCH /call-logs/:id`
+   * (the only real write path this drill-down family has — see [FollowupPendingItem.callLogId]).
+   * Closure Pending and Last Sync remain no-ops: neither has a backend record to attach a reason
+   * to yet (no closure-form-pending or sync-failure data model exists — see class doc).
+   */
+  override suspend fun submitReason(submission: ReasonSubmission) {
+    require(submission.reasonCode.isNotBlank()) { "reasonCode must not be blank" }
+    when (submission.context) {
+      ReasonContext.FOLLOWUP_PENDING -> {
+        val callLogId = requireNotNull(submission.itemId) { "itemId (callLogId) is required for FOLLOWUP_PENDING" }
+        val response = callLogApi.updateCallLog(
+          callLogId,
+          UpdateCallLogRequestDto(
+            followupAction = submission.reasonCode,
+            notes = mergedNotes(submission, callLogId),
+          ),
+        )
+        if (!response.isSuccessful) error("Failed to submit reason: HTTP ${response.code()}")
+        val body = response.body() ?: error("Empty submit-reason response")
+        if (!body.success) error(body.message ?: "Failed to submit reason")
+      }
+      ReasonContext.CLOSURE_PENDING, ReasonContext.LAST_SYNC -> {
+        // No-op placeholder — no backend endpoint exists yet to persist this submission.
+      }
+    }
+  }
+
+  /**
+   * The PATCH's `notes` field replaces the call log's existing notes rather than appending
+   * ([UpdateCallLogRequestDto] doc comment — "only send what changed"). A blank remark should
+   * leave the existing notes untouched (return `null`, so the field isn't sent at all); a non-blank
+   * remark must be combined with whatever notes the call already has, or recording a Followup
+   * Pending reason would silently erase the original call's notes. [submission.sakhiId] is
+   * expected to be present for [ReasonContext.FOLLOWUP_PENDING] (see [Routes.callSheetAddReason]'s
+   * caller in `AppNavHost`); falling back to `null` there would just mean an empty existing-notes
+   * lookup, not a crash.
+   */
+  private suspend fun mergedNotes(submission: ReasonSubmission, callLogId: String): String? {
+    val remark = submission.remark?.takeIf { it.isNotBlank() } ?: return null
+    val sakhiId = submission.sakhiId ?: return remark
+    val existingNotes = fetchCallHistory(sakhiId).firstOrNull { it.id == callLogId }?.notes?.takeIf { it.isNotBlank() }
+    return if (existingNotes == null) remark else "$existingNotes\n$remark"
+  }
 }
