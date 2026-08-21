@@ -385,11 +385,12 @@ fun AppNavHost() {
     composable(
       Routes.FOLLOWUP_PENDING,
       arguments = listOf(navArgument(Routes.CALL_SHEET_SAKHI_ID_ARG) { type = NavType.StringType }),
-    ) {
+    ) { backStackEntry ->
+      val sakhiId = backStackEntry.arguments?.getString(Routes.CALL_SHEET_SAKHI_ID_ARG).orEmpty()
       FollowupPendingScreen(
         onBack = { navController.popBackStack() },
         onAddReason = { itemId ->
-          navController.navigate(Routes.callSheetAddReason(ReasonContext.FOLLOWUP_PENDING, itemId = itemId))
+          navController.navigate(Routes.callSheetAddReason(ReasonContext.FOLLOWUP_PENDING, sakhiId = sakhiId, itemId = itemId))
         },
       )
     }

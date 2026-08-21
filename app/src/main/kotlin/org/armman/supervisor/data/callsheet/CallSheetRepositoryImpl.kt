@@ -284,7 +284,10 @@ class CallSheetRepositoryImpl @Inject constructor(
         val callLogId = requireNotNull(submission.itemId) { "itemId (callLogId) is required for FOLLOWUP_PENDING" }
         val response = callLogApi.updateCallLog(
           callLogId,
-          UpdateCallLogRequestDto(followupAction = submission.reasonCode, notes = submission.remark),
+          UpdateCallLogRequestDto(
+            followupAction = submission.reasonCode,
+            notes = mergedNotes(submission, callLogId),
+          ),
         )
         if (!response.isSuccessful) error("Failed to submit reason: HTTP ${response.code()}")
         val body = response.body() ?: error("Empty submit-reason response")
@@ -294,5 +297,22 @@ class CallSheetRepositoryImpl @Inject constructor(
         // No-op placeholder — no backend endpoint exists yet to persist this submission.
       }
     }
+  }
+
+  /**
+   * The PATCH's `notes` field replaces the call log's existing notes rather than appending
+   * ([UpdateCallLogRequestDto] doc comment — "only send what changed"). A blank remark should
+   * leave the existing notes untouched (return `null`, so the field isn't sent at all); a non-blank
+   * remark must be combined with whatever notes the call already has, or recording a Followup
+   * Pending reason would silently erase the original call's notes. [submission.sakhiId] is
+   * expected to be present for [ReasonContext.FOLLOWUP_PENDING] (see [Routes.callSheetAddReason]'s
+   * caller in `AppNavHost`); falling back to `null` there would just mean an empty existing-notes
+   * lookup, not a crash.
+   */
+  private suspend fun mergedNotes(submission: ReasonSubmission, callLogId: String): String? {
+    val remark = submission.remark?.takeIf { it.isNotBlank() } ?: return null
+    val sakhiId = submission.sakhiId ?: return remark
+    val existingNotes = fetchCallHistory(sakhiId).firstOrNull { it.id == callLogId }?.notes?.takeIf { it.isNotBlank() }
+    return if (existingNotes == null) remark else "$existingNotes\n$remark"
   }
 }

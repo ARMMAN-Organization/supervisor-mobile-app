@@ -512,7 +512,7 @@ class CallSheetRepositoryImplTest {
       ReasonSubmission(
         context = ReasonContext.FOLLOWUP_PENDING,
         itemId = "call-followup-2",
-        sakhiId = null,
+        sakhiId = "sakhi-1",
         reasonCode = "HOSPITALIZE",
         remark = "Admitted for delivery",
       ),
@@ -521,6 +521,67 @@ class CallSheetRepositoryImplTest {
     val updated = repository.getCallHistory("sakhi-1").single { it.id == "call-followup-2" }
     assertEquals("HOSPITALIZE", updated.followUpAction)
     assertEquals("Admitted for delivery", updated.notes)
+  }
+
+  @Test
+  fun `submitReason for FOLLOWUP_PENDING appends the remark instead of overwriting existing notes`() = runTest {
+    api.seed(
+      CallLogDto(
+        id = "call-followup-notes",
+        sakhiId = "sakhi-1",
+        callStatus = "CALL_BACK",
+        notes = "Discussed referral",
+        followupAction = null,
+        callStartAt = "2026-08-20T07:25:05.803Z",
+        callEndAt = null,
+        callDurationSeconds = null,
+        responder = null,
+      ),
+    )
+
+    repository.submitReason(
+      ReasonSubmission(
+        context = ReasonContext.FOLLOWUP_PENDING,
+        itemId = "call-followup-notes",
+        sakhiId = "sakhi-1",
+        reasonCode = "HOSPITALIZE",
+        remark = "Admitted for delivery",
+      ),
+    )
+
+    val updated = repository.getCallHistory("sakhi-1").single { it.id == "call-followup-notes" }
+    assertEquals("Discussed referral\nAdmitted for delivery", updated.notes)
+  }
+
+  @Test
+  fun `submitReason for FOLLOWUP_PENDING with a blank remark leaves existing notes untouched`() = runTest {
+    api.seed(
+      CallLogDto(
+        id = "call-followup-blank-remark",
+        sakhiId = "sakhi-1",
+        callStatus = "CALL_BACK",
+        notes = "Discussed referral",
+        followupAction = null,
+        callStartAt = "2026-08-20T07:25:05.803Z",
+        callEndAt = null,
+        callDurationSeconds = null,
+        responder = null,
+      ),
+    )
+
+    repository.submitReason(
+      ReasonSubmission(
+        context = ReasonContext.FOLLOWUP_PENDING,
+        itemId = "call-followup-blank-remark",
+        sakhiId = "sakhi-1",
+        reasonCode = "HOSPITALIZE",
+        remark = null,
+      ),
+    )
+
+    val updated = repository.getCallHistory("sakhi-1").single { it.id == "call-followup-blank-remark" }
+    assertEquals("HOSPITALIZE", updated.followUpAction)
+    assertEquals("Discussed referral", updated.notes)
   }
 
   @Test
