@@ -30,7 +30,6 @@ import org.armman.supervisor.ui.meetingtraining.RescheduleMeetingScreen
 import org.armman.supervisor.ui.meetingtraining.ScheduleMeetingScreen
 import org.armman.supervisor.ui.meetingtraining.ScheduleTrainingScreen
 import org.armman.supervisor.ui.monitoringsummary.MonitoringSummaryScreen
-import org.armman.supervisor.ui.quickresponse.AddReasonScreen
 import org.armman.supervisor.ui.quickresponse.QuickResponseScreen
 import org.armman.supervisor.ui.registrations.RegistrationsScreen
 import org.armman.supervisor.ui.risksummary.RiskSummaryScreen
@@ -82,8 +81,6 @@ object Routes {
   const val CALL_HISTORY = "call_history/{$CALL_SHEET_SAKHI_ID_ARG}"
   const val CALL_OUTCOME = "call_outcome/{$CALL_SHEET_SAKHI_ID_ARG}"
   const val QUICK_RESPONSE = "quick_response"
-  const val QUICK_RESPONSE_REQUEST_ID_ARG = "requestId"
-  const val QUICK_RESPONSE_ADD_REASON = "quick_response_add_reason/{$QUICK_RESPONSE_REQUEST_ID_ARG}"
   const val PROFILE = "profile"
   const val SETTINGS = "settings"
   const val BENEFICIARY_DATA_DOWNLOAD = "beneficiary_data_download"
@@ -106,8 +103,6 @@ object Routes {
   fun callHistory(sakhiId: String) = "call_history/$sakhiId"
 
   fun callOutcome(sakhiId: String) = "call_outcome/$sakhiId"
-
-  fun quickResponseAddReason(requestId: String) = "quick_response_add_reason/$requestId"
 
   fun meetingDetail(eventId: String) = "meeting_detail/$eventId"
 
@@ -329,19 +324,7 @@ fun AppNavHost() {
       )
     }
     composable(Routes.QUICK_RESPONSE) {
-      QuickResponseScreen(
-        onBack = { navController.popBackStack() },
-        onRequestSelected = { request -> navController.navigate(Routes.quickResponseAddReason(request.id)) },
-      )
-    }
-    composable(
-      Routes.QUICK_RESPONSE_ADD_REASON,
-      arguments = listOf(navArgument(Routes.QUICK_RESPONSE_REQUEST_ID_ARG) { type = NavType.StringType }),
-    ) {
-      AddReasonScreen(
-        onBack = { navController.popBackStack() },
-        onSubmitted = { navController.popBackStack() },
-      )
+      QuickResponseScreen(onBack = { navController.popBackStack() })
     }
     composable(Routes.PROFILE) {
       PlaceholderStub(navController, R.string.profile_title)
