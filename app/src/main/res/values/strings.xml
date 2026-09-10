@@ -485,6 +485,10 @@
   <string name="cd_hide_password">Hide password</string>
   <!-- Download Master Data screen -->
   <string name="master_data_download_title">Download Master Data</string>
+  <!-- Overall progress label above the row list, e.g. "3 of 12 downloaded". -->
+  <string name="master_data_download_progress">%1$d of %2$d downloaded</string>
+  <!-- Accessibility label for the overall progress bar, e.g. "Download progress: 3 of 12 complete". -->
+  <string name="master_data_download_progress_content_description">Download progress: %1$d of %2$d complete</string>
   <!-- Accessibility label for a row, combining its table name and current status, e.g. "Block: Completed". -->
   <string name="master_data_row_content_description">%1$s: %2$s</string>
   <string name="master_data_status_pending">PENDING</string>
@@ -535,6 +539,10 @@
   <string name="master_data_application_parameter">Application Parameter</string>
   <!-- Download Beneficiary Data screen -->
   <string name="beneficiary_data_download_title">Download Beneficiary Data</string>
+  <!-- Overall progress label above the row list, e.g. "3 of 8 downloaded". -->
+  <string name="beneficiary_data_download_progress">%1$d of %2$d downloaded</string>
+  <!-- Accessibility label for the overall progress bar, e.g. "Download progress: 3 of 8 complete". -->
+  <string name="beneficiary_data_download_progress_content_description">Download progress: %1$d of %2$d complete</string>
   <!-- Accessibility label for a row, combining its table name and current status, e.g. "Beneficiaries List: Completed". -->
   <string name="beneficiary_data_download_row_content_description">%1$s: %2$s</string>
   <string name="beneficiary_data_download_status_pending">PENDING</string>

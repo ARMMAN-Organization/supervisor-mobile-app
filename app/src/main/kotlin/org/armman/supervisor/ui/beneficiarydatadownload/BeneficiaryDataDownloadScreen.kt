@@ -36,6 +36,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.armman.supervisor.R
 import org.armman.supervisor.ui.components.BrandTopAppBar
+import org.armman.supervisor.ui.components.DownloadProgressHeader
 import org.armman.supervisor.ui.theme.Dimens
 import org.armman.supervisor.ui.theme.MasterDataCompleted
 import org.armman.supervisor.ui.theme.MasterDataDownloading
@@ -99,18 +100,39 @@ private fun ContentScreen(
       modifier = Modifier.fillMaxSize().background(NeutralG10).padding(innerPadding),
     ) {
       val isTablet = maxWidth >= Dimens.TabletMinWidthDp.dp
+      val doneCount = state.rows.count {
+        it.status != BeneficiaryDataRowStatus.PENDING && it.status != BeneficiaryDataRowStatus.DOWNLOADING
+      }
 
-      LazyColumn(
-        state = listState,
+      Column(
         modifier = Modifier
           .align(Alignment.TopCenter)
           .widthIn(max = if (isTablet) Dimens.ContentMaxWidthTablet else Dp.Unspecified)
-          .fillMaxSize()
-          .padding(Dimens.ScreenPadding),
-        verticalArrangement = Arrangement.spacedBy(Dimens.SmallSpacing),
+          .fillMaxSize(),
       ) {
-        itemsIndexed(state.rows, key = { _, row -> row.entity.name }) { index, row ->
-          BeneficiaryDataRowView(row = row, isActive = index == state.activeIndex)
+        DownloadProgressHeader(
+          doneCount = doneCount,
+          totalCount = state.rows.size,
+          progressText = stringResource(R.string.beneficiary_data_download_progress, doneCount, state.rows.size),
+          progressContentDescription = stringResource(
+            R.string.beneficiary_data_download_progress_content_description,
+            doneCount,
+            state.rows.size,
+          ),
+          progressColor = MasterDataDownloading,
+          progressTrackColor = MasterDataDownloadingTrack,
+        )
+        LazyColumn(
+          state = listState,
+          // weight(1f), not fillMaxSize(): as an unweighted Column child this LazyColumn would be
+          // measured against the full incoming height in addition to the header's own height
+          // above it, overflowing the screen by roughly the header's height.
+          modifier = Modifier.weight(1f).padding(Dimens.ScreenPadding),
+          verticalArrangement = Arrangement.spacedBy(Dimens.SmallSpacing),
+        ) {
+          itemsIndexed(state.rows, key = { _, row -> row.entity.name }) { index, row ->
+            BeneficiaryDataRowView(row = row, isActive = index == state.activeIndex)
+          }
         }
       }
     }
@@ -193,8 +215,11 @@ private fun statusLabelAndColor(status: BeneficiaryDataRowStatus): Pair<String, 
       stringResource(R.string.beneficiary_data_download_status_completed) to MasterDataCompleted
     BeneficiaryDataRowStatus.EMPTY ->
       stringResource(R.string.beneficiary_data_download_status_empty) to MasterDataEmpty
+    // Distinct from the other "settled" states above: this row never downloaded at all, so it
+    // renders in the same error color used elsewhere in this screen (e.g. the Quit confirm
+    // button) instead of the neutral gray used for body text.
     BeneficiaryDataRowStatus.NOT_AVAILABLE ->
-      stringResource(R.string.beneficiary_data_download_status_not_available) to NeutralG200
+      stringResource(R.string.beneficiary_data_download_status_not_available) to RiskHigh
   }
 
 @Composable
