@@ -57,13 +57,12 @@ class ProjectsRepositoryImpl @Inject constructor(
   override suspend fun getSakhiProjectId(sakhiId: String): String = findSakhi(sakhiId).primaryProjectId
 
   override suspend fun getMySakhiIds(projectId: String, supervisorUserId: String): Set<String> {
-    val response = api.getSakhis(projectId)
-    if (!response.isSuccessful) error("Failed to load Sakhis: HTTP ${response.code()}")
-    val body = response.body() ?: error("Empty Sakhis response")
-    if (!body.success) error(body.message ?: "Failed to load Sakhis")
-    val sakhis = body.data.orEmpty()
-    sakhis.forEach { sakhisBySakhiId[it.sakhiId] = it }
-    return sakhis.filter { it.supervisorId == supervisorUserId }.map { it.sakhiId }.toSet()
+    // getSakhis does the actual fetch/validate/cache — its return type (List<SakhiOption>)
+    // doesn't carry supervisorId, but it populates sakhisBySakhiId with the full SakhiDto as a
+    // side effect, so this Sakhi-scoping filter reads that cache afterward instead of
+    // re-implementing the fetch.
+    val sakhiIds = getSakhis(projectId).map { it.id }
+    return sakhiIds.filterTo(mutableSetOf()) { sakhisBySakhiId[it]?.supervisorId == supervisorUserId }
   }
 
   override fun clearCache() {

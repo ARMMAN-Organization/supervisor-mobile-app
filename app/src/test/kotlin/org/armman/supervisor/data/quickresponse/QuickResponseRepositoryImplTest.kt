@@ -959,10 +959,20 @@ class QuickResponseRepositoryImplTest {
     assertEquals("card-good", requests[0].id)
   }
 
-  @Test
-  fun `getRequests returns an empty list, not an error, when the batch call itself fails`() = runTest {
+  @Test(expected = IllegalStateException::class)
+  fun `getRequests propagates a failure of the batch call itself, rather than returning an empty list`() = runTest {
     api.listResult = Response.success(listOf1("card-1", "REOPEN"))
     api.failBatchDetailsCall = true
+
+    repository.getRequests()
+  }
+
+  @Test
+  fun `getRequests returns an empty list when the batch call succeeds with no cards`() = runTest {
+    api.listResult = Response.success(listOf1("card-1", "REOPEN"))
+    api.batchDetailsResult = Response.success(
+      QuickResponseBatchDetailEnvelopeDto(success = true, message = "OK", data = emptyList()),
+    )
 
     val requests = repository.getRequests()
 

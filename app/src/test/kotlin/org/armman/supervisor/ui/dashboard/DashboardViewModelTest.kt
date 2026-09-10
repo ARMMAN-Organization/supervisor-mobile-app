@@ -313,6 +313,37 @@ class DashboardViewModelTest {
   }
 
   @Test
+  fun `a poll tick for a since-abandoned location does not overwrite a location switch that completed first`() =
+    runTest(dispatcher) {
+      val repo = TestRepository(delaysMs = mapOf("loc-1" to 20_000L), dataFactory = ::sampleData)
+      val viewModel = DashboardViewModel(repo)
+      dispatcher.scheduler.advanceUntilIdle()
+
+      // Poll tick fires for "loc-1" and starts its slow (20s) getDashboard call.
+      viewModel.startPolling()
+      dispatcher.scheduler.advanceTimeBy(15_000L)
+      dispatcher.scheduler.runCurrent()
+
+      // Before that poll resolves, the user switches to "loc-2" (fast, no delay) and it completes.
+      // A bounded advance, not advanceUntilIdle() — the polling job's infinite while(true) loop
+      // always has a next tick scheduled, so advanceUntilIdle() would never return while it's active.
+      viewModel.onLocationSelected("loc-2")
+      dispatcher.scheduler.advanceTimeBy(1_000L)
+      dispatcher.scheduler.runCurrent()
+      val afterSwitch = viewModel.uiState.value as DashboardUiState.Success
+      assertEquals("loc-2", afterSwitch.selectedLocationId)
+
+      // The stale "loc-1" poll tick now resolves — it must not clobber the "loc-2" state.
+      dispatcher.scheduler.advanceTimeBy(5_000L)
+      dispatcher.scheduler.runCurrent()
+
+      val finalState = viewModel.uiState.value as DashboardUiState.Success
+      assertEquals("loc-2", finalState.selectedLocationId)
+      assertEquals(sampleData("loc-2"), finalState.data)
+      viewModel.stopPolling()
+    }
+
+  @Test
   fun `calling startPolling twice does not start a second overlapping loop`() = runTest(dispatcher) {
     val repo = TestRepository(dataFactory = ::sampleData)
     val viewModel = DashboardViewModel(repo)

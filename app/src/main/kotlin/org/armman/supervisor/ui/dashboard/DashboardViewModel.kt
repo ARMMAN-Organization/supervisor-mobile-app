@@ -1,5 +1,6 @@
 package org.armman.supervisor.ui.dashboard
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -17,6 +18,7 @@ import org.armman.supervisor.model.LocationOption
 import javax.inject.Inject
 
 private const val POLL_INTERVAL_MILLIS = 15_000L
+private const val LOG_TAG = "DashboardViewModel"
 
 /** UI state for the Supervisor Dashboard — covers loading, error and success (with a live-refresh flag). */
 sealed interface DashboardUiState {
@@ -74,11 +76,18 @@ class DashboardViewModel @Inject constructor(
         val current = _uiState.value as? DashboardUiState.Success ?: continue
         runCatching { repository.getDashboard(current.selectedLocationId) }
           .onSuccess { data ->
-            _uiState.value = current.copy(data = data)
+            // The location selector (or another fetch) may have moved on while this poll's
+            // suspending call was in flight — re-check against the *live* state rather than
+            // `current` (captured before the call) so a stale result for the old location can't
+            // clobber a location switch that already completed.
+            val latest = _uiState.value as? DashboardUiState.Success ?: return@onSuccess
+            if (latest.selectedLocationId != current.selectedLocationId) return@onSuccess
+            _uiState.value = latest.copy(data = data)
             repeat(data.newlyDetectedNotifications.size) { _newNotificationEvents.tryEmit(Unit) }
           }
-        // A failed poll tick is silently ignored — the existing dashboard state is left as-is
-        // rather than surfacing an error for a background refresh the user didn't initiate.
+          .onFailure { Log.w(LOG_TAG, "Dashboard poll tick failed", it) }
+        // A failed poll tick surfaces only in logs — the existing dashboard state is left as-is
+        // rather than showing an error for a background refresh the user didn't initiate.
       }
     }
   }

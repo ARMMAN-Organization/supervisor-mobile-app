@@ -1,5 +1,6 @@
 package org.armman.supervisor.data.notifications
 
+import android.util.Log
 import org.armman.supervisor.ui.notifications.AppNotification
 import org.armman.supervisor.ui.notifications.NotificationStatus
 import org.armman.supervisor.ui.notifications.NotificationsRepository
@@ -8,6 +9,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 private const val STATUS_READ = "READ"
+private const val LOG_TAG = "NotificationsRepositoryImpl"
 
 /** Backed by notification-escalation-service's Notifications endpoints via [NotificationsApi]. */
 @Singleton
@@ -37,7 +39,9 @@ class NotificationsRepositoryImpl @Inject constructor(
     title = title,
     body = body,
     createdAtEpochMillis = Instant.parse(createdAt).toEpochMilli(),
-    status = runCatching { NotificationStatus.valueOf(status) }.getOrDefault(NotificationStatus.UNREAD),
+    status = runCatching { NotificationStatus.valueOf(status) }
+      .onFailure { Log.w(LOG_TAG, "Notification $id: unrecognized status \"$status\", defaulting to UNREAD") }
+      .getOrDefault(NotificationStatus.UNREAD),
     notificationType = notificationType,
     linkedEntityType = linkedEntityType,
     linkedEntityId = linkedEntityId,

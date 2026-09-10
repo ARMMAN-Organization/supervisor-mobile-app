@@ -165,4 +165,16 @@ class ProjectsRepositoryImplTest {
 
     repository.getMySakhiIds("proj-1", "sup-1")
   }
+
+  @Test
+  fun `getMySakhiIds populates the same roster cache as getSakhis, so a later lookup for that project does not re-fetch`() =
+    runTest {
+      repository.getMySakhiIds("proj-1", "sup-1")
+      val callsAfterMySakhiIds = api.getSakhisCallCount
+
+      val detail = repository.getSakhiDetail("sakhi-1")
+
+      assertEquals("Sushil", detail.sakhiName)
+      assertEquals(callsAfterMySakhiIds, api.getSakhisCallCount)
+    }
 }

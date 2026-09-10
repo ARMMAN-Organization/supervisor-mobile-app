@@ -98,7 +98,9 @@ fun QuickResponseRequestCard(
       Column(verticalArrangement = Arrangement.spacedBy(Dimens.ItemSpacing)) {
         request.beneficiaryName?.let { FieldBlock(labelRes = R.string.quick_response_field_beneficiary_name, value = it) }
         request.sakhiName?.let { FieldBlock(labelRes = R.string.quick_response_field_sakhi_name, value = it) }
-        request.sakhiEmployeeCode?.let { FieldBlock(labelRes = R.string.quick_response_field_sakhi_id, value = it) }
+        (request.sakhiEmployeeCode ?: request.sakhiId)?.let {
+          FieldBlock(labelRes = R.string.quick_response_field_sakhi_id, value = it)
+        }
         request.sakhiPhoneNumber?.let { FieldBlock(labelRes = R.string.quick_response_field_sakhi_contact, value = it) }
         request.padaName?.let { FieldBlock(labelRes = R.string.quick_response_field_pada_name, value = it) }
         RiskDetailsBlock(request.riskConditions)

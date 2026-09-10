@@ -1,5 +1,7 @@
 package org.armman.supervisor.data.dashboard
 
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.test.runTest
 import org.armman.supervisor.data.auth.session.FakeSecureKeyValueStore
 import org.armman.supervisor.data.auth.session.SessionStore
@@ -92,6 +94,10 @@ private class FakeNotificationsSeenStore(seenIds: Set<String> = emptySet(), hasR
   }
 
   override fun isFirstRun(): Boolean = !everRun
+
+  override fun markRunStarted() {
+    everRun = true
+  }
 }
 
 class DashboardRepositoryImplTest {
@@ -267,5 +273,58 @@ class DashboardRepositoryImplTest {
     val data = repositoryUpToDate.getDashboard("loc-1")
 
     assertTrue(data.newlyDetectedNotifications.isEmpty())
+  }
+
+  @Test
+  fun `first-ever call with an empty notification list still flips isFirstRun so a later real notification is reported`() =
+    runTest {
+      val seenStore = FakeNotificationsSeenStore()
+      val repositoryFirstLoadEmpty = DashboardRepositoryImpl(
+        projectsRepository,
+        sessionStore,
+        api,
+        FakeNotificationsRepository(emptyList()),
+        seenStore,
+      )
+      repositoryFirstLoadEmpty.getDashboard("loc-1")
+      assertTrue(seenStore.isFirstRun().not())
+
+      val laterNotifications = listOf(
+        AppNotification("n-1", "Title", null, 1_000L, NotificationStatus.UNREAD, "MISSED_VISIT_ESCALATION", null, null),
+      )
+      val repositorySecondLoad = DashboardRepositoryImpl(
+        projectsRepository,
+        sessionStore,
+        api,
+        FakeNotificationsRepository(laterNotifications),
+        seenStore,
+      )
+
+      val data = repositorySecondLoad.getDashboard("loc-1")
+
+      assertEquals(listOf("n-1"), data.newlyDetectedNotifications.map { it.id })
+    }
+
+  @Test
+  fun `two concurrent getDashboard calls for the same new notification report it as newly-detected only once`() = runTest {
+    val notifications = listOf(
+      AppNotification("n-1", "Title", null, 1_000L, NotificationStatus.UNREAD, "MISSED_VISIT_ESCALATION", null, null),
+    )
+    val seenStore = FakeNotificationsSeenStore(hasRunBefore = true)
+    val repositoryConcurrent = DashboardRepositoryImpl(
+      projectsRepository,
+      sessionStore,
+      api,
+      FakeNotificationsRepository(notifications),
+      seenStore,
+    )
+
+    val results = listOf(
+      async { repositoryConcurrent.getDashboard("loc-1") },
+      async { repositoryConcurrent.getDashboard("loc-1") },
+    ).awaitAll()
+
+    val totalReported = results.sumOf { it.newlyDetectedNotifications.size }
+    assertEquals(1, totalReported)
   }
 }

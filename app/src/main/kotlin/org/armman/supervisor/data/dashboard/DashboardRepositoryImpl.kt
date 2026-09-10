@@ -1,5 +1,8 @@
 package org.armman.supervisor.data.dashboard
 
+import android.util.Log
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.armman.supervisor.data.auth.session.SessionStore
 import org.armman.supervisor.data.notifications.NotificationsSeenStore
 import org.armman.supervisor.data.projects.ProjectsRepository
@@ -20,6 +23,7 @@ import javax.inject.Inject
 private const val VISIT_STATUS_PENDING = "PENDING"
 private const val VISIT_STATUS_MISSED = "MISSED"
 private const val VISIT_STATUS_COMPLETED = "COMPLETED"
+private const val LOG_TAG = "DashboardRepositoryImpl"
 
 /**
  * Concrete [DashboardRepository]. The Supervisor's own name comes from the logged-in session,
@@ -39,13 +43,21 @@ class DashboardRepositoryImpl @Inject constructor(
 
   private val dateFormatter = DateTimeFormatter.ofPattern("EEE, d MMMM yyyy", Locale.getDefault())
 
+  // Guards detectAndMarkSeen's read-then-write over notificationsSeenStore: the polling job and
+  // a location-switch/refresh job can both call getDashboard() around the same time, and without
+  // this lock both could read the same notification id as unseen before either commits markSeen,
+  // reporting it as newly-detected twice (a duplicate notification sound for one notification).
+  private val notificationsSeenMutex = Mutex()
+
   override suspend fun getLocations(): List<LocationOption> = projectsRepository.getProjects()
 
   override suspend fun getDashboard(locationId: String?): DashboardData {
     val registrationSummary = fetchRegistrationSummary()
     val riskSummary = fetchRiskSummary()
     val visitSummary = fetchVisitSummary()
-    val notifications = runCatching { notificationsRepository.getNotifications() }.getOrDefault(emptyList())
+    val notifications = runCatching { notificationsRepository.getNotifications() }
+      .onFailure { Log.w(LOG_TAG, "Failed to load notifications", it) }
+      .getOrDefault(emptyList())
     val unreadNotificationCount = notifications.count { it.status == NotificationStatus.UNREAD }
     val newlyDetectedNotifications = detectAndMarkSeen(notifications)
 
@@ -91,13 +103,22 @@ class DashboardRepositoryImpl @Inject constructor(
   /** Which of [notifications] have never been marked seen before, marking each one seen as it's
    * found (so a notification is reported here at most once, ever). On the very first call this
    * store has ever made, the whole backlog is marked seen silently and nothing is reported —
-   * only notifications that arrive after that point are ever treated as "new". */
-  private fun detectAndMarkSeen(notifications: List<AppNotification>): List<AppNotification> {
-    val isFirstRun = notificationsSeenStore.isFirstRun()
-    val newlyDetected = notifications.filter { !notificationsSeenStore.isSeen(it.id) }
-    newlyDetected.forEach { notificationsSeenStore.markSeen(it.id) }
-    return if (isFirstRun) emptyList() else newlyDetected
-  }
+   * only notifications that arrive after that point are ever treated as "new". [notificationsSeenMutex]
+   * serializes the whole read-then-write sequence so two concurrent callers (poll job + a
+   * location-switch/refresh job) can't both read the same id as unseen before either commits
+   * [NotificationsSeenStore.markSeen]. [NotificationsSeenStore.markRunStarted] is called
+   * unconditionally (not only as a side effect of marking an id seen) so a caller whose
+   * [notifications] happens to be empty still flips [NotificationsSeenStore.isFirstRun] to false —
+   * otherwise a user with no notifications for a while would have it stuck true, and their actual
+   * first real notification would be wrongly treated as backlog. */
+  private suspend fun detectAndMarkSeen(notifications: List<AppNotification>): List<AppNotification> =
+    notificationsSeenMutex.withLock {
+      val isFirstRun = notificationsSeenStore.isFirstRun()
+      notificationsSeenStore.markRunStarted()
+      val newlyDetected = notifications.filter { !notificationsSeenStore.isSeen(it.id) }
+      newlyDetected.forEach { notificationsSeenStore.markSeen(it.id) }
+      if (isFirstRun) emptyList() else newlyDetected
+    }
 
   private suspend fun fetchRegistrationSummary(): RegistrationSummaryDto {
     val response = api.getRegistrationSummary()

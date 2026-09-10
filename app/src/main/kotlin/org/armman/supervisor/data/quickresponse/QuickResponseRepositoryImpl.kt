@@ -116,12 +116,19 @@ class QuickResponseRepositoryImpl @Inject constructor(
    * with [QuickResponseCardBatchDetailDto.error] set (backend resolved it independently and that
    * one card's resolution failed — e.g. its beneficiary record wasn't found), is dropped rather
    * than rendered with missing data — mirrors the single-card fallback's "a card with no data
-   * can't render anything meaningful" stance. */
+   * can't render anything meaningful" stance. The batch call itself failing (network exception,
+   * non-2xx, unsuccessful envelope) is a different case and propagates instead of being treated
+   * the same as "the backend legitimately returned zero cards" — otherwise a transient outage
+   * would present as an empty Quick Response list instead of the screen's existing error/retry
+   * state. */
   private suspend fun fetchCardDetails(typeByCardId: Map<String, QuickResponseRequestType>): List<QuickResponseRequest> {
     val response = runCatching { api.getQuickResponseCardDetails(typeByCardId.keys.joinToString(",")) }
       .onFailure { cause -> Log.w(LOG_TAG, "Failed to load Quick Response card details", cause) }
-      .getOrNull()
-    val cards = response?.takeIf { it.isSuccessful }?.body()?.takeIf { it.success }?.data.orEmpty()
+      .getOrThrow()
+    if (!response.isSuccessful) error("Failed to load Quick Response card details: HTTP ${response.code()}")
+    val body = response.body() ?: error("Empty Quick Response card details response")
+    if (!body.success) error(body.message ?: "Failed to load Quick Response card details")
+    val cards = body.data.orEmpty()
 
     return cards.mapNotNull { card ->
       val type = typeByCardId[card.cardId] ?: return@mapNotNull null

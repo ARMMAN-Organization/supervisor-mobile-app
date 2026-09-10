@@ -71,6 +71,20 @@ class NotificationsRepositoryImplTest {
     assertTrue(result.isEmpty())
   }
 
+  @Test
+  fun `getNotifications defaults an unrecognized status string to UNREAD`() = runTest {
+    val api = FakeNotificationsApi().apply {
+      listResult = Response.success(
+        NotificationListEnvelopeDto(success = true, message = "OK", data = listOf(notificationDto(status = "BOGUS_STATUS"))),
+      )
+    }
+    val repository = NotificationsRepositoryImpl(api)
+
+    val result = repository.getNotifications()
+
+    assertEquals(NotificationStatus.UNREAD, result[0].status)
+  }
+
   @Test(expected = IllegalStateException::class)
   fun `getNotifications on http error throws`() = runTest {
     val api = FakeNotificationsApi().apply {
