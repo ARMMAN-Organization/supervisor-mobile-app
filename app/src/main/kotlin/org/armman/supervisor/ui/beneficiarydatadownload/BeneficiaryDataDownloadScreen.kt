@@ -36,6 +36,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.armman.supervisor.R
 import org.armman.supervisor.ui.components.BrandTopAppBar
+import org.armman.supervisor.ui.components.DownloadProgressHeader
 import org.armman.supervisor.ui.theme.Dimens
 import org.armman.supervisor.ui.theme.MasterDataCompleted
 import org.armman.supervisor.ui.theme.MasterDataDownloading
@@ -109,10 +110,24 @@ private fun ContentScreen(
           .widthIn(max = if (isTablet) Dimens.ContentMaxWidthTablet else Dp.Unspecified)
           .fillMaxSize(),
       ) {
-        DownloadProgressHeader(doneCount = doneCount, totalCount = state.rows.size)
+        DownloadProgressHeader(
+          doneCount = doneCount,
+          totalCount = state.rows.size,
+          progressText = stringResource(R.string.beneficiary_data_download_progress, doneCount, state.rows.size),
+          progressContentDescription = stringResource(
+            R.string.beneficiary_data_download_progress_content_description,
+            doneCount,
+            state.rows.size,
+          ),
+          progressColor = MasterDataDownloading,
+          progressTrackColor = MasterDataDownloadingTrack,
+        )
         LazyColumn(
           state = listState,
-          modifier = Modifier.fillMaxSize().padding(Dimens.ScreenPadding),
+          // weight(1f), not fillMaxSize(): as an unweighted Column child this LazyColumn would be
+          // measured against the full incoming height in addition to the header's own height
+          // above it, overflowing the screen by roughly the header's height.
+          modifier = Modifier.weight(1f).padding(Dimens.ScreenPadding),
           verticalArrangement = Arrangement.spacedBy(Dimens.SmallSpacing),
         ) {
           itemsIndexed(state.rows, key = { _, row -> row.entity.name }) { index, row ->
@@ -206,36 +221,6 @@ private fun statusLabelAndColor(status: BeneficiaryDataRowStatus): Pair<String, 
     BeneficiaryDataRowStatus.NOT_AVAILABLE ->
       stringResource(R.string.beneficiary_data_download_status_not_available) to RiskHigh
   }
-
-/** Overall progress across every row, shown below the header and above the row list. Reaches
- * 100% only once every row has settled into a final status (COMPLETED/EMPTY/NOT_AVAILABLE) —
- * matching [BeneficiaryDataDownloadUiState.Content.isDownloading]'s notion of "still in flight". */
-@Composable
-private fun DownloadProgressHeader(doneCount: Int, totalCount: Int) {
-  val progressContentDescription =
-    stringResource(R.string.beneficiary_data_download_progress_content_description, doneCount, totalCount)
-  Column(
-    modifier = Modifier
-      .fillMaxWidth()
-      .padding(horizontal = Dimens.ScreenPadding, vertical = Dimens.SmallSpacing),
-  ) {
-    LinearProgressIndicator(
-      progress = { if (totalCount == 0) 0f else doneCount / totalCount.toFloat() },
-      color = MasterDataDownloading,
-      trackColor = MasterDataDownloadingTrack,
-      modifier = Modifier
-        .fillMaxWidth()
-        .height(Dimens.MasterDataProgressBarHeight)
-        .clearAndSetSemantics { contentDescription = progressContentDescription },
-    )
-    Text(
-      text = stringResource(R.string.beneficiary_data_download_progress, doneCount, totalCount),
-      style = MaterialTheme.typography.labelLarge,
-      color = NeutralG200,
-      modifier = Modifier.padding(top = Dimens.TinySpacing),
-    )
-  }
-}
 
 @Composable
 private fun QuitConfirmationDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
