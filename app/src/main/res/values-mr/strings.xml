@@ -483,6 +483,10 @@
   <string name="cd_hide_password">पासवर्ड लपवा</string>
   <!-- Download Master Data screen -->
   <string name="master_data_download_title">मास्टर डेटा डाउनलोड करा</string>
+  <!-- Overall progress label above the row list, e.g. "3 of 12 downloaded". -->
+  <string name="master_data_download_progress">%2$d पैकी %1$d डाउनलोड झाले</string>
+  <!-- Accessibility label for the overall progress bar, e.g. "Download progress: 3 of 12 complete". -->
+  <string name="master_data_download_progress_content_description">डाउनलोड प्रगती: %2$d पैकी %1$d पूर्ण</string>
   <!-- Accessibility label for a row, combining its table name and current status, e.g. "Block: Completed". -->
   <string name="master_data_row_content_description">%1$s: %2$s</string>
   <string name="master_data_status_pending">प्रलंबित</string>
@@ -533,6 +537,10 @@
   <string name="master_data_application_parameter">अनुप्रयोग मापदंड</string>
   <!-- Download Beneficiary Data screen -->
   <string name="beneficiary_data_download_title">लाभार्थी डेटा डाउनलोड करा</string>
+  <!-- Overall progress label above the row list, e.g. "3 of 8 downloaded". -->
+  <string name="beneficiary_data_download_progress">%2$d पैकी %1$d डाउनलोड झाले</string>
+  <!-- Accessibility label for the overall progress bar, e.g. "Download progress: 3 of 8 complete". -->
+  <string name="beneficiary_data_download_progress_content_description">डाउनलोड प्रगती: %2$d पैकी %1$d पूर्ण</string>
   <!-- Accessibility label for a row, combining its table name and current status, e.g. "Beneficiaries List: Completed". -->
   <string name="beneficiary_data_download_row_content_description">%1$s: %2$s</string>
   <string name="beneficiary_data_download_status_pending">प्रलंबित</string>

@@ -99,18 +99,23 @@ private fun ContentScreen(
       modifier = Modifier.fillMaxSize().background(NeutralG10).padding(innerPadding),
     ) {
       val isTablet = maxWidth >= Dimens.TabletMinWidthDp.dp
+      val doneCount = state.rows.count { it.status != DownloadRowStatus.PENDING && it.status != DownloadRowStatus.DOWNLOADING }
 
-      LazyColumn(
-        state = listState,
+      Column(
         modifier = Modifier
           .align(Alignment.TopCenter)
           .widthIn(max = if (isTablet) Dimens.ContentMaxWidthTablet else Dp.Unspecified)
-          .fillMaxSize()
-          .padding(Dimens.ScreenPadding),
-        verticalArrangement = Arrangement.spacedBy(Dimens.SmallSpacing),
+          .fillMaxSize(),
       ) {
-        itemsIndexed(state.rows, key = { _, row -> row.entity.name }) { index, row ->
-          MasterDataRow(row = row, isActive = index == state.activeIndex)
+        DownloadProgressHeader(doneCount = doneCount, totalCount = state.rows.size)
+        LazyColumn(
+          state = listState,
+          modifier = Modifier.fillMaxSize().padding(Dimens.ScreenPadding),
+          verticalArrangement = Arrangement.spacedBy(Dimens.SmallSpacing),
+        ) {
+          itemsIndexed(state.rows, key = { _, row -> row.entity.name }) { index, row ->
+            MasterDataRow(row = row, isActive = index == state.activeIndex)
+          }
         }
       }
     }
@@ -188,8 +193,41 @@ private fun statusLabelAndColor(status: DownloadRowStatus): Pair<String, android
     DownloadRowStatus.DOWNLOADING -> stringResource(R.string.master_data_status_downloading) to MasterDataDownloading
     DownloadRowStatus.COMPLETED -> stringResource(R.string.master_data_status_completed) to MasterDataCompleted
     DownloadRowStatus.EMPTY -> stringResource(R.string.master_data_status_empty) to MasterDataEmpty
-    DownloadRowStatus.NOT_AVAILABLE -> stringResource(R.string.master_data_status_not_available) to NeutralG200
+    // Distinct from the other "settled" states above: this row never downloaded at all, so it
+    // renders in the same error color used elsewhere in this screen (e.g. the Quit confirm
+    // button) instead of the neutral gray used for body text.
+    DownloadRowStatus.NOT_AVAILABLE -> stringResource(R.string.master_data_status_not_available) to RiskHigh
   }
+
+/** Overall progress across every row, shown below the header and above the row list. Reaches
+ * 100% only once every row has settled into a final status (COMPLETED/EMPTY/NOT_AVAILABLE) —
+ * matching [MasterDataDownloadUiState.Content.isDownloading]'s notion of "still in flight". */
+@Composable
+private fun DownloadProgressHeader(doneCount: Int, totalCount: Int) {
+  val progressContentDescription =
+    stringResource(R.string.master_data_download_progress_content_description, doneCount, totalCount)
+  Column(
+    modifier = Modifier
+      .fillMaxWidth()
+      .padding(horizontal = Dimens.ScreenPadding, vertical = Dimens.SmallSpacing),
+  ) {
+    LinearProgressIndicator(
+      progress = { if (totalCount == 0) 0f else doneCount / totalCount.toFloat() },
+      color = MasterDataDownloading,
+      trackColor = MasterDataDownloadingTrack,
+      modifier = Modifier
+        .fillMaxWidth()
+        .height(Dimens.MasterDataProgressBarHeight)
+        .clearAndSetSemantics { contentDescription = progressContentDescription },
+    )
+    Text(
+      text = stringResource(R.string.master_data_download_progress, doneCount, totalCount),
+      style = MaterialTheme.typography.labelLarge,
+      color = NeutralG200,
+      modifier = Modifier.padding(top = Dimens.TinySpacing),
+    )
+  }
+}
 
 @Composable
 private fun QuitConfirmationDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
