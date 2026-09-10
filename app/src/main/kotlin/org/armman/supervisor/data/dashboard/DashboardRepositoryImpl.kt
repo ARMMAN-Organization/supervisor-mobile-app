@@ -1,6 +1,7 @@
 package org.armman.supervisor.data.dashboard
 
 import org.armman.supervisor.data.auth.session.SessionStore
+import org.armman.supervisor.data.notifications.NotificationsSeenStore
 import org.armman.supervisor.data.projects.ProjectsRepository
 import org.armman.supervisor.model.LocationOption
 import org.armman.supervisor.ui.dashboard.DashboardData
@@ -8,6 +9,9 @@ import org.armman.supervisor.ui.dashboard.DashboardRepository
 import org.armman.supervisor.ui.dashboard.KpiSummary
 import org.armman.supervisor.ui.dashboard.SummaryRow
 import org.armman.supervisor.ui.dashboard.SummaryRowLabel
+import org.armman.supervisor.ui.notifications.AppNotification
+import org.armman.supervisor.ui.notifications.NotificationStatus
+import org.armman.supervisor.ui.notifications.NotificationsRepository
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -22,13 +26,15 @@ private const val VISIT_STATUS_COMPLETED = "COMPLETED"
  * locations from [ProjectsRepository]. KPI/summary numbers come from the aggregate summary
  * endpoints via [DashboardApi] — these are project-wide totals, not scoped by [getDashboard]'s
  * `locationId` (the three summary endpoints take no project filter), so switching the location
- * selector does not currently change these numbers. `kpi.monitor`, `unsyncedCount`,
+ * selector does not currently change these numbers. `kpi.monitor`,
  * `monitoringSummary` and `staleSakhis` have no backing endpoint yet and stay at 0/empty.
  */
 class DashboardRepositoryImpl @Inject constructor(
   private val projectsRepository: ProjectsRepository,
   private val sessionStore: SessionStore,
   private val api: DashboardApi,
+  private val notificationsRepository: NotificationsRepository,
+  private val notificationsSeenStore: NotificationsSeenStore,
 ) : DashboardRepository {
 
   private val dateFormatter = DateTimeFormatter.ofPattern("EEE, d MMMM yyyy", Locale.getDefault())
@@ -39,6 +45,9 @@ class DashboardRepositoryImpl @Inject constructor(
     val registrationSummary = fetchRegistrationSummary()
     val riskSummary = fetchRiskSummary()
     val visitSummary = fetchVisitSummary()
+    val notifications = runCatching { notificationsRepository.getNotifications() }.getOrDefault(emptyList())
+    val unreadNotificationCount = notifications.count { it.status == NotificationStatus.UNREAD }
+    val newlyDetectedNotifications = detectAndMarkSeen(notifications)
 
     val dueVisit = visitSummary.byStatus[VISIT_STATUS_PENDING] ?: 0
     val missedVisit = visitSummary.byStatus[VISIT_STATUS_MISSED] ?: 0
@@ -48,7 +57,8 @@ class DashboardRepositoryImpl @Inject constructor(
       supervisorName = sessionStore.readSession()?.displayName.orEmpty(),
       roleLabel = "Field Supervisor",
       date = LocalDate.now().format(dateFormatter),
-      unsyncedCount = 0,
+      unreadNotificationCount = unreadNotificationCount,
+      newlyDetectedNotifications = newlyDetectedNotifications,
       kpi = KpiSummary(
         dueVisit = dueVisit,
         mother = registrationSummary.motherCount,
@@ -76,6 +86,17 @@ class DashboardRepositoryImpl @Inject constructor(
       monitoringSummary = listOf(SummaryRow(SummaryRowLabel.TOTAL, 0, 0)),
       staleSakhis = emptyList(),
     )
+  }
+
+  /** Which of [notifications] have never been marked seen before, marking each one seen as it's
+   * found (so a notification is reported here at most once, ever). On the very first call this
+   * store has ever made, the whole backlog is marked seen silently and nothing is reported —
+   * only notifications that arrive after that point are ever treated as "new". */
+  private fun detectAndMarkSeen(notifications: List<AppNotification>): List<AppNotification> {
+    val isFirstRun = notificationsSeenStore.isFirstRun()
+    val newlyDetected = notifications.filter { !notificationsSeenStore.isSeen(it.id) }
+    newlyDetected.forEach { notificationsSeenStore.markSeen(it.id) }
+    return if (isFirstRun) emptyList() else newlyDetected
   }
 
   private suspend fun fetchRegistrationSummary(): RegistrationSummaryDto {

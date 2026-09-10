@@ -8,8 +8,13 @@ import org.armman.supervisor.model.LocationOption
 import org.armman.supervisor.ui.assignitem.SakhiDetail
 import org.armman.supervisor.ui.assignitem.SakhiOption
 import org.armman.supervisor.ui.dashboard.SummaryRowLabel
+import org.armman.supervisor.data.notifications.NotificationsSeenStore
+import org.armman.supervisor.ui.notifications.AppNotification
+import org.armman.supervisor.ui.notifications.NotificationStatus
+import org.armman.supervisor.ui.notifications.NotificationsRepository
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import retrofit2.Response
 
@@ -23,6 +28,8 @@ private class FakeProjectsRepository : ProjectsRepository {
   override suspend fun getSakhiOption(sakhiId: String): SakhiOption = error("not used")
 
   override suspend fun getSakhiProjectId(sakhiId: String): String = error("not used")
+
+  override suspend fun getMySakhiIds(projectId: String, supervisorUserId: String): Set<String> = error("not used")
 
   override fun clearCache() = Unit
 }
@@ -56,11 +63,50 @@ private class FakeDashboardApi : DashboardApi {
   }
 }
 
+private class FakeNotificationsRepository(
+  private val notifications: List<AppNotification> = emptyList(),
+  private var shouldFail: Boolean = false,
+) : NotificationsRepository {
+  override suspend fun getNotifications(): List<AppNotification> {
+    if (shouldFail) error("load failed")
+    return notifications
+  }
+
+  override suspend fun markAsRead(notificationId: String) = error("not used")
+
+  override suspend fun getUnreadCount(): Int {
+    if (shouldFail) error("load failed")
+    return notifications.count { it.status == NotificationStatus.UNREAD }
+  }
+}
+
+private class FakeNotificationsSeenStore(seenIds: Set<String> = emptySet(), hasRunBefore: Boolean = false) : NotificationsSeenStore {
+  private val seen = HashSet(seenIds)
+  private var everRun = hasRunBefore || seenIds.isNotEmpty()
+
+  override fun isSeen(notificationId: String): Boolean = notificationId in seen
+
+  override fun markSeen(notificationId: String) {
+    seen.add(notificationId)
+    everRun = true
+  }
+
+  override fun isFirstRun(): Boolean = !everRun
+}
+
 class DashboardRepositoryImplTest {
   private val projectsRepository = FakeProjectsRepository()
   private val sessionStore = SessionStore(FakeSecureKeyValueStore())
   private val api = FakeDashboardApi()
-  private val repository = DashboardRepositoryImpl(projectsRepository, sessionStore, api)
+  private val notificationsRepository = FakeNotificationsRepository()
+  private val notificationsSeenStore = FakeNotificationsSeenStore()
+  private val repository = DashboardRepositoryImpl(
+    projectsRepository,
+    sessionStore,
+    api,
+    notificationsRepository,
+    notificationsSeenStore,
+  )
 
   @Test
   fun `getDashboard maps the three summary endpoints into DashboardData`() = runTest {
@@ -116,12 +162,110 @@ class DashboardRepositoryImplTest {
   }
 
   @Test
-  fun `getDashboard always reports zero monitor, unsyncedCount and empty monitoringSummary-staleSakhis`() = runTest {
+  fun `getDashboard always reports zero monitor and empty monitoringSummary-staleSakhis`() = runTest {
     val data = repository.getDashboard("loc-1")
 
     assertEquals(0, data.kpi.monitor)
-    assertEquals(0, data.unsyncedCount)
     assertEquals(0, data.monitoringSummary.single { it.label == SummaryRowLabel.TOTAL }.motherValue)
     assertEquals(true, data.staleSakhis.isEmpty())
+  }
+
+  @Test
+  fun `getDashboard reports unreadNotificationCount from NotificationsRepository`() = runTest {
+    val notifications = listOf(
+      AppNotification("n-1", "Title", null, 0L, NotificationStatus.UNREAD, "MISSED_VISIT_ESCALATION", null, null),
+      AppNotification("n-2", "Title", null, 0L, NotificationStatus.UNREAD, "MISSED_VISIT_ESCALATION", null, null),
+      AppNotification("n-3", "Title", null, 0L, NotificationStatus.READ, "MISSED_VISIT_ESCALATION", null, null),
+    )
+    val repositoryWithNotifications = DashboardRepositoryImpl(
+      projectsRepository,
+      sessionStore,
+      api,
+      FakeNotificationsRepository(notifications),
+      FakeNotificationsSeenStore(),
+    )
+
+    val data = repositoryWithNotifications.getDashboard("loc-1")
+
+    assertEquals(2, data.unreadNotificationCount)
+  }
+
+  @Test
+  fun `getDashboard degrades unreadNotificationCount to zero when notifications call fails`() = runTest {
+    val repositoryWithFailingNotifications = DashboardRepositoryImpl(
+      projectsRepository,
+      sessionStore,
+      api,
+      FakeNotificationsRepository(shouldFail = true),
+      FakeNotificationsSeenStore(),
+    )
+
+    val data = repositoryWithFailingNotifications.getDashboard("loc-1")
+
+    assertEquals(0, data.unreadNotificationCount)
+  }
+
+  @Test
+  fun `getDashboard reports empty newlyDetectedNotifications and silently marks the backlog seen on first-ever call`() = runTest {
+    val notifications = listOf(
+      AppNotification("n-1", "Title", null, 1_000L, NotificationStatus.UNREAD, "MISSED_VISIT_ESCALATION", null, null),
+      AppNotification("n-2", "Title", null, 2_000L, NotificationStatus.UNREAD, "MISSED_VISIT_ESCALATION", null, null),
+    )
+    val seenStore = FakeNotificationsSeenStore()
+    val repositoryFirstLoad = DashboardRepositoryImpl(
+      projectsRepository,
+      sessionStore,
+      api,
+      FakeNotificationsRepository(notifications),
+      seenStore,
+    )
+
+    val data = repositoryFirstLoad.getDashboard("loc-1")
+
+    assertTrue(data.newlyDetectedNotifications.isEmpty())
+    assertTrue(seenStore.isSeen("n-1"))
+    assertTrue(seenStore.isSeen("n-2"))
+  }
+
+  @Test
+  fun `getDashboard reports notifications never marked seen before, and marks them seen`() = runTest {
+    val notifications = listOf(
+      AppNotification("n-1", "Title", null, 1_000L, NotificationStatus.READ, "MISSED_VISIT_ESCALATION", null, null),
+      AppNotification("n-2", "Title", null, 2_000L, NotificationStatus.UNREAD, "MISSED_VISIT_ESCALATION", null, null),
+      AppNotification("n-3", "Title", null, 3_000L, NotificationStatus.UNREAD, "MISSED_VISIT_ESCALATION", null, null),
+    )
+    val seenStore = FakeNotificationsSeenStore(seenIds = setOf("n-1"))
+    val repositoryWithSomeSeen = DashboardRepositoryImpl(
+      projectsRepository,
+      sessionStore,
+      api,
+      FakeNotificationsRepository(notifications),
+      seenStore,
+    )
+
+    val data = repositoryWithSomeSeen.getDashboard("loc-1")
+
+    assertEquals(listOf("n-2", "n-3"), data.newlyDetectedNotifications.map { it.id })
+    assertTrue(seenStore.isSeen("n-2"))
+    assertTrue(seenStore.isSeen("n-3"))
+  }
+
+  @Test
+  fun `getDashboard does not re-report a notification already marked seen`() = runTest {
+    val notifications = listOf(
+      AppNotification("n-1", "Title", null, 1_000L, NotificationStatus.UNREAD, "MISSED_VISIT_ESCALATION", null, null),
+    )
+    val seenStore = FakeNotificationsSeenStore(seenIds = setOf("n-1"))
+    val repositoryUpToDate = DashboardRepositoryImpl(
+      projectsRepository,
+      sessionStore,
+      api,
+      FakeNotificationsRepository(notifications),
+      seenStore,
+    )
+
+    val data = repositoryUpToDate.getDashboard("loc-1")
+
+    assertTrue(data.newlyDetectedNotifications.isEmpty())
   }
 }

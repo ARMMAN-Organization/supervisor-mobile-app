@@ -431,6 +431,8 @@
   <string name="profile_title">Profile</string>
   <string name="settings_title">Settings</string>
   <string name="notifications_title">Notifications</string>
+  <string name="notifications_error_load">Unable to load notifications</string>
+  <string name="notifications_empty">No notifications</string>
 
   <!-- Settings screen -->
   <string name="settings_section_sync">Sync</string>
@@ -571,4 +573,6 @@
   <string name="beneficiary_data_download_call_details">Call Details</string>
   <string name="beneficiary_data_download_beneficiary_risk_referral_header">Beneficiary Risk Referral Header</string>
   <string name="beneficiary_data_download_beneficiary_risk_referral_details">Beneficiary Risk Referral Details</string>
+
+  <string name="cd_dismiss_notification_banner">Dismiss notification</string>
 </resources>

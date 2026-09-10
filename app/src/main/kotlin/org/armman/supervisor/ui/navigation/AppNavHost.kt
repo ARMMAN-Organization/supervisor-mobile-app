@@ -42,6 +42,7 @@ import org.armman.supervisor.ui.meetingtraining.RescheduleMeetingScreen
 import org.armman.supervisor.ui.meetingtraining.ScheduleMeetingScreen
 import org.armman.supervisor.ui.meetingtraining.ScheduleTrainingScreen
 import org.armman.supervisor.ui.monitoringsummary.MonitoringSummaryScreen
+import org.armman.supervisor.ui.notifications.NotificationsScreen
 import org.armman.supervisor.ui.quickresponse.QuickResponseScreen
 import org.armman.supervisor.ui.registrations.RegistrationsScreen
 import org.armman.supervisor.ui.risksummary.RiskSummaryScreen
@@ -104,7 +105,8 @@ object Routes {
   const val CALL_SHEET_ADD_REASON =
     "call_sheet_add_reason/{$REASON_CONTEXT_ARG}?$CALL_SHEET_SAKHI_ID_ARG={$CALL_SHEET_SAKHI_ID_ARG}" +
       "&$REASON_ITEM_ID_ARG={$REASON_ITEM_ID_ARG}"
-  const val QUICK_RESPONSE = "quick_response"
+  const val QUICK_RESPONSE_CARD_ID_ARG = "cardId"
+  const val QUICK_RESPONSE = "quick_response?$QUICK_RESPONSE_CARD_ID_ARG={$QUICK_RESPONSE_CARD_ID_ARG}"
   const val PROFILE = "profile"
   const val SETTINGS = "settings"
   const val BENEFICIARY_DATA_DOWNLOAD = "beneficiary_data_download"
@@ -151,6 +153,9 @@ object Routes {
   }
 
   fun meetingDetail(eventId: String) = "meeting_detail/$eventId"
+
+  fun quickResponse(cardId: String? = null) =
+    "quick_response" + if (cardId != null) "?$QUICK_RESPONSE_CARD_ID_ARG=${URLEncoder.encode(cardId, Charsets.UTF_8.name())}" else ""
 
   fun rescheduleMeeting(eventId: String) = "reschedule_meeting/$eventId"
 
@@ -452,8 +457,12 @@ fun AppNavHost() {
         onSubmitted = { navController.popBackStack() },
       )
     }
-    composable(Routes.QUICK_RESPONSE) {
-      QuickResponseScreen(onBack = { navController.popBackStack() })
+    composable(
+      Routes.QUICK_RESPONSE,
+      arguments = listOf(navArgument(Routes.QUICK_RESPONSE_CARD_ID_ARG) { type = NavType.StringType; nullable = true }),
+    ) { backStackEntry ->
+      val highlightCardId = backStackEntry.arguments?.getString(Routes.QUICK_RESPONSE_CARD_ID_ARG)
+      QuickResponseScreen(onBack = { navController.popBackStack() }, highlightCardId = highlightCardId)
     }
     composable(Routes.PROFILE) {
       PlaceholderStub(navController, R.string.profile_title)
@@ -477,7 +486,10 @@ fun AppNavHost() {
       MasterDataDownloadScreen(onBack = { navController.popBackStack() })
     }
     composable(Routes.NOTIFICATIONS) {
-      PlaceholderStub(navController, R.string.notifications_title)
+      NotificationsScreen(
+        onBack = { navController.popBackStack() },
+        onNavigate = { route -> navController.navigate(route) },
+      )
     }
   }
 }

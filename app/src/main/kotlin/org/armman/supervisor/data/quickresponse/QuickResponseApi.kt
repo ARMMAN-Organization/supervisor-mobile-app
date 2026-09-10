@@ -57,6 +57,7 @@ data class QuickResponseCardDetailDto(
   val padaName: String?,
   val sakhiName: String?,
   val sakhiId: String?,
+  val sakhiEmployeeCode: String?,
   val sakhiContactNumber: String?,
   val beneficiaryName: String?,
   val riskDetails: List<RiskDetailDto>?,
@@ -90,6 +91,53 @@ data class QuickResponseCardDetailEnvelopeDto(
   val success: Boolean,
   val message: String?,
   val data: QuickResponseCardDetailDto?,
+)
+
+/**
+ * One card's result from the batch `GET /quick-response/details` endpoint — the same shape as
+ * [QuickResponseCardDetailDto], plus [error]: backend resolves each requested card
+ * independently, so one card failing (e.g. its beneficiary record can't be found) does not fail
+ * the whole batch. [error] is non-null exactly when every other field beyond the thin base
+ * shape ([cardId]/[cardType]/[cardSource]/[beneficiaryId]/[raisedAt]) is absent.
+ */
+data class QuickResponseCardBatchDetailDto(
+  val cardId: String,
+  val cardType: String,
+  val cardSource: String,
+  val beneficiaryId: String?,
+  val raisedAt: String,
+  val error: String?,
+  val padaName: String?,
+  val sakhiName: String?,
+  val sakhiId: String?,
+  val sakhiEmployeeCode: String?,
+  val sakhiContactNumber: String?,
+  val beneficiaryName: String?,
+  val riskDetails: List<RiskDetailDto>?,
+  val status: String?,
+  val oldLmpDate: String?,
+  val newLmpDate: String?,
+  val sonographyImageAssetId: String?,
+  val visitType: String?,
+  val closureType: String?,
+  val closureReasonLookupValueId: String?,
+  val closureDate: String?,
+  val supervisorNotes: String?,
+  val referralDate: String?,
+  val facilityName: String?,
+  val facilityType: String?,
+  val photoEvidenceAssetId: String?,
+  val visitReference: String?,
+  val referralsMissedCount: Int?,
+  val reason: String?,
+  val reasonForReopen: String?,
+  val eddDate: String?,
+)
+
+data class QuickResponseBatchDetailEnvelopeDto(
+  val success: Boolean,
+  val message: String?,
+  val data: List<QuickResponseCardBatchDetailDto>?,
 )
 
 /** Request body for `POST /quick-response/{cardId}/decision`. `cardSource` identifies which
@@ -127,6 +175,17 @@ interface QuickResponseApi {
 
   @GET("quick-response/{cardId}")
   suspend fun getQuickResponseCardDetail(@Path("cardId") cardId: String): Response<QuickResponseCardDetailEnvelopeDto>
+
+  /** Resolves every field for a batch of cards in one call — replaces firing one
+   * [getQuickResponseCardDetail] per card concurrently, which overloads the backend's downstream
+   * fan-out under real card-list sizes (see commit adding this). [cardIds] is a comma-joined
+   * list, matching the query-param shape backend expects. `encoded = true` keeps those commas
+   * literal — Retrofit's default percent-encoding turns them into `%2C`, which the backend's
+   * comma-split parser doesn't decode first, so it sees the whole list as a single invalid UUID. */
+  @GET("quick-response/details")
+  suspend fun getQuickResponseCardDetails(
+    @Query(value = "cardIds", encoded = true) cardIds: String,
+  ): Response<QuickResponseBatchDetailEnvelopeDto>
 
   @POST("quick-response/{cardId}/decision")
   suspend fun decideQuickResponseCard(

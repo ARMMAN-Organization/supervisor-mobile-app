@@ -137,4 +137,32 @@ class ProjectsRepositoryImplTest {
 
     repository.getSakhiDetail("sakhi-1")
   }
+
+  @Test
+  fun `getMySakhiIds returns only sakhis assigned to the given supervisor`() = runTest {
+    api.sakhisByProject = mapOf(
+      "proj-1" to listOf(
+        SakhiDto("sakhi-1", "Sushil", "+911111111111", "proj-1", "sup-1"),
+        SakhiDto("sakhi-2", "Priya", "+912222222222", "proj-1", "sup-2"),
+      ),
+    )
+
+    val mySakhiIds = repository.getMySakhiIds("proj-1", "sup-1")
+
+    assertEquals(setOf("sakhi-1"), mySakhiIds)
+  }
+
+  @Test
+  fun `getMySakhiIds returns an empty set when the supervisor has no assigned sakhis`() = runTest {
+    val mySakhiIds = repository.getMySakhiIds("proj-1", "sup-with-no-sakhis")
+
+    assertTrue(mySakhiIds.isEmpty())
+  }
+
+  @Test(expected = IllegalStateException::class)
+  fun `getMySakhiIds propagates a roster load failure`() = runTest {
+    api.failingProjectIds = setOf("proj-1")
+
+    repository.getMySakhiIds("proj-1", "sup-1")
+  }
 }

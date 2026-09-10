@@ -26,6 +26,12 @@ interface ProjectsRepository {
    * a project. */
   suspend fun getSakhiProjectId(sakhiId: String): String
 
+  /** The Sakhi ids assigned to [supervisorUserId] within [projectId] — i.e. [projectId]'s roster
+   * filtered to `supervisorId == supervisorUserId`. Used to scope a Supervisor-facing list (e.g.
+   * Quick Response) to only their own Sakhis when the backend endpoint providing that list
+   * doesn't already enforce that scoping itself. */
+  suspend fun getMySakhiIds(projectId: String, supervisorUserId: String): Set<String>
+
   /** Drops all cached project/Sakhi roster data. Call on sign-out so a subsequent login (as
    * possibly a different Supervisor on a shared device) never serves another account's roster. */
   fun clearCache()

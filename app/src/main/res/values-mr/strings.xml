@@ -431,6 +431,8 @@
   <string name="profile_title">प्रोफाइल</string>
   <string name="settings_title">सेटिंग्ज</string>
   <string name="notifications_title">सूचना</string>
+  <string name="notifications_error_load">सूचना लोड करता आल्या नाहीत</string>
+  <string name="notifications_empty">कोणत्याही सूचना नाहीत</string>
 
   <!-- Settings screen -->
   <string name="settings_section_sync">सिंक</string>
@@ -571,4 +573,6 @@
   <string name="beneficiary_data_download_call_details">कॉल तपशील</string>
   <string name="beneficiary_data_download_beneficiary_risk_referral_header">लाभार्थी जोखीम संदर्भ शीर्षक</string>
   <string name="beneficiary_data_download_beneficiary_risk_referral_details">लाभार्थी जोखीम संदर्भ तपशील</string>
+
+  <string name="cd_dismiss_notification_banner">सूचना काढून टाका</string>
 </resources>

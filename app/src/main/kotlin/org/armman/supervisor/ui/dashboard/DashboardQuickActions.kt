@@ -40,7 +40,7 @@ fun DashboardQuickActions(onNavigate: (String) -> Unit, isTablet: Boolean, modif
     ActionItem(stringResource(R.string.quick_action_call_sheet), { onNavigate(Routes.CALL_SHEET) }) {
       Icon(painterResource(R.drawable.ic_file_text), contentDescription = null, tint = DashboardHeaderGreen)
     },
-    ActionItem(stringResource(R.string.quick_action_quick_response), { onNavigate(Routes.QUICK_RESPONSE) }) {
+    ActionItem(stringResource(R.string.quick_action_quick_response), { onNavigate(Routes.quickResponse()) }) {
       Icon(Icons.Filled.RocketLaunch, contentDescription = null, tint = DashboardHeaderGreen)
     },
   )
