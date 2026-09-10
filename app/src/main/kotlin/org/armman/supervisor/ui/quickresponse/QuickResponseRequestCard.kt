@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -24,8 +23,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import org.armman.supervisor.R
-import org.armman.supervisor.ui.components.AppTextField
-import org.armman.supervisor.ui.components.PrimaryButton
 import org.armman.supervisor.ui.theme.Dimens
 import org.armman.supervisor.ui.theme.NeutralG50
 import org.armman.supervisor.ui.theme.NeutralG200
@@ -69,13 +66,14 @@ fun QuickResponseRequestCard(
   isDeciding: Boolean,
   actionsEnabled: Boolean,
   modifier: Modifier = Modifier,
+  isHighlighted: Boolean = false,
 ) {
   var isRejecting by remember(request.id) { mutableStateOf(false) }
   var rejectNotes by remember(request.id) { mutableStateOf("") }
   val supportsRejectNotes = request.detail is QuickResponseCardDetail.ClosureReview
 
   Surface(
-    color = White,
+    color = if (isHighlighted) PrimarySurface else White,
     shape = RoundedCornerShape(Dimens.CardRadius),
     modifier = modifier.fillMaxWidth().softShadow(Dimens.CardRadius),
   ) {
@@ -100,7 +98,9 @@ fun QuickResponseRequestCard(
       Column(verticalArrangement = Arrangement.spacedBy(Dimens.ItemSpacing)) {
         request.beneficiaryName?.let { FieldBlock(labelRes = R.string.quick_response_field_beneficiary_name, value = it) }
         request.sakhiName?.let { FieldBlock(labelRes = R.string.quick_response_field_sakhi_name, value = it) }
-        request.sakhiId?.let { FieldBlock(labelRes = R.string.quick_response_field_sakhi_id, value = it) }
+        (request.sakhiEmployeeCode ?: request.sakhiId)?.let {
+          FieldBlock(labelRes = R.string.quick_response_field_sakhi_id, value = it)
+        }
         request.sakhiPhoneNumber?.let { FieldBlock(labelRes = R.string.quick_response_field_sakhi_contact, value = it) }
         request.padaName?.let { FieldBlock(labelRes = R.string.quick_response_field_pada_name, value = it) }
         RiskDetailsBlock(request.riskConditions)
@@ -145,129 +145,6 @@ fun QuickResponseRequestCard(
   }
 }
 
-@Composable
-private fun ApproveRejectRow(isDeciding: Boolean, enabled: Boolean, onReject: () -> Unit, onApprove: () -> Unit) {
-  Row(horizontalArrangement = Arrangement.spacedBy(Dimens.SmallSpacing), modifier = Modifier.fillMaxWidth()) {
-    OutlinedButton(onClick = onReject, enabled = enabled, modifier = Modifier.weight(1f)) {
-      Text(text = stringResource(R.string.quick_response_action_reject))
-    }
-    PrimaryButton(
-      text = stringResource(R.string.quick_response_action_approve),
-      onClick = onApprove,
-      enabled = enabled,
-      loading = isDeciding,
-      modifier = Modifier.weight(1f),
-    )
-  }
-}
-
-@Composable
-private fun TransferCloseRow(isDeciding: Boolean, enabled: Boolean, onTransfer: () -> Unit, onClose: () -> Unit) {
-  Row(horizontalArrangement = Arrangement.spacedBy(Dimens.SmallSpacing), modifier = Modifier.fillMaxWidth()) {
-    OutlinedButton(onClick = onTransfer, enabled = enabled, modifier = Modifier.weight(1f)) {
-      Text(text = stringResource(R.string.quick_response_action_transfer))
-    }
-    PrimaryButton(
-      text = stringResource(R.string.quick_response_action_close),
-      onClick = onClose,
-      enabled = enabled,
-      loading = isDeciding,
-      modifier = Modifier.weight(1f),
-    )
-  }
-}
-
-@Composable
-private fun OkayRow(isDeciding: Boolean, enabled: Boolean, onOkay: () -> Unit) {
-  PrimaryButton(
-    text = stringResource(R.string.quick_response_action_okay),
-    onClick = onOkay,
-    enabled = enabled,
-    loading = isDeciding,
-    modifier = Modifier.fillMaxWidth(),
-  )
-}
-
-@Composable
-private fun RejectNotesRow(
-  notes: String,
-  onNotesChange: (String) -> Unit,
-  isDeciding: Boolean,
-  enabled: Boolean,
-  onCancel: () -> Unit,
-  onConfirm: () -> Unit,
-) {
-  Column(verticalArrangement = Arrangement.spacedBy(Dimens.SmallSpacing)) {
-    AppTextField(
-      value = notes,
-      onValueChange = onNotesChange,
-      label = stringResource(R.string.quick_response_field_supervisor_notes),
-      placeholder = stringResource(R.string.quick_response_supervisor_notes_placeholder),
-      enabled = enabled,
-    )
-    Row(horizontalArrangement = Arrangement.spacedBy(Dimens.SmallSpacing), modifier = Modifier.fillMaxWidth()) {
-      OutlinedButton(onClick = onCancel, enabled = enabled, modifier = Modifier.weight(1f)) {
-        Text(text = stringResource(R.string.cancel))
-      }
-      PrimaryButton(
-        text = stringResource(R.string.quick_response_action_reject),
-        onClick = onConfirm,
-        enabled = enabled,
-        loading = isDeciding,
-        modifier = Modifier.weight(1f),
-      )
-    }
-  }
-}
-
-/** Renders the extra fields specific to [detail]'s card type, if any (SRS FR-SV-4.2, 4.4, 4.5,
- * 4.7). [QuickResponseCardDetail.ReferralIncomplete] deliberately renders the same fields as
- * [QuickResponseCardDetail.AccompaniedReferral] — they share the underlying `referrals` table —
- * but stays a distinct branch since the two are separate request types server-side. */
-@Composable
-private fun CardDetailBlocks(detail: QuickResponseCardDetail?) {
-  when (detail) {
-    is QuickResponseCardDetail.LmpChange -> {
-      detail.oldLmpDateEpochMillis?.let { FieldBlock(labelRes = R.string.quick_response_field_old_lmp, value = it.toDisplayDateOnly()) }
-      detail.newLmpDateEpochMillis?.let { FieldBlock(labelRes = R.string.quick_response_field_new_lmp, value = it.toDisplayDateOnly()) }
-      // detail.sonographyImageAssetId: no image-loading capability in the app yet — see
-      // QUICK_RESPONSE_BACKEND_TASKS.md. Every record checked so far has this null anyway.
-    }
-    is QuickResponseCardDetail.ClosureReview -> {
-      detail.reasonLabel?.let { FieldBlock(labelRes = R.string.quick_response_field_closure_reason, value = it) }
-      detail.closureType?.let { FieldBlock(labelRes = R.string.quick_response_field_closure_type, value = it) }
-      detail.closureDateEpochMillis?.let { FieldBlock(labelRes = R.string.quick_response_field_closure_date, value = it.toDisplayDateOnly()) }
-      detail.supervisorNotes?.let { FieldBlock(labelRes = R.string.quick_response_field_supervisor_notes, value = it) }
-    }
-    is QuickResponseCardDetail.Reopen -> {
-      detail.reasonForReopen?.let { FieldBlock(labelRes = R.string.quick_response_field_reopen_reason, value = it) }
-    }
-    is QuickResponseCardDetail.AccompaniedReferral -> {
-      detail.facilityName?.let { FieldBlock(labelRes = R.string.quick_response_field_referral_facility, value = it) }
-      detail.facilityType?.let { FieldBlock(labelRes = R.string.quick_response_field_referral_facility_type, value = it) }
-      detail.referralDateEpochMillis?.let { FieldBlock(labelRes = R.string.quick_response_field_referral_date, value = it.toDisplayDateOnly()) }
-      // detail.photoEvidenceAssetId: no image-loading capability in the app yet — see
-      // QUICK_RESPONSE_BACKEND_TASKS.md. Every record checked so far has this null anyway.
-    }
-    is QuickResponseCardDetail.ReferralIncomplete -> {
-      detail.facilityName?.let { FieldBlock(labelRes = R.string.quick_response_field_referral_facility, value = it) }
-      detail.facilityType?.let { FieldBlock(labelRes = R.string.quick_response_field_referral_facility_type, value = it) }
-      detail.referralDateEpochMillis?.let { FieldBlock(labelRes = R.string.quick_response_field_referral_date, value = it.toDisplayDateOnly()) }
-      detail.visitReference?.let { FieldBlock(labelRes = R.string.quick_response_field_visit_reference, value = it) }
-      detail.referralsMissedCount?.let { FieldBlock(labelRes = R.string.quick_response_field_referrals_missed_count, value = it.toString()) }
-      detail.reason?.let { FieldBlock(labelRes = R.string.quick_response_field_referral_incomplete_reason, value = it) }
-    }
-    is QuickResponseCardDetail.MissedVisitEscalation -> {
-      detail.visitType?.let { FieldBlock(labelRes = R.string.quick_response_field_visit_type, value = it) }
-    }
-    is QuickResponseCardDetail.EddNearing -> {
-      detail.eddDateEpochMillis?.let { FieldBlock(labelRes = R.string.quick_response_field_edd_date, value = it.toDisplayDateOnly()) }
-      detail.reason?.let { FieldBlock(labelRes = R.string.quick_response_field_edd_reason, value = it) }
-    }
-    null -> Unit
-  }
-}
-
 /** Renders the SRS "Beneficiary risk details" field as one comma-joined value, if any. */
 @Composable
 private fun RiskDetailsBlock(riskConditions: List<QuickResponseRiskCondition>) {
@@ -280,7 +157,7 @@ private fun RiskDetailsBlock(riskConditions: List<QuickResponseRiskCondition>) {
  * the same x-position — a plain inline "Label: value" left each row's value starting wherever
  * that label's text happened to end, which read as uneven from row to row. */
 @Composable
-private fun FieldBlock(@StringRes labelRes: Int, value: String) {
+internal fun FieldBlock(@StringRes labelRes: Int, value: String) {
   Row(horizontalArrangement = Arrangement.spacedBy(Dimens.SmallSpacing)) {
     Text(
       text = stringResource(labelRes),
@@ -307,10 +184,10 @@ private fun StatusPill(text: String, containerColor: Color, contentColor: Color)
 
 /** Shared prefix of [toDisplayDate]/[toDisplayDateOnly]'s patterns, so the date portion can't
  * drift out of sync between the two if one is ever tweaked without the other. */
-private const val DISPLAY_DATE_PATTERN = "MMM d, yyyy"
+private const val DISPLAY_DATE_PATTERN = "EEE, d MMM, yyyy"
 
 private fun Long.toDisplayDate(): String =
   SimpleDateFormat("$DISPLAY_DATE_PATTERN h:mm a", Locale.getDefault()).format(Date(this))
 
-private fun Long.toDisplayDateOnly(): String =
+internal fun Long.toDisplayDateOnly(): String =
   SimpleDateFormat(DISPLAY_DATE_PATTERN, Locale.getDefault()).format(Date(this))

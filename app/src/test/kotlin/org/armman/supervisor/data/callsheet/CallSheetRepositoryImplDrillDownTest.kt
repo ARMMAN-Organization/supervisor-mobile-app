@@ -37,6 +37,7 @@ class CallSheetRepositoryImplDrillDownTest {
         override suspend fun getSakhiDetail(sakhiId: String): SakhiDetail = error("not used")
         override suspend fun getSakhiOption(sakhiId: String): SakhiOption = error("not used")
         override suspend fun getSakhiProjectId(sakhiId: String): String = error("not used")
+        override suspend fun getMySakhiIds(projectId: String, supervisorUserId: String): Set<String> = error("not used")
         override fun clearCache() = error("not used")
       },
       callLogApi = object : CallLogApi {

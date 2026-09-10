@@ -82,6 +82,8 @@ private class FakeProjectsRepository : ProjectsRepository {
 
   override suspend fun getSakhiProjectId(sakhiId: String): String = error("not used")
 
+  override suspend fun getMySakhiIds(projectId: String, supervisorUserId: String): Set<String> = error("not used")
+
   override fun clearCache() = Unit
 }
 

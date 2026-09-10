@@ -57,6 +57,8 @@ private class FakeProjectsRepository : ProjectsRepository {
     else -> error("Unknown sakhi id: $sakhiId")
   }
 
+  override suspend fun getMySakhiIds(projectId: String, supervisorUserId: String): Set<String> = error("not used")
+
   override suspend fun getSakhiOption(sakhiId: String): SakhiOption = when (sakhiId) {
     "sakhi-1" -> SakhiOption("sakhi-1", "Sushil")
     "sakhi-2" -> SakhiOption("sakhi-2", "Asha Patil")

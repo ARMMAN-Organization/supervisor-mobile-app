@@ -11,7 +11,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -81,7 +81,7 @@ fun DashboardHeaderSection(
           Text(text = data.date, style = MaterialTheme.typography.labelSmall, color = White.copy(alpha = 0.7f))
         }
         HeaderIconButtons(
-          unsyncedCount = data.unsyncedCount,
+          unreadNotificationCount = data.unreadNotificationCount,
           onProfileClick = onProfileClick,
           onNotificationsClick = onNotificationsClick,
           onSettingsClick = onSettingsClick,
@@ -136,7 +136,7 @@ private fun LocationDropdown(
 
 @Composable
 private fun HeaderIconButtons(
-  unsyncedCount: Int,
+  unreadNotificationCount: Int,
   onProfileClick: () -> Unit,
   onNotificationsClick: () -> Unit,
   onSettingsClick: () -> Unit,
@@ -154,9 +154,9 @@ private fun HeaderIconButtons(
     Spacer(modifier = Modifier.width(Dimens.SmallSpacing))
     CircleIconButton(onClick = onNotificationsClick, size = iconButtonSize) {
       BadgedBox(badge = {
-        if (unsyncedCount > 0) Badge(containerColor = RiskModerate) { Text("$unsyncedCount") }
+        if (unreadNotificationCount > 0) Badge(containerColor = RiskModerate) { Text("$unreadNotificationCount") }
       }) {
-        Icon(Icons.Filled.Download, contentDescription = stringResource(R.string.cd_notifications_icon))
+        Icon(Icons.Filled.Notifications, contentDescription = stringResource(R.string.cd_notifications_icon))
       }
     }
     Spacer(modifier = Modifier.width(Dimens.SmallSpacing))

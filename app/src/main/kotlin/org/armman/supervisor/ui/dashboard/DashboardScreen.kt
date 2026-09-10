@@ -1,5 +1,7 @@
 package org.armman.supervisor.ui.dashboard
 
+import android.content.Context
+import android.media.RingtoneManager
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -15,12 +17,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.armman.supervisor.R
 import org.armman.supervisor.ui.components.PrimaryButton
@@ -28,7 +33,12 @@ import org.armman.supervisor.ui.navigation.Routes
 import org.armman.supervisor.ui.theme.Dimens
 import org.armman.supervisor.ui.theme.White
 
-/** Supervisor landing screen: header/KPIs, quick actions, summary cards and the stale-Sakhi alert. */
+/** Supervisor landing screen: header/KPIs, quick actions, summary cards and the stale-Sakhi alert.
+ * While this screen is visible, [DashboardViewModel] polls for new notifications (see
+ * [DashboardViewModel.startPolling]) and this screen plays the device's default notification
+ * sound for each one detected (see [DashboardViewModel.newNotificationEvents]) — there is no
+ * separate popup/banner UI; the bell icon's badge and the Notifications screen's list are the
+ * only visible surfaces for notification content. */
 @Composable
 fun DashboardScreen(
   onNavigate: (String) -> Unit,
@@ -36,6 +46,16 @@ fun DashboardScreen(
   viewModel: DashboardViewModel = hiltViewModel(),
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+  val context = LocalContext.current
+
+  LifecycleResumeEffect(Unit) {
+    viewModel.startPolling()
+    onPauseOrDispose { viewModel.stopPolling() }
+  }
+
+  LaunchedEffect(Unit) {
+    viewModel.newNotificationEvents.collect { playNotificationSound(context) }
+  }
 
   BoxWithConstraints(modifier = modifier.fillMaxSize()) {
     val isTablet = maxWidth >= Dimens.TabletMinWidthDp.dp
@@ -52,6 +72,13 @@ fun DashboardScreen(
         onLocationSelected = viewModel::onLocationSelected,
       )
     }
+  }
+}
+
+private fun playNotificationSound(context: Context) {
+  runCatching {
+    val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+    RingtoneManager.getRingtone(context, uri)?.play()
   }
 }
 

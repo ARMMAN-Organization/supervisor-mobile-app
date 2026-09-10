@@ -1,5 +1,7 @@
 package org.armman.supervisor.ui.dashboard
 
+import org.armman.supervisor.ui.notifications.AppNotification
+
 /** Today's headline counts shown in the header stat row. */
 data class KpiSummary(val dueVisit: Int, val mother: Int, val child: Int, val monitor: Int)
 
@@ -16,12 +18,19 @@ data class SummaryRow(val label: SummaryRowLabel, val motherValue: Int, val chil
 /** One row of the "not uploaded in 3+ days" report. */
 data class StaleSakhiEntry(val sakhiName: String, val lastUpdated: String, val daysSinceUpdate: Int)
 
-/** Full payload for the Supervisor dashboard, scoped to one selected location. */
+/** Full payload for the Supervisor dashboard, scoped to one selected location.
+ * [newlyDetectedNotifications] are notifications never seen before this exact call (see
+ * `NotificationsSeenStore`) — each one is marked seen as part of producing this list, so a
+ * notification is reported here at most once, ever, regardless of read/unread status or how many
+ * times the Dashboard polls afterward. The Dashboard plays a sound per entry here; it does not
+ * render them. Distinct from [unreadNotificationCount], which is the bell icon's badge count and
+ * doesn't reset once a notification has been surfaced this way. */
 data class DashboardData(
   val supervisorName: String,
   val roleLabel: String,
   val date: String,
-  val unsyncedCount: Int,
+  val unreadNotificationCount: Int,
+  val newlyDetectedNotifications: List<AppNotification>,
   val kpi: KpiSummary,
   val visitSummary: List<SummaryRow>,
   val registrationSummary: List<SummaryRow>,

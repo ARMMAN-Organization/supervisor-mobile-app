@@ -1,10 +1,9 @@
 package org.armman.supervisor.data.quickresponse
 
 import android.util.Log
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
+import org.armman.supervisor.data.auth.session.SessionStore
 import org.armman.supervisor.data.lookups.LookupsRepository
+import org.armman.supervisor.data.projects.ProjectsRepository
 import org.armman.supervisor.ui.quickresponse.QuickResponseCardDetail
 import org.armman.supervisor.ui.quickresponse.QuickResponseDecision
 import org.armman.supervisor.ui.quickresponse.QuickResponseDecisionException
@@ -45,12 +44,14 @@ private const val CLOSURE_REASON_LOOKUP_CATEGORY = "CLOSURE_REASON"
 private const val LOG_TAG = "QuickResponseRepository"
 
 /**
- * Backed by approval-service's Quick Response endpoints via [QuickResponseApi]. A single
- * `GET /quick-response/{cardId}` call per card returns every field for every card type — Sakhi
- * name/contact, Pada name, beneficiary name, risk details, and the type-specific fields (SRS
- * FR-SV-4.2–4.9) — so no separate beneficiary/Sakhi/Pada/risk-state/type-detail joins are
- * needed. `closureReasonLookupValueId` is the one field backend still returns as a raw lookup
- * id rather than a resolved label, so [LookupsRepository] is still used for that one field.
+ * Backed by approval-service's Quick Response endpoints via [QuickResponseApi]. The batch
+ * `GET /quick-response/details` call resolves every field for every card type in one round trip
+ * — Sakhi name/contact, Pada name, beneficiary name, risk details, and the type-specific fields
+ * (SRS FR-SV-4.2–4.9) — instead of one `GET /quick-response/{cardId}` call per card (that
+ * per-card approach overloaded backend's downstream fan-out once fired concurrently for a real
+ * card list, causing cards to silently drop — see the commit that replaced it).
+ * `closureReasonLookupValueId` is the one field backend still returns as a raw lookup id rather
+ * than a resolved label, so [LookupsRepository] is still used for that one field.
  */
 @Singleton
 class QuickResponseRepositoryImpl @Inject constructor(
@@ -58,57 +59,110 @@ class QuickResponseRepositoryImpl @Inject constructor(
   private val lookupsRepository: LookupsRepository,
   private val missedVisitEscalationApi: MissedVisitEscalationApi,
   private val eddNearingApi: EddNearingApi,
+  private val sessionStore: SessionStore,
+  private val projectsRepository: ProjectsRepository,
 ) : QuickResponseRepository {
 
-  override suspend fun getRequests(): List<QuickResponseRequest> = coroutineScope {
+  /**
+   * Backend's `GET /quick-response` does not yet scope results to the calling Supervisor's own
+   * Sakhis (a reported backend gap) — it can return cards for Sakhis assigned to a different
+   * Supervisor, or in a different project. Until that's fixed server-side, this cross-checks
+   * every card against the caller's own assigned-Sakhi roster and drops anything that doesn't
+   * belong to them, as a defense-in-depth measure against showing another Supervisor's data.
+   *
+   * The roster is unioned across every project [ProjectsRepository.getProjects] returns for the
+   * caller, not just `session.projectId` — a Supervisor can have Sakhis assigned in more than one
+   * project (the Dashboard's own location switcher confirms this), so scoping to only the
+   * session's project would wrongly drop a legitimate card for one of the caller's own Sakhis in
+   * a different project.
+   *
+   * A card whose `sakhiId` couldn't be resolved at all (`null` — e.g. the backend's own
+   * enrichment lookup failed) is kept rather than dropped: absence of a Sakhi id is not proof the
+   * card belongs to someone else, and dropping it would hide a legitimate card for an unrelated
+   * reason.
+   */
+  override suspend fun getRequests(): List<QuickResponseRequest> {
+    val session = sessionStore.readSession() ?: error("No active session")
+    val projects = projectsRepository.getProjects()
+    val mySakhiIds = projects.flatMapTo(mutableSetOf()) { projectsRepository.getMySakhiIds(it.id, session.subjectId) }
+
     val response = api.getQuickResponseCards(status = STATUS_PENDING, cursor = null, limit = null)
     if (!response.isSuccessful) error("Failed to load Quick Response cards: HTTP ${response.code()}")
     val body = response.body() ?: error("Empty Quick Response response")
     if (!body.success) error(body.message ?: "Failed to load Quick Response cards")
-    val cards = body.data?.cards.orEmpty()
-    cards
-      .mapNotNull { card ->
-        val type = SUPPORTED_CARD_TYPES[card.cardType]
-        if (type == null) {
-          Log.w(LOG_TAG, "Dropping card ${card.cardId}: unrecognized cardType \"${card.cardType}\"")
-          return@mapNotNull null
-        }
-        card to type
+    val cardsByType = body.data?.cards.orEmpty().mapNotNull { card ->
+      val type = SUPPORTED_CARD_TYPES[card.cardType]
+      if (type == null) {
+        Log.w(LOG_TAG, "Dropping card ${card.cardId}: unrecognized cardType \"${card.cardType}\"")
+        return@mapNotNull null
       }
-      .map { (card, type) -> async { fetchCardDetail(card.cardId, type) } }
-      .awaitAll()
-      .filterNotNull()
+      card.cardId to type
+    }
+    if (cardsByType.isEmpty()) return emptyList()
+
+    return fetchCardDetails(cardsByType.toMap())
+      .filter { request ->
+        val sakhiId = request.sakhiId
+        val belongsToCaller = sakhiId == null || sakhiId in mySakhiIds
+        if (!belongsToCaller) {
+          Log.w(LOG_TAG, "Dropping card ${request.id}: sakhiId $sakhiId is not assigned to the current Supervisor")
+        }
+        belongsToCaller
+      }
   }
 
-  /** Falls back to `null` (card dropped from the list) if the detail call fails, or if anything
-   * else building this card from it throws (a malformed date, a lookup fetch failure inside
-   * [fetchDetail]) — a card with no data at all can't render anything meaningful, unlike a
-   * partial-join failure in the old per-field-join design. */
-  private suspend fun fetchCardDetail(cardId: String, type: QuickResponseRequestType): QuickResponseRequest? =
-    runCatching {
-      val response = api.getQuickResponseCardDetail(cardId)
-      val card = response.takeIf { it.isSuccessful }?.body()?.takeIf { it.success }?.data ?: return null
-      val riskConditions = card.riskDetails.orEmpty().map {
-        QuickResponseRiskCondition(conditionName = it.conditionName, latestGrade = it.latestGrade)
-      }
-      QuickResponseRequest(
-        id = card.cardId,
-        requestedAtEpochMillis = Instant.parse(card.raisedAt).toEpochMilli(),
-        requestType = type,
-        beneficiaryName = card.beneficiaryName,
-        sakhiName = card.sakhiName,
-        sakhiId = card.sakhiId,
-        sakhiPhoneNumber = card.sakhiContactNumber,
-        padaName = card.padaName,
-        requestStatus = card.status,
-        riskConditions = riskConditions,
-        detail = fetchDetail(type, card),
-      )
-    }.onFailure { cause ->
-      Log.w(LOG_TAG, "Dropping card $cardId: failed to build detail", cause)
-    }.getOrNull()
+  /** One batch call for every card's full detail, keyed by [typeByCardId] (cardId -> its already-
+   * validated [QuickResponseRequestType]). A card missing from the response entirely, or present
+   * with [QuickResponseCardBatchDetailDto.error] set (backend resolved it independently and that
+   * one card's resolution failed — e.g. its beneficiary record wasn't found), is dropped rather
+   * than rendered with missing data — mirrors the single-card fallback's "a card with no data
+   * can't render anything meaningful" stance. The batch call itself failing (network exception,
+   * non-2xx, unsuccessful envelope) is a different case and propagates instead of being treated
+   * the same as "the backend legitimately returned zero cards" — otherwise a transient outage
+   * would present as an empty Quick Response list instead of the screen's existing error/retry
+   * state. */
+  private suspend fun fetchCardDetails(typeByCardId: Map<String, QuickResponseRequestType>): List<QuickResponseRequest> {
+    val response = runCatching { api.getQuickResponseCardDetails(typeByCardId.keys.joinToString(",")) }
+      .onFailure { cause -> Log.w(LOG_TAG, "Failed to load Quick Response card details", cause) }
+      .getOrThrow()
+    if (!response.isSuccessful) error("Failed to load Quick Response card details: HTTP ${response.code()}")
+    val body = response.body() ?: error("Empty Quick Response card details response")
+    if (!body.success) error(body.message ?: "Failed to load Quick Response card details")
+    val cards = body.data.orEmpty()
 
-  private suspend fun fetchDetail(type: QuickResponseRequestType, card: QuickResponseCardDetailDto): QuickResponseCardDetail? =
+    return cards.mapNotNull { card ->
+      val type = typeByCardId[card.cardId] ?: return@mapNotNull null
+      if (card.error != null) {
+        Log.w(LOG_TAG, "Dropping card ${card.cardId}: ${card.error}")
+        return@mapNotNull null
+      }
+      runCatching { buildRequest(card, type) }
+        .onFailure { cause -> Log.w(LOG_TAG, "Dropping card ${card.cardId}: failed to build detail", cause) }
+        .getOrNull()
+    }
+  }
+
+  private suspend fun buildRequest(card: QuickResponseCardBatchDetailDto, type: QuickResponseRequestType): QuickResponseRequest {
+    val riskConditions = card.riskDetails.orEmpty().map {
+      QuickResponseRiskCondition(conditionName = it.conditionName, latestGrade = it.latestGrade)
+    }
+    return QuickResponseRequest(
+      id = card.cardId,
+      requestedAtEpochMillis = Instant.parse(card.raisedAt).toEpochMilli(),
+      requestType = type,
+      beneficiaryName = card.beneficiaryName,
+      sakhiName = card.sakhiName,
+      sakhiId = card.sakhiId,
+      sakhiEmployeeCode = card.sakhiEmployeeCode,
+      sakhiPhoneNumber = card.sakhiContactNumber,
+      padaName = card.padaName,
+      requestStatus = card.status,
+      riskConditions = riskConditions,
+      detail = fetchDetail(type, card),
+    )
+  }
+
+  private suspend fun fetchDetail(type: QuickResponseRequestType, card: QuickResponseCardBatchDetailDto): QuickResponseCardDetail? =
     when (type) {
       QuickResponseRequestType.LMP_CHANGE -> QuickResponseCardDetail.LmpChange(
         oldLmpDateEpochMillis = card.oldLmpDate?.let { parseEpochMillisOrNull(it) },

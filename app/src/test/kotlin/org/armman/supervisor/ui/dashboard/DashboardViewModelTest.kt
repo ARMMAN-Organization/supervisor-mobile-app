@@ -3,11 +3,15 @@ package org.armman.supervisor.ui.dashboard
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.armman.supervisor.model.LocationOption
+import org.armman.supervisor.ui.notifications.AppNotification
+import org.armman.supervisor.ui.notifications.NotificationStatus
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -33,7 +37,8 @@ class DashboardViewModelTest {
     supervisorName = "Niharika Supervisor",
     roleLabel = "Field Supervisor",
     date = "Wed, 1 April 2026",
-    unsyncedCount = 0,
+    unreadNotificationCount = 0,
+    newlyDetectedNotifications = emptyList(),
     kpi = KpiSummary(0, 0, 0, 0),
     visitSummary = listOf(SummaryRow(SummaryRowLabel.TOTAL, 0, 0)),
     registrationSummary = emptyList(),
@@ -71,6 +76,17 @@ class DashboardViewModelTest {
       return dataFactory(locationId)
     }
   }
+
+  private fun notification(id: String) = AppNotification(
+    id = id,
+    title = "Title",
+    body = null,
+    createdAtEpochMillis = 0L,
+    status = NotificationStatus.UNREAD,
+    notificationType = "MISSED_VISIT_ESCALATION",
+    linkedEntityType = null,
+    linkedEntityId = null,
+  )
 
   // --- Positive ---
 
@@ -239,5 +255,108 @@ class DashboardViewModelTest {
     val state = viewModel.uiState.value as DashboardUiState.Success
     assertEquals("loc-2", state.selectedLocationId)
     assertEquals(sampleData("loc-2"), state.data)
+  }
+
+  // --- Polling ---
+
+  @Test
+  fun `startPolling emits one newNotificationEvent per newlyDetectedNotification found on a poll tick`() = runTest(dispatcher) {
+    var pollResult = sampleData("loc-1")
+    val repo = TestRepository(dataFactory = { pollResult })
+    val viewModel = DashboardViewModel(repo)
+    dispatcher.scheduler.advanceUntilIdle()
+
+    val events = mutableListOf<Unit>()
+    val collectJob = launch { viewModel.newNotificationEvents.toList(events) }
+
+    pollResult = sampleData("loc-1").copy(
+      newlyDetectedNotifications = listOf(notification("n-1"), notification("n-2")),
+    )
+    viewModel.startPolling()
+    dispatcher.scheduler.advanceTimeBy(16_000L)
+    dispatcher.scheduler.runCurrent()
+
+    assertEquals(2, events.size)
+    viewModel.stopPolling()
+    collectJob.cancel()
+  }
+
+  @Test
+  fun `stopPolling stops further ticks from firing`() = runTest(dispatcher) {
+    val repo = TestRepository(dataFactory = ::sampleData)
+    val viewModel = DashboardViewModel(repo)
+    dispatcher.scheduler.advanceUntilIdle()
+
+    viewModel.startPolling()
+    val countAfterStart = repo.getDashboardCallCount
+    viewModel.stopPolling()
+    dispatcher.scheduler.advanceTimeBy(60_000L)
+    dispatcher.scheduler.runCurrent()
+
+    assertEquals(countAfterStart, repo.getDashboardCallCount)
+  }
+
+  @Test
+  fun `a failed poll tick leaves existing dashboard state untouched`() = runTest(dispatcher) {
+    val repo = TestRepository(dataFactory = ::sampleData)
+    val viewModel = DashboardViewModel(repo)
+    dispatcher.scheduler.advanceUntilIdle()
+    val stateBeforePoll = viewModel.uiState.value as DashboardUiState.Success
+
+    repo.failNextCalls(true)
+    viewModel.startPolling()
+    dispatcher.scheduler.advanceTimeBy(16_000L)
+    dispatcher.scheduler.runCurrent()
+
+    assertEquals(stateBeforePoll, viewModel.uiState.value)
+    viewModel.stopPolling()
+  }
+
+  @Test
+  fun `a poll tick for a since-abandoned location does not overwrite a location switch that completed first`() =
+    runTest(dispatcher) {
+      val repo = TestRepository(delaysMs = mapOf("loc-1" to 20_000L), dataFactory = ::sampleData)
+      val viewModel = DashboardViewModel(repo)
+      dispatcher.scheduler.advanceUntilIdle()
+
+      // Poll tick fires for "loc-1" and starts its slow (20s) getDashboard call.
+      viewModel.startPolling()
+      dispatcher.scheduler.advanceTimeBy(15_000L)
+      dispatcher.scheduler.runCurrent()
+
+      // Before that poll resolves, the user switches to "loc-2" (fast, no delay) and it completes.
+      // A bounded advance, not advanceUntilIdle() — the polling job's infinite while(true) loop
+      // always has a next tick scheduled, so advanceUntilIdle() would never return while it's active.
+      viewModel.onLocationSelected("loc-2")
+      dispatcher.scheduler.advanceTimeBy(1_000L)
+      dispatcher.scheduler.runCurrent()
+      val afterSwitch = viewModel.uiState.value as DashboardUiState.Success
+      assertEquals("loc-2", afterSwitch.selectedLocationId)
+
+      // The stale "loc-1" poll tick now resolves — it must not clobber the "loc-2" state.
+      dispatcher.scheduler.advanceTimeBy(5_000L)
+      dispatcher.scheduler.runCurrent()
+
+      val finalState = viewModel.uiState.value as DashboardUiState.Success
+      assertEquals("loc-2", finalState.selectedLocationId)
+      assertEquals(sampleData("loc-2"), finalState.data)
+      viewModel.stopPolling()
+    }
+
+  @Test
+  fun `calling startPolling twice does not start a second overlapping loop`() = runTest(dispatcher) {
+    val repo = TestRepository(dataFactory = ::sampleData)
+    val viewModel = DashboardViewModel(repo)
+    dispatcher.scheduler.advanceUntilIdle()
+
+    viewModel.startPolling()
+    viewModel.startPolling()
+    val countAfterStart = repo.getDashboardCallCount
+    dispatcher.scheduler.advanceTimeBy(16_000L)
+    dispatcher.scheduler.runCurrent()
+
+    // A second overlapping loop would have produced 2 ticks in this window instead of 1.
+    assertEquals(countAfterStart + 1, repo.getDashboardCallCount)
+    viewModel.stopPolling()
   }
 }

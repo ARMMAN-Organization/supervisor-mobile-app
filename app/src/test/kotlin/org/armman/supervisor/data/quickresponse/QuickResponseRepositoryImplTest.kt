@@ -2,11 +2,18 @@ package org.armman.supervisor.data.quickresponse
 
 import kotlinx.coroutines.test.runTest
 import okhttp3.ResponseBody.Companion.toResponseBody
+import org.armman.supervisor.data.auth.UserSession
+import org.armman.supervisor.data.auth.session.SecureKeyValueStore
+import org.armman.supervisor.data.auth.session.SessionStore
 import org.armman.supervisor.data.lookups.LookupCategoryDto
 import org.armman.supervisor.data.lookups.LookupValueDto
 import org.armman.supervisor.data.lookups.LookupsApi
 import org.armman.supervisor.data.lookups.LookupsEnvelopeDto
 import org.armman.supervisor.data.lookups.LookupsRepository
+import org.armman.supervisor.data.projects.ProjectsRepository
+import org.armman.supervisor.model.LocationOption
+import org.armman.supervisor.ui.assignitem.SakhiDetail
+import org.armman.supervisor.ui.assignitem.SakhiOption
 import org.armman.supervisor.ui.quickresponse.QuickResponseCardDetail
 import org.armman.supervisor.ui.quickresponse.QuickResponseDecision
 import org.armman.supervisor.ui.quickresponse.QuickResponseDecisionException
@@ -18,10 +25,132 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import retrofit2.Response
 
+/** In-memory [SecureKeyValueStore] so [SessionStore] can be exercised without Android Keystore. */
+private class FakeSecureKeyValueStore : SecureKeyValueStore {
+  private val values = mutableMapOf<String, String>()
+  override fun getString(key: String): String? = values[key]
+  override fun putString(key: String, value: String): Boolean {
+    values[key] = value
+    return true
+  }
+  override fun remove(key: String) {
+    values.remove(key)
+  }
+}
+
+/** A logged-in session for Supervisor "sup-1" on project "proj-1", the default every test in
+ * this file runs as unless a test overrides it — matches this suite's existing card fixtures,
+ * which were all written before Quick Response was scoped to the caller's own Sakhis. */
+private val DEFAULT_SESSION = UserSession(
+  username = "supervisor@example.com",
+  subjectId = "sup-1",
+  roles = listOf("SUPERVISOR"),
+  projectId = "proj-1",
+  geographyUnitId = null,
+  accessToken = "token",
+  refreshToken = "refresh",
+  accessTokenExpiresAtEpochSeconds = Long.MAX_VALUE,
+)
+
+/**
+ * Fake [ProjectsRepository] whose [getMySakhiIds] returns everything by default — this suite's
+ * existing tests exercise card-mapping behavior, not Sakhi-scoping, so they must keep seeing
+ * every card unless a test explicitly narrows [assignedSakhiIds]. Only the "Sakhi-scoping"
+ * tests below override it to a restrictive set.
+ *
+ * [getProjects] defaults to just [DEFAULT_SESSION]'s own project ("proj-1"), matching every
+ * existing test's single-project assumption; multi-project tests override [projects] and use
+ * [assignedSakhiIdsByProject] to give each project its own roster.
+ */
+private class FakeProjectsRepository : ProjectsRepository {
+  /** `null` (the default) means "assign every Sakhi the test ever asks about" — see
+   * [getMySakhiIds]. Tests that need real filtering set this explicitly. Ignored once
+   * [assignedSakhiIdsByProject] is set. */
+  var assignedSakhiIds: Set<String>? = null
+
+  /** Per-project override for multi-project tests — takes priority over [assignedSakhiIds] when
+   * non-null. Keyed by projectId, same "missing key -&gt; empty roster" semantics as a real
+   * roster fetch that returns no Sakhis for a project the supervisor isn't assigned in. */
+  var assignedSakhiIdsByProject: Map<String, Set<String>>? = null
+  var projects: List<LocationOption> = listOf(LocationOption(id = "proj-1", name = "Project 1"))
+  var failGetMySakhiIds = false
+  var failGetProjects = false
+  val requestedProjectIds = mutableListOf<String>()
+
+  override suspend fun getProjects(): List<LocationOption> {
+    if (failGetProjects) error("Simulated failure loading projects")
+    return projects
+  }
+  override suspend fun getSakhis(projectId: String): List<SakhiOption> = error("not used by these tests")
+  override suspend fun getSakhiDetail(sakhiId: String): SakhiDetail = error("not used by these tests")
+  override suspend fun getSakhiOption(sakhiId: String): SakhiOption = error("not used by these tests")
+  override suspend fun getSakhiProjectId(sakhiId: String): String = error("not used by these tests")
+  override fun clearCache() = error("not used by these tests")
+
+  override suspend fun getMySakhiIds(projectId: String, supervisorUserId: String): Set<String> {
+    if (failGetMySakhiIds) error("Simulated failure loading Sakhi roster")
+    requestedProjectIds += projectId
+    assignedSakhiIdsByProject?.let { return it[projectId] ?: emptySet() }
+    return assignedSakhiIds ?: ALL_SAKHI_IDS
+  }
+
+  companion object {
+    /** Stands in for "every Sakhi id any test fixture in this file uses" so the default
+     * (`assignedSakhiIds == null`) behaves as "unrestricted" without each existing test having
+     * to enumerate the Sakhi ids its own fixtures happen to use. */
+    val ALL_SAKHI_IDS = setOf("sakhi-1", "sakhi-2", "sakhi-3", "sakhi-assigned", "sakhi-other-supervisor")
+  }
+}
+
+/** Converts one single-card [QuickResponseCardDetailDto] fixture into its batch-shaped
+ * equivalent — [detail]'s existing fixtures are reused unchanged (same field values, `error =
+ * null`) so every pre-existing test built around single-card fixtures keeps working against the
+ * batch endpoint without being rewritten. */
+private fun QuickResponseCardDetailDto.toBatchDto() = QuickResponseCardBatchDetailDto(
+  cardId = cardId,
+  cardType = cardType,
+  cardSource = cardSource,
+  beneficiaryId = beneficiaryId,
+  raisedAt = raisedAt,
+  error = null,
+  padaName = padaName,
+  sakhiName = sakhiName,
+  sakhiId = sakhiId,
+  sakhiEmployeeCode = sakhiEmployeeCode,
+  sakhiContactNumber = sakhiContactNumber,
+  beneficiaryName = beneficiaryName,
+  riskDetails = riskDetails,
+  status = status,
+  oldLmpDate = oldLmpDate,
+  newLmpDate = newLmpDate,
+  sonographyImageAssetId = sonographyImageAssetId,
+  visitType = visitType,
+  closureType = closureType,
+  closureReasonLookupValueId = closureReasonLookupValueId,
+  closureDate = closureDate,
+  supervisorNotes = supervisorNotes,
+  referralDate = referralDate,
+  facilityName = facilityName,
+  facilityType = facilityType,
+  photoEvidenceAssetId = photoEvidenceAssetId,
+  visitReference = visitReference,
+  referralsMissedCount = referralsMissedCount,
+  reason = reason,
+  reasonForReopen = reasonForReopen,
+  eddDate = eddDate,
+)
+
 private class FakeQuickResponseApi : QuickResponseApi {
   var listResult: Response<QuickResponseListEnvelopeDto> =
     Response.success(QuickResponseListEnvelopeDto(success = true, message = "OK", data = QuickResponseListDto(emptyList(), null)))
   var detailResultsById: Map<String, Response<QuickResponseCardDetailEnvelopeDto>> = emptyMap()
+
+  /** Set directly (instead of via [detailResultsById]) by tests exercising the batch endpoint's
+   * own semantics — a per-card `error` string, or a card entirely missing from the response. */
+  var batchDetailsResult: Response<QuickResponseBatchDetailEnvelopeDto>? = null
+  var failBatchDetailsCall = false
+  var lastBatchCardIds: String? = null
+
   var decisionResult: Response<DecideQuickResponseEnvelopeDto> =
     Response.success(
       DecideQuickResponseEnvelopeDto(
@@ -37,6 +166,22 @@ private class FakeQuickResponseApi : QuickResponseApi {
 
   override suspend fun getQuickResponseCardDetail(cardId: String): Response<QuickResponseCardDetailEnvelopeDto> =
     detailResultsById[cardId] ?: Response.error(404, "".toResponseBody(null))
+
+  /** [batchDetailsResult], when set, takes priority — otherwise synthesizes a batch response
+   * from [detailResultsById] so existing single-card-fixture-based tests need no changes. A
+   * cardId with no fixture (an unrecognized/decode-failure case) is simply absent from the
+   * batch response, matching how a real batch endpoint would omit an id it couldn't resolve at
+   * all (as opposed to resolving it with `error` set). */
+  override suspend fun getQuickResponseCardDetails(cardIds: String): Response<QuickResponseBatchDetailEnvelopeDto> {
+    lastBatchCardIds = cardIds
+    if (failBatchDetailsCall) return Response.error(500, "".toResponseBody(null))
+    batchDetailsResult?.let { return it }
+    val ids = cardIds.split(",")
+    val cards = ids.mapNotNull { id ->
+      detailResultsById[id]?.takeIf { it.isSuccessful }?.body()?.takeIf { it.success }?.data?.toBatchDto()
+    }
+    return Response.success(QuickResponseBatchDetailEnvelopeDto(success = true, message = "OK", data = cards))
+  }
 
   override suspend fun decideQuickResponseCard(cardId: String, request: DecideQuickResponseRequestDto): Response<DecideQuickResponseEnvelopeDto> {
     lastDecisionCardId = cardId
@@ -83,11 +228,15 @@ class QuickResponseRepositoryImplTest {
   private val lookupsApi = FakeLookupsApi()
   private val missedVisitEscalationApi = FakeMissedVisitEscalationApi()
   private val eddNearingApi = FakeEddNearingApi()
+  private val sessionStore = SessionStore(FakeSecureKeyValueStore()).apply { saveSession(DEFAULT_SESSION) }
+  private val projectsRepository = FakeProjectsRepository()
   private val repository = QuickResponseRepositoryImpl(
     api,
     LookupsRepository(lookupsApi),
     missedVisitEscalationApi,
     eddNearingApi,
+    sessionStore,
+    projectsRepository,
   )
 
   private fun card(id: String, cardType: String, beneficiaryId: String? = "ben-1", raisedAt: String = "2026-08-07T10:00:00Z") =
@@ -137,6 +286,7 @@ class QuickResponseRepositoryImplTest {
         padaName = padaName,
         sakhiName = sakhiName,
         sakhiId = sakhiId,
+        sakhiEmployeeCode = null,
         sakhiContactNumber = sakhiContactNumber,
         beneficiaryName = beneficiaryName,
         riskDetails = riskDetails,
@@ -534,7 +684,7 @@ class QuickResponseRepositoryImplTest {
   @Test
   fun `getRequests drops a card entirely when its detail call fails`() = runTest {
     api.listResult = Response.success(listOf1("card-1", "LMP_CHANGE"))
-    // No entry in detailResultsById -> FakeQuickResponseApi returns 404 for it.
+    // No entry in detailResultsById -> the batch response omits it entirely.
 
     val requests = repository.getRequests()
 
@@ -594,5 +744,261 @@ class QuickResponseRepositoryImplTest {
     val requests = repository.getRequests()
 
     assertTrue(requests[0].riskConditions.isEmpty())
+  }
+
+  // --- Sakhi scoping (defense-in-depth against a backend gap: GET /quick-response does not yet
+  // scope cards to the calling Supervisor's own Sakhis) ---
+
+  @Test
+  fun `getRequests keeps a card whose sakhiId is assigned to the calling supervisor`() = runTest {
+    projectsRepository.assignedSakhiIds = setOf("sakhi-assigned")
+    api.listResult = Response.success(listOf1("card-1", "DATA_RESTORE"))
+    api.detailResultsById = mapOf(
+      "card-1" to detail("card-1", "DATA_RESTORE", beneficiaryName = null, sakhiId = "sakhi-assigned"),
+    )
+
+    val requests = repository.getRequests()
+
+    assertEquals(1, requests.size)
+    assertEquals("card-1", requests[0].id)
+  }
+
+  @Test
+  fun `getRequests drops a card whose sakhiId belongs to a different supervisor`() = runTest {
+    projectsRepository.assignedSakhiIds = setOf("sakhi-assigned")
+    api.listResult = Response.success(listOf1("card-1", "DATA_RESTORE"))
+    api.detailResultsById = mapOf(
+      "card-1" to detail("card-1", "DATA_RESTORE", beneficiaryName = null, sakhiId = "sakhi-other-supervisor"),
+    )
+
+    val requests = repository.getRequests()
+
+    assertTrue(requests.isEmpty())
+  }
+
+  @Test
+  fun `getRequests keeps a card whose sakhiId could not be resolved (null)`() = runTest {
+    projectsRepository.assignedSakhiIds = setOf("sakhi-assigned")
+    api.listResult = Response.success(listOf1("card-1", "REOPEN"))
+    api.detailResultsById = mapOf(
+      "card-1" to detail("card-1", "REOPEN", sakhiId = null),
+    )
+
+    val requests = repository.getRequests()
+
+    assertEquals(1, requests.size)
+  }
+
+  @Test(expected = IllegalStateException::class)
+  fun `getRequests fails closed when loading the assigned-Sakhi roster fails`() = runTest {
+    projectsRepository.failGetMySakhiIds = true
+    api.listResult = Response.success(listOf1("card-1", "REOPEN"))
+    api.detailResultsById = mapOf("card-1" to detail("card-1", "REOPEN", sakhiId = "sakhi-assigned"))
+
+    repository.getRequests()
+  }
+
+  @Test
+  fun `getRequests keeps only assigned and null-sakhi cards out of a mixed list`() = runTest {
+    projectsRepository.assignedSakhiIds = setOf("sakhi-assigned")
+    api.listResult = Response.success(
+      QuickResponseListEnvelopeDto(
+        success = true,
+        message = "OK",
+        data = QuickResponseListDto(
+          cards = listOf(
+            card("card-assigned", "DATA_RESTORE", beneficiaryId = null),
+            card("card-other", "DATA_RESTORE", beneficiaryId = null),
+            card("card-unresolved", "REOPEN"),
+          ),
+          nextCursor = null,
+        ),
+      ),
+    )
+    api.detailResultsById = mapOf(
+      "card-assigned" to detail("card-assigned", "DATA_RESTORE", beneficiaryName = null, sakhiId = "sakhi-assigned"),
+      "card-other" to detail("card-other", "DATA_RESTORE", beneficiaryName = null, sakhiId = "sakhi-other-supervisor"),
+      "card-unresolved" to detail("card-unresolved", "REOPEN", sakhiId = null),
+    )
+
+    val requests = repository.getRequests()
+
+    assertEquals(setOf("card-assigned", "card-unresolved"), requests.map { it.id }.toSet())
+  }
+
+  @Test
+  fun `getRequests returns an empty list, not an error, when the supervisor has no assigned sakhis`() = runTest {
+    projectsRepository.assignedSakhiIds = emptySet()
+    api.listResult = Response.success(listOf1("card-1", "DATA_RESTORE"))
+    api.detailResultsById = mapOf(
+      "card-1" to detail("card-1", "DATA_RESTORE", beneficiaryName = null, sakhiId = "sakhi-assigned"),
+    )
+
+    val requests = repository.getRequests()
+
+    assertTrue(requests.isEmpty())
+  }
+
+  @Test
+  fun `getRequests keeps a card for the caller's own sakhi in a project other than the session's`() = runTest {
+    projectsRepository.projects = listOf(
+      LocationOption(id = "proj-1", name = "Project 1"),
+      LocationOption(id = "proj-2", name = "Project 2"),
+    )
+    projectsRepository.assignedSakhiIdsByProject = mapOf(
+      "proj-1" to setOf("sakhi-assigned"),
+      "proj-2" to setOf("sakhi-in-other-project"),
+    )
+    api.listResult = Response.success(listOf1("card-1", "DATA_RESTORE"))
+    api.detailResultsById = mapOf(
+      "card-1" to detail("card-1", "DATA_RESTORE", beneficiaryName = null, sakhiId = "sakhi-in-other-project"),
+    )
+
+    val requests = repository.getRequests()
+
+    assertEquals(1, requests.size)
+    assertEquals("card-1", requests[0].id)
+  }
+
+  @Test
+  fun `getRequests drops a card for a sakhi in none of the caller's projects`() = runTest {
+    projectsRepository.projects = listOf(
+      LocationOption(id = "proj-1", name = "Project 1"),
+      LocationOption(id = "proj-2", name = "Project 2"),
+    )
+    projectsRepository.assignedSakhiIdsByProject = mapOf(
+      "proj-1" to setOf("sakhi-assigned"),
+      "proj-2" to setOf("sakhi-in-other-project"),
+    )
+    api.listResult = Response.success(listOf1("card-1", "DATA_RESTORE"))
+    api.detailResultsById = mapOf(
+      "card-1" to detail("card-1", "DATA_RESTORE", beneficiaryName = null, sakhiId = "sakhi-other-supervisor"),
+    )
+
+    val requests = repository.getRequests()
+
+    assertTrue(requests.isEmpty())
+  }
+
+  @Test
+  fun `getRequests behaves exactly as before for a single-project supervisor`() = runTest {
+    projectsRepository.assignedSakhiIds = setOf("sakhi-assigned")
+    api.listResult = Response.success(listOf1("card-1", "DATA_RESTORE"))
+    api.detailResultsById = mapOf(
+      "card-1" to detail("card-1", "DATA_RESTORE", beneficiaryName = null, sakhiId = "sakhi-assigned"),
+    )
+
+    val requests = repository.getRequests()
+
+    assertEquals(1, requests.size)
+    assertEquals(listOf("proj-1"), projectsRepository.requestedProjectIds)
+  }
+
+  @Test(expected = IllegalStateException::class)
+  fun `getRequests fails closed when loading the caller's projects fails`() = runTest {
+    projectsRepository.failGetProjects = true
+    api.listResult = Response.success(listOf1("card-1", "REOPEN"))
+    api.detailResultsById = mapOf("card-1" to detail("card-1", "REOPEN", sakhiId = "sakhi-assigned"))
+
+    repository.getRequests()
+  }
+
+  // --- Batch detail endpoint (GET /quick-response/details) semantics ---
+
+  @Test
+  fun `getRequests calls the batch endpoint once with every pending card's id`() = runTest {
+    api.listResult = Response.success(
+      QuickResponseListEnvelopeDto(
+        success = true,
+        message = "OK",
+        data = QuickResponseListDto(cards = listOf(card("card-1", "REOPEN"), card("card-2", "CLOSURE_REVIEW")), nextCursor = null),
+      ),
+    )
+    api.detailResultsById = mapOf(
+      "card-1" to detail("card-1", "REOPEN"),
+      "card-2" to detail("card-2", "CLOSURE_REVIEW"),
+    )
+
+    repository.getRequests()
+
+    assertEquals(setOf("card-1", "card-2"), api.lastBatchCardIds?.split(",")?.toSet())
+  }
+
+  @Test
+  fun `getRequests does not call the batch endpoint when there are no pending cards`() = runTest {
+    api.listResult = Response.success(QuickResponseListEnvelopeDto(success = true, message = "OK", data = QuickResponseListDto(emptyList(), null)))
+
+    repository.getRequests()
+
+    assertNull(api.lastBatchCardIds)
+  }
+
+  @Test
+  fun `getRequests drops only the card whose batch entry carries an error, keeping the rest`() = runTest {
+    api.listResult = Response.success(
+      QuickResponseListEnvelopeDto(
+        success = true,
+        message = "OK",
+        data = QuickResponseListDto(cards = listOf(card("card-bad", "REOPEN"), card("card-good", "REOPEN")), nextCursor = null),
+      ),
+    )
+    api.batchDetailsResult = Response.success(
+      QuickResponseBatchDetailEnvelopeDto(
+        success = true,
+        message = "OK",
+        data = listOf(
+          detail("card-bad", "REOPEN").body()!!.data!!.toBatchDto().copy(error = "The beneficiary linked to this card was not found."),
+          detail("card-good", "REOPEN").body()!!.data!!.toBatchDto(),
+        ),
+      ),
+    )
+
+    val requests = repository.getRequests()
+
+    assertEquals(1, requests.size)
+    assertEquals("card-good", requests[0].id)
+  }
+
+  @Test(expected = IllegalStateException::class)
+  fun `getRequests propagates a failure of the batch call itself, rather than returning an empty list`() = runTest {
+    api.listResult = Response.success(listOf1("card-1", "REOPEN"))
+    api.failBatchDetailsCall = true
+
+    repository.getRequests()
+  }
+
+  @Test
+  fun `getRequests returns an empty list when the batch call succeeds with no cards`() = runTest {
+    api.listResult = Response.success(listOf1("card-1", "REOPEN"))
+    api.batchDetailsResult = Response.success(
+      QuickResponseBatchDetailEnvelopeDto(success = true, message = "OK", data = emptyList()),
+    )
+
+    val requests = repository.getRequests()
+
+    assertTrue(requests.isEmpty())
+  }
+
+  @Test
+  fun `getRequests drops a card missing from the batch response entirely`() = runTest {
+    api.listResult = Response.success(
+      QuickResponseListEnvelopeDto(
+        success = true,
+        message = "OK",
+        data = QuickResponseListDto(cards = listOf(card("card-missing", "REOPEN"), card("card-present", "REOPEN")), nextCursor = null),
+      ),
+    )
+    api.batchDetailsResult = Response.success(
+      QuickResponseBatchDetailEnvelopeDto(
+        success = true,
+        message = "OK",
+        data = listOf(detail("card-present", "REOPEN").body()!!.data!!.toBatchDto()),
+      ),
+    )
+
+    val requests = repository.getRequests()
+
+    assertEquals(1, requests.size)
+    assertEquals("card-present", requests[0].id)
   }
 }

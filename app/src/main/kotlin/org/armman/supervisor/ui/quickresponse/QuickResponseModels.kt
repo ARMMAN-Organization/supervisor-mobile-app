@@ -137,6 +137,7 @@ data class QuickResponseRequest(
   val beneficiaryName: String?,
   val sakhiName: String?,
   val sakhiId: String?,
+  val sakhiEmployeeCode: String?,
   val sakhiPhoneNumber: String?,
   val padaName: String?,
   val requestStatus: String?,

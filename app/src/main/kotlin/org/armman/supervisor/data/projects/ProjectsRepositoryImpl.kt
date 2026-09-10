@@ -56,6 +56,15 @@ class ProjectsRepositoryImpl @Inject constructor(
 
   override suspend fun getSakhiProjectId(sakhiId: String): String = findSakhi(sakhiId).primaryProjectId
 
+  override suspend fun getMySakhiIds(projectId: String, supervisorUserId: String): Set<String> {
+    // getSakhis does the actual fetch/validate/cache — its return type (List<SakhiOption>)
+    // doesn't carry supervisorId, but it populates sakhisBySakhiId with the full SakhiDto as a
+    // side effect, so this Sakhi-scoping filter reads that cache afterward instead of
+    // re-implementing the fetch.
+    val sakhiIds = getSakhis(projectId).map { it.id }
+    return sakhiIds.filterTo(mutableSetOf()) { sakhisBySakhiId[it]?.supervisorId == supervisorUserId }
+  }
+
   override fun clearCache() {
     sakhisBySakhiId.clear()
   }

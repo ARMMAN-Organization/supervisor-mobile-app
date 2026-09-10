@@ -1,16 +1,24 @@
 package org.armman.supervisor.ui.dashboard
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.armman.supervisor.model.LocationOption
 import javax.inject.Inject
+
+private const val POLL_INTERVAL_MILLIS = 15_000L
+private const val LOG_TAG = "DashboardViewModel"
 
 /** UI state for the Supervisor Dashboard — covers loading, error and success (with a live-refresh flag). */
 sealed interface DashboardUiState {
@@ -33,7 +41,15 @@ class DashboardViewModel @Inject constructor(
   private val _uiState = MutableStateFlow<DashboardUiState>(DashboardUiState.Loading)
   val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
 
+  /** Emits once per notification detected as newly-seen by a [repository] call (initial load,
+   * location switch, or a poll tick) — the Screen collects this to play the notification sound.
+   * A hot [SharedFlow] with no replay: a collector that starts late (e.g. after
+   * process restart) doesn't get a backlog of sounds to play at once. */
+  private val _newNotificationEvents = MutableSharedFlow<Unit>(replay = 0, extraBufferCapacity = 8)
+  val newNotificationEvents: SharedFlow<Unit> = _newNotificationEvents.asSharedFlow()
+
   private var loadJob: Job? = null
+  private var pollingJob: Job? = null
 
   init {
     loadInitial()
@@ -48,6 +64,39 @@ class DashboardViewModel @Inject constructor(
     fetch(locationId = locationId, locations = current.locations, showFullLoading = false)
   }
 
+  /** Starts polling for new notifications every [POLL_INTERVAL_MILLIS] while the Dashboard is the
+   * visible screen — call from a lifecycle-aware effect (e.g. on resume) and pair with
+   * [stopPolling] (e.g. on pause) so it doesn't keep running, and hitting the network, once the
+   * user has navigated away. */
+  fun startPolling() {
+    if (pollingJob?.isActive == true) return
+    pollingJob = viewModelScope.launch {
+      while (true) {
+        delay(POLL_INTERVAL_MILLIS)
+        val current = _uiState.value as? DashboardUiState.Success ?: continue
+        runCatching { repository.getDashboard(current.selectedLocationId) }
+          .onSuccess { data ->
+            // The location selector (or another fetch) may have moved on while this poll's
+            // suspending call was in flight — re-check against the *live* state rather than
+            // `current` (captured before the call) so a stale result for the old location can't
+            // clobber a location switch that already completed.
+            val latest = _uiState.value as? DashboardUiState.Success ?: return@onSuccess
+            if (latest.selectedLocationId != current.selectedLocationId) return@onSuccess
+            _uiState.value = latest.copy(data = data)
+            repeat(data.newlyDetectedNotifications.size) { _newNotificationEvents.tryEmit(Unit) }
+          }
+          .onFailure { Log.w(LOG_TAG, "Dashboard poll tick failed", it) }
+        // A failed poll tick surfaces only in logs — the existing dashboard state is left as-is
+        // rather than showing an error for a background refresh the user didn't initiate.
+      }
+    }
+  }
+
+  fun stopPolling() {
+    pollingJob?.cancel()
+    pollingJob = null
+  }
+
   private fun loadInitial() {
     _uiState.value = DashboardUiState.Loading
     loadJob?.cancel()
@@ -57,6 +106,7 @@ class DashboardViewModel @Inject constructor(
         val selected = locations.firstOrNull()?.id
         val data = repository.getDashboard(selected)
         _uiState.value = DashboardUiState.Success(data, locations, selected, isRefreshing = false)
+        repeat(data.newlyDetectedNotifications.size) { _newNotificationEvents.tryEmit(Unit) }
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {
@@ -76,6 +126,7 @@ class DashboardViewModel @Inject constructor(
       try {
         val data = repository.getDashboard(locationId)
         _uiState.value = DashboardUiState.Success(data, locations, locationId, isRefreshing = false)
+        repeat(data.newlyDetectedNotifications.size) { _newNotificationEvents.tryEmit(Unit) }
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {

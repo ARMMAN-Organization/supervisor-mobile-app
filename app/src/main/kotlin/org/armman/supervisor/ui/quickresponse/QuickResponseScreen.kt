@@ -9,12 +9,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -32,14 +35,19 @@ import org.armman.supervisor.ui.components.PrimaryButton
 import org.armman.supervisor.ui.theme.Dimens
 
 /** Quick Response list screen: cards for pending approvals with direct Approve/Reject CTAs
- * (SRS FR-SV-4.1). */
+ * (SRS FR-SV-4.1). When opened via a notification tap, [highlightCardId] scrolls to and
+ * highlights that specific card once the list loads — if the id isn't in the loaded list (out of
+ * this Supervisor's roster, already decided, etc.), the screen just opens normally with no
+ * highlight and no error, since the notification itself was still legitimately delivered. */
 @Composable
 fun QuickResponseScreen(
   onBack: () -> Unit,
   modifier: Modifier = Modifier,
+  highlightCardId: String? = null,
   viewModel: QuickResponseViewModel = hiltViewModel(),
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+  val listState = rememberLazyListState()
 
   // The ViewModel already fetches once on creation — skip that first resume so this doesn't
   // fire a redundant second load (and a Loading-flicker) right on screen entry.
@@ -47,10 +55,25 @@ fun QuickResponseScreen(
   LifecycleResumeEffect(Unit) {
     if (isInitialResume) {
       isInitialResume = false
-    } else {
+    } else if (viewModel.uiState.value !is QuickResponseUiState.Loading) {
+      // Skip the retry if a load is already in flight — otherwise resumes arriving faster than
+      // a load can complete (e.g. a system dialog or notification repeatedly stealing and
+      // returning focus) cancel and restart the request each time, so it never gets a chance to
+      // finish and the screen is stuck on the spinner indefinitely.
       viewModel.onRetry()
     }
     onPauseOrDispose { }
+  }
+
+  // Fires once per successful load that actually contains the target card — scrollToItem is
+  // idempotent to re-call, but gating on `highlightCardId` keeps this from re-running on every
+  // decisionErrorMessageRes/decidingRequestId update within the same Success state.
+  val successState = uiState as? QuickResponseUiState.Success
+  if (highlightCardId != null && successState != null) {
+    LaunchedEffect(highlightCardId, successState.requests.map { it.id }) {
+      val index = successState.requests.indexOfFirst { it.id == highlightCardId }
+      if (index >= 0) listState.animateScrollToItem(index)
+    }
   }
 
   Scaffold(
@@ -66,6 +89,8 @@ fun QuickResponseScreen(
         )
         is QuickResponseUiState.Success -> SuccessContent(
           state = state,
+          listState = listState,
+          highlightCardId = highlightCardId,
           onAction = { requestId, action ->
             when (action) {
               is QuickResponseCardAction.Decide -> viewModel.onDecide(requestId, action.decision, action.notes)
@@ -101,6 +126,8 @@ private fun ErrorContent(message: String, onRetry: () -> Unit) {
 @Composable
 private fun SuccessContent(
   state: QuickResponseUiState.Success,
+  listState: LazyListState,
+  highlightCardId: String?,
   onAction: (String, QuickResponseCardAction) -> Unit,
 ) {
   if (state.requests.isEmpty()) {
@@ -124,6 +151,7 @@ private fun SuccessContent(
       // centered instead of stretching phone-width cards across the full screen.
       val isTablet = maxWidth >= Dimens.TabletMinWidthDp.dp
       LazyColumn(
+        state = listState,
         verticalArrangement = Arrangement.spacedBy(Dimens.ItemSpacing),
         modifier = Modifier
           .fillMaxSize()
@@ -139,6 +167,7 @@ private fun SuccessContent(
             // every card's buttons must show as disabled while that's true, not just the one
             // actually spinning — otherwise every other card looks tappable but silently no-ops.
             actionsEnabled = state.decidingRequestId == null,
+            isHighlighted = request.id == highlightCardId,
             modifier = Modifier.fillMaxWidth(),
           )
         }
