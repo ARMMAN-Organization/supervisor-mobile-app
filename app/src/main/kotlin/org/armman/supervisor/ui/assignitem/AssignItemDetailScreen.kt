@@ -38,10 +38,6 @@ import org.armman.supervisor.ui.components.TransactionItemRow
 import org.armman.supervisor.ui.theme.DashboardHeaderGreen
 import org.armman.supervisor.ui.theme.Dimens
 import org.armman.supervisor.ui.theme.White
-import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 /** Assign Item to Sakhi detail screen: Sakhi context + a list of item-assignment transactions. */
 @Composable
@@ -132,7 +128,7 @@ private fun SuccessContent(
         )
       } else {
         state.transactions.forEach { transaction ->
-          DatePill(text = transaction.date.toDisplayDate(), backgroundColor = DashboardHeaderGreen)
+          DatePill(text = transaction.date.toTransactionDisplayDate(), backgroundColor = DashboardHeaderGreen)
           TransactionCard(
             transactionTypeLabel = stringResource(
               R.string.assign_item_transaction_type_label,
@@ -201,11 +197,3 @@ private fun SakhiInfoHeader(detail: SakhiDetail) {
     }
   }
 }
-
-private val DisplayDateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("dd MMM yyyy", Locale.getDefault())
-
-/** [TransactionEntry.date] may be an ISO instant (fresh server rows) or already "dd MMM yyyy"
- * (older cached rows) — normalize both to the app-wide display format. */
-private fun String.toDisplayDate(): String =
-  runCatching { DisplayDateFormatter.format(Instant.parse(this).atZone(ZoneId.systemDefault())) }
-    .getOrDefault(this)

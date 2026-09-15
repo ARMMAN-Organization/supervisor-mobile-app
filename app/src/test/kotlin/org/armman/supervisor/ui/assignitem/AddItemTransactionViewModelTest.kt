@@ -371,6 +371,59 @@ class AddItemTransactionViewModelTest {
   }
 
   @Test
+  fun `edit mode normalizes an ISO transaction date to the display format`() = runTest(dispatcher) {
+    // Regression test: supervisor-operations-service's transactionDate response field is always
+    // a full ISO-8601 datetime (its OpenAPI contract is z.string().datetime()) — never already
+    // "dd MMM yyyy". Loading that raw value straight into transactionDate used to crash on Save
+    // with a DateTimeParseException from validate()'s unguarded LocalDate.parse.
+    val repo = TestRepository(
+      transactions = mapOf(
+        "sakhi-1" to listOf(
+          TransactionEntry(
+            listOf("txn-1"),
+            "2026-09-13T00:00:00.000Z",
+            TransactionType.HANDOVER,
+            listOf(TransactionItemEntry("txn-1", "item-1", "Sugar strips", 15)),
+          ),
+        ),
+      ),
+    )
+    val viewModel = AddItemTransactionViewModel(repo, savedStateHandle(editTransactionId = "txn-1"))
+    dispatcher.scheduler.advanceUntilIdle()
+
+    val state = viewModel.uiState.value as AddItemTransactionUiState.Success
+    assertEquals("13 Sep 2026", state.transactionDate)
+  }
+
+  @Test
+  fun `submitting in edit mode with an ISO transaction date does not crash and calls updateTransaction`() =
+    runTest(dispatcher) {
+      val repo = TestRepository(
+        transactions = mapOf(
+          "sakhi-1" to listOf(
+            TransactionEntry(
+              listOf("txn-1"),
+              "2026-09-13T00:00:00.000Z",
+              TransactionType.HANDOVER,
+              listOf(TransactionItemEntry("txn-1", "item-1", "Sugar strips", 15)),
+            ),
+          ),
+        ),
+      )
+      val viewModel = AddItemTransactionViewModel(repo, savedStateHandle(editTransactionId = "txn-1"))
+      dispatcher.scheduler.advanceUntilIdle()
+
+      viewModel.onQuantityChanged("item-1", 20)
+      viewModel.onSubmit()
+      dispatcher.scheduler.advanceUntilIdle()
+
+      assertEquals(1, repo.updateCallCount)
+      val state = viewModel.uiState.value as AddItemTransactionUiState.Success
+      assertTrue(state.submitted)
+      assertEquals(null, state.formError)
+    }
+
+  @Test
   fun `submitting in edit mode calls updateTransaction not submitTransaction`() = runTest(dispatcher) {
     val repo = TestRepository(
       transactions = mapOf(

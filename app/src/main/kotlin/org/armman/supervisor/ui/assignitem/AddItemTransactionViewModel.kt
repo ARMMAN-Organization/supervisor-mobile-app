@@ -89,7 +89,7 @@ class AddItemTransactionViewModel @Inject constructor(
           items = items,
           selectedProgramId = programs.firstOrNull { it.name == detail.projectName }?.id ?: programs.firstOrNull()?.id,
           selectedType = editing?.transactionType,
-          transactionDate = editing?.date,
+          transactionDate = editing?.date?.toTransactionDisplayDate(),
           remarks = "",
           quantities = editingQuantitiesByItemId,
           formError = null,
@@ -172,17 +172,24 @@ class AddItemTransactionViewModel @Inject constructor(
    * place) — the backend rejects a future [AddItemTransactionUiState.Success.transactionDate]
    * with a bare HTTP 400, so it's checked client-side for a clear message instead. The date
    * picker itself is already capped at today (see [org.armman.supervisor.ui.assignitem.AddItemTransactionScreen]),
-   * but this still guards a stale edit-mode date or a device clock change landing here. */
-  private fun validate(state: AddItemTransactionUiState.Success): TransactionFormError? = when {
-    state.transactionDate.isNullOrBlank() -> TransactionFormError.DATE_REQUIRED
-    parseTransactionDate(state.transactionDate).isAfter(LocalDate.now()) -> TransactionFormError.DATE_IN_FUTURE
-    state.selectedType == null -> TransactionFormError.TYPE_REQUIRED
-    state.quantities.values.none { it > 0 } -> TransactionFormError.NO_ITEMS
-    else -> null
+   * but this still guards a stale edit-mode date or a device clock change landing here.
+   * [parseTransactionDate] returning null (an unparseable date somehow reached this state) is
+   * surfaced as DATE_REQUIRED rather than crashing or being misreported as DATE_IN_FUTURE — see
+   * [toTransactionDisplayDate] for why a raw server date can't just be assumed to already be in
+   * the "dd MMM yyyy" display format. */
+  private fun validate(state: AddItemTransactionUiState.Success): TransactionFormError? {
+    if (state.transactionDate.isNullOrBlank()) return TransactionFormError.DATE_REQUIRED
+    val parsedDate = parseTransactionDate(state.transactionDate) ?: return TransactionFormError.DATE_REQUIRED
+    return when {
+      parsedDate.isAfter(LocalDate.now()) -> TransactionFormError.DATE_IN_FUTURE
+      state.selectedType == null -> TransactionFormError.TYPE_REQUIRED
+      state.quantities.values.none { it > 0 } -> TransactionFormError.NO_ITEMS
+      else -> null
+    }
   }
 
-  private fun parseTransactionDate(date: String): LocalDate =
-    LocalDate.parse(date, DateTimeFormatter.ofPattern("dd MMM yyyy", Locale.getDefault()))
+  private fun parseTransactionDate(date: String): LocalDate? =
+    runCatching { LocalDate.parse(date, DateTimeFormatter.ofPattern("dd MMM yyyy", Locale.getDefault())) }.getOrNull()
 
   private inline fun updateSuccess(transform: (AddItemTransactionUiState.Success) -> AddItemTransactionUiState.Success) {
     _uiState.update { current -> if (current is AddItemTransactionUiState.Success) transform(current) else current }
