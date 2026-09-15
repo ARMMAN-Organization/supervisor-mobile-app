@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -20,7 +21,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import org.armman.supervisor.R
@@ -116,23 +119,33 @@ private fun ItemQuantityRow(name: String, quantity: Int?, onQuantityChanged: (In
         .border(Dimens.HairlineWidth, NeutralG75, quantityFieldShape)
         .padding(horizontal = Dimens.SmallSpacing),
     ) {
+      val focusManager = LocalFocusManager.current
       BasicTextField(
         value = quantity?.toString() ?: "",
         onValueChange = { raw -> onQuantityChanged(raw.filter { it.isDigit() }.toIntOrNull() ?: 0) },
         singleLine = true,
         textStyle = MaterialTheme.typography.labelLarge.copy(color = NeutralG400, textAlign = TextAlign.Center),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        // Every keystroke already commits via onValueChange above — Done here only dismisses the
+        // keyboard, since a Number IME still shows an action key users expect to do *something*.
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+        keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
         decorationBox = { innerField ->
-          if (quantity == null) {
-            Text(
-              text = stringResource(R.string.assign_item_quantity_hint),
-              style = MaterialTheme.typography.labelLarge,
-              color = NeutralG100,
-              textAlign = TextAlign.Center,
-              modifier = Modifier.fillMaxWidth(),
-            )
+          // Both children must share one position, not stack vertically — a bare pair of
+          // sibling composables here (with no explicit Box) previously let the hint and the
+          // typed digit lay out as if in a Column, pushing the digit onto a second line the
+          // instant a keystroke landed.
+          Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
+            if (quantity == null) {
+              Text(
+                text = stringResource(R.string.assign_item_quantity_hint),
+                style = MaterialTheme.typography.labelLarge,
+                color = NeutralG100,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
+              )
+            }
+            innerField()
           }
-          innerField()
         },
         modifier = Modifier.fillMaxWidth(),
       )
