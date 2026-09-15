@@ -1,5 +1,6 @@
 package org.armman.supervisor.ui.dashboard
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -12,23 +13,44 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.core.app.ComponentActivity
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import org.armman.supervisor.R
 import org.armman.supervisor.ui.components.PrimaryButton
 import org.armman.supervisor.ui.navigation.Routes
 import org.armman.supervisor.ui.theme.Dimens
 import org.armman.supervisor.ui.theme.White
 
-/** Supervisor landing screen: header/KPIs, quick actions, summary cards and the stale-Sakhi alert. */
+/** Window within which a second back press exits the app (see [DashboardScreen]'s [BackHandler]). */
+private const val EXIT_ON_BACK_WINDOW_MS = 2000L
+
+/**
+ * Supervisor landing screen: header/KPIs, quick actions, summary cards and the stale-Sakhi alert.
+ *
+ * Dashboard is the bottom of the nav back stack (see `AppNavHost`'s `popUpTo(LOGIN_ROUTE)`), so an
+ * unhandled back press here would fall through to the Activity's default finish(). A rapid second
+ * back press then races that finish/relaunch and can leave a blank window (only fixed by a full app
+ * restart). The [BackHandler] below absorbs every back press at this screen with a standard
+ * double-tap-to-exit prompt instead, so back presses never reach the Activity uncontrolled.
+ */
 @Composable
 fun DashboardScreen(
   onNavigate: (String) -> Unit,
@@ -36,21 +58,41 @@ fun DashboardScreen(
   viewModel: DashboardViewModel = hiltViewModel(),
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+  val snackbarHostState = remember { SnackbarHostState() }
+  val scope = rememberCoroutineScope()
+  val activity = LocalContext.current as? ComponentActivity
+  var lastBackPressAtMs by remember { mutableLongStateOf(0L) }
+  val exitMessage = stringResource(R.string.dashboard_press_back_again_to_exit)
 
-  BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-    val isTablet = maxWidth >= Dimens.TabletMinWidthDp.dp
-    val isLandscape = maxWidth > maxHeight
+  BackHandler {
+    val now = System.currentTimeMillis()
+    if (now - lastBackPressAtMs <= EXIT_ON_BACK_WINDOW_MS) {
+      activity?.finish()
+    } else {
+      lastBackPressAtMs = now
+      scope.launch { snackbarHostState.showSnackbar(exitMessage) }
+    }
+  }
 
-    when (val state = uiState) {
-      is DashboardUiState.Loading -> LoadingContent()
-      is DashboardUiState.Error -> ErrorContent(onRetry = viewModel::onRetry)
-      is DashboardUiState.Success -> SuccessContent(
-        state = state,
-        isTablet = isTablet,
-        isLandscape = isLandscape,
-        onNavigate = onNavigate,
-        onLocationSelected = viewModel::onLocationSelected,
-      )
+  Scaffold(
+    modifier = modifier,
+    snackbarHost = { SnackbarHost(snackbarHostState) },
+  ) { innerPadding ->
+    BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+      val isTablet = maxWidth >= Dimens.TabletMinWidthDp.dp
+      val isLandscape = maxWidth > maxHeight
+
+      when (val state = uiState) {
+        is DashboardUiState.Loading -> LoadingContent()
+        is DashboardUiState.Error -> ErrorContent(onRetry = viewModel::onRetry)
+        is DashboardUiState.Success -> SuccessContent(
+          state = state,
+          isTablet = isTablet,
+          isLandscape = isLandscape,
+          onNavigate = onNavigate,
+          onLocationSelected = viewModel::onLocationSelected,
+        )
+      }
     }
   }
 }

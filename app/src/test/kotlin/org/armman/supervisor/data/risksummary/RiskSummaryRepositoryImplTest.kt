@@ -6,6 +6,8 @@ import org.armman.supervisor.data.beneficiaries.BeneficiaryListApi
 import org.armman.supervisor.data.beneficiaries.BeneficiaryListEnvelopeDto
 import org.armman.supervisor.data.beneficiaries.BeneficiaryListPageDto
 import org.armman.supervisor.data.beneficiaries.BeneficiaryPiiDto
+import org.armman.supervisor.data.beneficiaries.BeneficiaryRiskConditionSummaryEnvelopeDto
+import org.armman.supervisor.data.beneficiaries.BeneficiaryWithRiskEnvelopeDto
 import org.armman.supervisor.data.projects.ProjectsRepository
 import org.armman.supervisor.model.LocationOption
 import org.armman.supervisor.ui.assignitem.SakhiDetail
@@ -73,6 +75,13 @@ private class FakeBeneficiaryListApi : BeneficiaryListApi {
       ),
     )
   }
+
+  override suspend fun getBeneficiariesWithRisk(ids: String): Response<BeneficiaryWithRiskEnvelopeDto> =
+    error("not used")
+
+  override suspend fun getRiskConditionSummaries(
+    beneficiaryIds: String,
+  ): Response<BeneficiaryRiskConditionSummaryEnvelopeDto> = error("not used")
 }
 
 class RiskSummaryRepositoryImplTest {

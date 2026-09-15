@@ -5,7 +5,7 @@ import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import org.armman.supervisor.data.risksummary.RiskSummaryRepositoryImpl
-import org.armman.supervisor.data.villagerisksummary.StaticVillageRiskDetailRepositoryImpl
+import org.armman.supervisor.data.villagerisksummary.BeneficiaryVillageRiskDetailRepositoryImpl
 import org.armman.supervisor.ui.risksummary.RiskSummaryRepository
 import org.armman.supervisor.ui.villagerisksummary.VillageRiskDetailRepository
 
@@ -19,5 +19,5 @@ abstract class RiskSummaryModule {
   abstract fun bindRiskSummaryRepository(impl: RiskSummaryRepositoryImpl): RiskSummaryRepository
 
   @Binds
-  abstract fun bindVillageRiskDetailRepository(impl: StaticVillageRiskDetailRepositoryImpl): VillageRiskDetailRepository
+  abstract fun bindVillageRiskDetailRepository(impl: BeneficiaryVillageRiskDetailRepositoryImpl): VillageRiskDetailRepository
 }

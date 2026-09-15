@@ -45,6 +45,39 @@ data class BeneficiaryListEnvelopeDto(
   val data: BeneficiaryListPageDto?,
 )
 
+/** One entry from `GET /beneficiaries/by-ids-with-risk` — [riskLevel] is the worst current grade
+ * across the beneficiary's risk conditions, collapsed to a 4-bucket vocabulary. */
+data class BeneficiaryWithRiskDto(
+  val id: String,
+  val beneficiaryName: String,
+  val riskLevel: String,
+)
+
+data class BeneficiaryWithRiskEnvelopeDto(
+  val success: Boolean,
+  val message: String?,
+  val data: List<BeneficiaryWithRiskDto>?,
+)
+
+/** One risk condition on a beneficiary, as returned by `GET /beneficiaries/risk-condition-summary`. */
+data class RiskConditionSummaryDto(
+  val riskConditionId: String,
+  val latestGrade: String?,
+  val conditionName: String?,
+)
+
+/** One beneficiary's risk condition summaries, as returned by `GET /beneficiaries/risk-condition-summary`. */
+data class BeneficiaryRiskConditionSummaryDto(
+  val beneficiaryId: String,
+  val riskConditionSummaries: List<RiskConditionSummaryDto>,
+)
+
+data class BeneficiaryRiskConditionSummaryEnvelopeDto(
+  val success: Boolean,
+  val message: String?,
+  val data: List<BeneficiaryRiskConditionSummaryDto>?,
+)
+
 /** Retrofit contract for beneficiary-service's list endpoint. Path is relative to
  * `API_BASE_URL` (`.../api/v1/`). `limit` defaults to 50 server-side, so callers must follow
  * `nextCursor` (see [fetchAllBeneficiaryPages]) to avoid silently truncating results. */
@@ -61,6 +94,20 @@ interface BeneficiaryListApi {
     @Query("atRiskOnly") atRiskOnly: Boolean = true,
     @Query("cursor") cursor: String? = null,
   ): Response<BeneficiaryListEnvelopeDto>
+
+  /** Batched risk grade for a set of beneficiary ids, scoped server-side to the caller's roster.
+   * [ids] is comma-separated; an id outside scope or not found is silently absent from the result. */
+  @GET("beneficiaries/by-ids-with-risk")
+  suspend fun getBeneficiariesWithRisk(
+    @Query("ids") ids: String,
+  ): Response<BeneficiaryWithRiskEnvelopeDto>
+
+  /** Batched risk-condition detail (e.g. condition name) for a set of beneficiary ids, mirroring
+   * [getBeneficiariesWithRisk]'s scoping/silent-drop semantics. [beneficiaryIds] is comma-separated. */
+  @GET("beneficiaries/risk-condition-summary")
+  suspend fun getRiskConditionSummaries(
+    @Query("beneficiaryIds") beneficiaryIds: String,
+  ): Response<BeneficiaryRiskConditionSummaryEnvelopeDto>
 }
 
 /** Follows [BeneficiaryListPageDto.nextCursor] until exhausted, concatenating every page's

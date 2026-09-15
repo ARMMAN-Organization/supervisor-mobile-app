@@ -6,6 +6,8 @@ import org.armman.supervisor.data.beneficiaries.BeneficiaryListApi
 import org.armman.supervisor.data.beneficiaries.BeneficiaryListEnvelopeDto
 import org.armman.supervisor.data.beneficiaries.BeneficiaryListPageDto
 import org.armman.supervisor.data.beneficiaries.BeneficiaryPiiDto
+import org.armman.supervisor.data.beneficiaries.BeneficiaryRiskConditionSummaryEnvelopeDto
+import org.armman.supervisor.data.beneficiaries.BeneficiaryWithRiskEnvelopeDto
 import org.armman.supervisor.data.lookups.LookupCategoryDto
 import org.armman.supervisor.data.lookups.LookupCategoryEnvelopeDto
 import org.armman.supervisor.data.lookups.LookupValueDto
@@ -89,6 +91,13 @@ private class FakeBeneficiaryListApi : BeneficiaryListApi {
     atRiskOnly: Boolean,
     cursor: String?,
   ): Response<BeneficiaryListEnvelopeDto> = error("not used")
+
+  override suspend fun getBeneficiariesWithRisk(ids: String): Response<BeneficiaryWithRiskEnvelopeDto> =
+    error("not used")
+
+  override suspend fun getRiskConditionSummaries(
+    beneficiaryIds: String,
+  ): Response<BeneficiaryRiskConditionSummaryEnvelopeDto> = error("not used")
 }
 
 private class FakeLookupsApi : LookupsApi {
