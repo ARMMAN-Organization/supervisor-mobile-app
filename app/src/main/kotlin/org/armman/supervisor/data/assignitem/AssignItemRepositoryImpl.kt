@@ -322,10 +322,16 @@ class AssignItemRepositoryImpl @Inject constructor(
    * submission — see the class doc comment for why matching on this composite key (including the
    * exact [TransactionEntity.createdAt] millisecond) is safe to rely on. Order is preserved:
    * groups appear in the order their first row was encountered, and rows within a group keep
-   * their original relative order. */
+   * their original relative order.
+   *
+   * Deliberately excludes [TransactionEntity.date] from the key even though it's part of a
+   * submission's identity conceptually: [updateTransaction] lets a supervisor edit one row's date
+   * independently of its siblings, and [TransactionEntity.createdAt] never changes on update — so
+   * keying on `date` would silently split an edited row out of its original card into a new
+   * one-item card (looking like a duplicate) the next time transactions are (re)grouped. */
   private fun List<TransactionWithItems>.toGroupedEntries(): List<TransactionEntry> =
     groupBy {
-      listOf(it.transaction.sakhiId, it.transaction.projectId, it.transaction.transactionType, it.transaction.date, it.transaction.createdAt)
+      listOf(it.transaction.sakhiId, it.transaction.projectId, it.transaction.transactionType, it.transaction.createdAt)
     }.values.map { group ->
       TransactionEntry(
         ids = group.map { it.transaction.id },

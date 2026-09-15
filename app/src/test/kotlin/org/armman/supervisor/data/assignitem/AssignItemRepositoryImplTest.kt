@@ -602,6 +602,34 @@ class AssignItemRepositoryImplTest {
     assertEquals(setOf(7, 9), result.entry.items.map { it.quantity }.toSet())
   }
 
+  @Test
+  fun `updateTransaction changing one row's date does not split its multi-item group into two entries`() = runTest {
+    // Regression test: toGroupedEntries() used to key on (..., date, createdAt). Editing one row's
+    // date changed only that row's key, silently splitting it out of its original card into a new
+    // one-item entry on the next fetch — surfacing as a duplicate item card in the UI.
+    repository.getInventoryItems()
+    val created = (
+      repository.submitTransaction(
+        TransactionSubmission(
+          "sakhi-1", "loc-1", TransactionType.CONSUMED, "10 Oct 2025", null,
+          listOf(TransactionItemQuantity("item-1", 20), TransactionItemQuantity("item-2", 20)),
+        ),
+      ) as TransactionSubmitResult.Synced
+    ).entry
+    val rowIdByItemId = created.items.associate { it.itemName to it.id }
+
+    repository.updateTransaction(
+      TransactionSubmission(
+        "sakhi-1", "loc-1", TransactionType.CONSUMED, "12 Oct 2025", null,
+        listOf(TransactionItemQuantity("item-1", 20, existingRowId = rowIdByItemId["Sugar strips"])),
+      ),
+    )
+
+    val entries = repository.getTransactions("sakhi-1").filter { created.ids.toSet().intersect(it.ids.toSet()).isNotEmpty() }
+    assertEquals(1, entries.size)
+    assertEquals(2, entries.first().items.size)
+  }
+
   @Test(expected = IllegalStateException::class)
   fun `updateTransaction online rejected by server throws and leaves cache untouched`() = runTest {
     val created = (repository.submitTransaction(singleSubmission()) as TransactionSubmitResult.Synced).entry
