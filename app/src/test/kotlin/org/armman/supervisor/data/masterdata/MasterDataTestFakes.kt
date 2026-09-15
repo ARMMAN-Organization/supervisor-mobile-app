@@ -42,6 +42,9 @@ internal class FakeProjectsRepository : ProjectsRepository {
   override suspend fun getSakhiProjectId(sakhiId: String): String =
     throw UnsupportedOperationException("not used by these tests")
 
+  override suspend fun getMySakhiIds(projectId: String, supervisorUserId: String): Set<String> =
+    throw UnsupportedOperationException("not used by these tests")
+
   override fun clearCache() = Unit
 }
 

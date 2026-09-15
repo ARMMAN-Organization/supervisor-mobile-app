@@ -34,6 +34,8 @@ private class FakeProjectsRepository : ProjectsRepository {
 
   override suspend fun getSakhiProjectId(sakhiId: String): String = error("Unknown sakhi id: $sakhiId")
 
+  override suspend fun getMySakhiIds(projectId: String, supervisorUserId: String): Set<String> = error("not used")
+
   override fun clearCache() {
     clearCacheCallCount++
   }

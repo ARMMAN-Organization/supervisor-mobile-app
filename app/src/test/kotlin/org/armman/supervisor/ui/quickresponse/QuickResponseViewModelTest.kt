@@ -84,6 +84,7 @@ class QuickResponseViewModelTest {
     beneficiaryName = beneficiaryName,
     sakhiName = null,
     sakhiId = null,
+    sakhiEmployeeCode = null,
     sakhiPhoneNumber = null,
     padaName = null,
     requestStatus = null,
@@ -189,8 +190,10 @@ class QuickResponseViewModelTest {
   }
 
   @Test
-  fun `onDecide surfaces a conflict-specific message on 409 without discarding the list`() = runTest(dispatcher) {
-    val repo = TestRepository(requests = listOf(request("qr-1")))
+  fun `onDecide removes the card and surfaces a conflict-specific message on 409`() = runTest(dispatcher) {
+    // A 409 means someone/something else already decided this card — the local view is stale
+    // for it specifically, so it must not remain visible/tappable (retrying would just 409 again).
+    val repo = TestRepository(requests = listOf(request("qr-1"), request("qr-2")))
     repo.failNextDecideWith(QuickResponseDecisionException(409, "already decided"))
     val viewModel = QuickResponseViewModel(repo)
     dispatcher.scheduler.advanceUntilIdle()
@@ -199,13 +202,15 @@ class QuickResponseViewModelTest {
     dispatcher.scheduler.advanceUntilIdle()
 
     val state = viewModel.uiState.value as QuickResponseUiState.Success
-    assertEquals(1, state.requests.size)
+    assertEquals(listOf("qr-2"), state.requests.map { it.id })
     assertEquals(R.string.quick_response_error_decision_conflict, state.decisionErrorMessageRes)
     assertNull(state.decidingRequestId)
   }
 
   @Test
-  fun `onDecide surfaces a generic failure message on non-409 errors`() = runTest(dispatcher) {
+  fun `onDecide surfaces a generic failure message on non-409 errors without discarding the card`() = runTest(dispatcher) {
+    // Unlike a 409, a transient failure (502/network) doesn't mean the card's premise is wrong —
+    // it stays visible so the Supervisor can retry.
     val repo = TestRepository(requests = listOf(request("qr-1")))
     repo.failNextDecideWith(IllegalStateException("network error"))
     val viewModel = QuickResponseViewModel(repo)
@@ -215,6 +220,7 @@ class QuickResponseViewModelTest {
     dispatcher.scheduler.advanceUntilIdle()
 
     val state = viewModel.uiState.value as QuickResponseUiState.Success
+    assertEquals(1, state.requests.size)
     assertEquals(R.string.quick_response_error_decision_failed, state.decisionErrorMessageRes)
   }
 

@@ -104,13 +104,20 @@ class QuickResponseViewModel @Inject constructor(
         throw e
       } catch (e: Exception) {
         val httpStatusCode = (e as? QuickResponseDecisionException)?.httpStatusCode
+        val isConflict = httpStatusCode == HTTP_CONFLICT
         val messageRes = when {
-          httpStatusCode == HTTP_CONFLICT -> R.string.quick_response_error_decision_conflict
+          isConflict -> R.string.quick_response_error_decision_conflict
           httpStatusCode == HTTP_NOT_IMPLEMENTED && notImplementedMessageRes != null -> notImplementedMessageRes
           else -> R.string.quick_response_error_decision_failed
         }
         _uiState.update { state ->
           (state as? QuickResponseUiState.Success)?.copy(
+            // A 409 means the card's premise (still PENDING) no longer holds — someone/something
+            // else already decided it, so the local list is stale for this card specifically.
+            // Unlike a transient failure (502/network), retrying can never succeed here, so the
+            // card is removed the same way a successful decision removes it — leaving it visible
+            // and tappable would just produce the same 409 again on every retry.
+            requests = if (isConflict) state.requests.filterNot { it.id == requestId } else state.requests,
             decidingRequestId = null,
             decisionErrorMessageRes = messageRes,
           ) ?: state

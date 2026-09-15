@@ -66,6 +66,8 @@ private class FakeProjectsRepository : ProjectsRepository {
     else -> error("Unknown sakhi id: $sakhiId")
   }
 
+  override suspend fun getMySakhiIds(projectId: String, supervisorUserId: String): Set<String> = error("not used")
+
   override fun clearCache() = Unit
 }
 

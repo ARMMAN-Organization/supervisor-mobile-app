@@ -1,5 +1,7 @@
 package org.armman.supervisor.ui.dashboard
 
+import android.content.Context
+import android.media.RingtoneManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,6 +21,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
@@ -31,6 +34,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ComponentActivity
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import org.armman.supervisor.R
@@ -50,6 +54,12 @@ private const val EXIT_ON_BACK_WINDOW_MS = 2000L
  * back press then races that finish/relaunch and can leave a blank window (only fixed by a full app
  * restart). The [BackHandler] below absorbs every back press at this screen with a standard
  * double-tap-to-exit prompt instead, so back presses never reach the Activity uncontrolled.
+ *
+ * While this screen is visible, [DashboardViewModel] polls for new notifications (see
+ * [DashboardViewModel.startPolling]) and this screen plays the device's default notification
+ * sound for each one detected (see [DashboardViewModel.newNotificationEvents]) — there is no
+ * separate popup/banner UI; the bell icon's badge and the Notifications screen's list are the
+ * only visible surfaces for notification content.
  */
 @Composable
 fun DashboardScreen(
@@ -63,6 +73,16 @@ fun DashboardScreen(
   val activity = LocalContext.current as? ComponentActivity
   var lastBackPressAtMs by remember { mutableLongStateOf(0L) }
   val exitMessage = stringResource(R.string.dashboard_press_back_again_to_exit)
+  val context = LocalContext.current
+
+  LifecycleResumeEffect(Unit) {
+    viewModel.startPolling()
+    onPauseOrDispose { viewModel.stopPolling() }
+  }
+
+  LaunchedEffect(Unit) {
+    viewModel.newNotificationEvents.collect { playNotificationSound(context) }
+  }
 
   BackHandler {
     val now = System.currentTimeMillis()
@@ -94,6 +114,13 @@ fun DashboardScreen(
         )
       }
     }
+  }
+}
+
+private fun playNotificationSound(context: Context) {
+  runCatching {
+    val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+    RingtoneManager.getRingtone(context, uri)?.play()
   }
 }
 

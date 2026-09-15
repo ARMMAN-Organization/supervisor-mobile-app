@@ -33,6 +33,8 @@ private class FakeProjectsRepository : ProjectsRepository {
   override suspend fun getSakhiDetail(sakhiId: String): SakhiDetail = throw UnsupportedOperationException("not used")
   override suspend fun getSakhiOption(sakhiId: String): SakhiOption = throw UnsupportedOperationException("not used")
   override suspend fun getSakhiProjectId(sakhiId: String): String = throw UnsupportedOperationException("not used")
+  override suspend fun getMySakhiIds(projectId: String, supervisorUserId: String): Set<String> =
+    throw UnsupportedOperationException("not used")
   override fun clearCache() = Unit
 }
 
