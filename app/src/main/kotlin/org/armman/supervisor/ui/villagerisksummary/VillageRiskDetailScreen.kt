@@ -121,7 +121,7 @@ private fun SuccessContent(state: VillageRiskDetailUiState.Success, onTabSelecte
         },
       )
     } else {
-      LazyColumn(verticalArrangement = Arrangement.spacedBy(Dimens.SmallSpacing)) {
+      LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Dimens.SmallSpacing)) {
         items(state.visibleBeneficiaries, key = BeneficiaryRiskDetail::id) { beneficiary ->
           BeneficiaryRiskCard(beneficiary)
         }
