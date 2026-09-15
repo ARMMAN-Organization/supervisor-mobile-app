@@ -338,7 +338,7 @@ class AssignItemRepositoryImpl @Inject constructor(
         date = group.first().transaction.date,
         transactionType = TransactionType.valueOf(group.first().transaction.transactionType),
         items = group.flatMap { withItems ->
-          withItems.items.map { TransactionItemEntry(withItems.transaction.id, it.itemName, it.quantity) }
+          withItems.items.map { TransactionItemEntry(withItems.transaction.id, it.itemId, it.itemName, it.quantity) }
         },
       )
     }

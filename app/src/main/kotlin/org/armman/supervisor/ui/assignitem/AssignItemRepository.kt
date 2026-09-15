@@ -38,9 +38,12 @@ interface AssignItemRepository {
    * no batch-update endpoint). Each of [submission]'s items with a non-null
    * [TransactionItemQuantity.existingRowId] is sent as its own update to that row id; items
    * without one are ignored (adding a brand-new item line to an existing group isn't supported —
-   * the backend has no way to add/remove item lines on an existing transaction). Fails if any
-   * targeted row doesn't belong to [submission]'s sakhi, so a stale/mismatched id can't overwrite
-   * another Sakhi's transaction.
+   * the backend has no way to add an item line to an existing transaction). Removing an existing
+   * line is handled separately, via [deleteTransaction] on that line's row id — callers that let
+   * the user zero out an existing line's quantity should delete its row rather than omit it here,
+   * or the row's old quantity is silently left unchanged server-side. Fails if any targeted row
+   * doesn't belong to [submission]'s sakhi, so a stale/mismatched id can't overwrite another
+   * Sakhi's transaction.
    */
   suspend fun updateTransaction(submission: TransactionSubmission): TransactionUpdateResult
 

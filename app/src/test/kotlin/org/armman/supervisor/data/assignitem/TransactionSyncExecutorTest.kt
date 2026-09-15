@@ -61,7 +61,9 @@ private class ExecutorFakePendingDao : PendingInventoryTransactionDao {
   }
 
   override suspend fun getPendingSync(): List<PendingInventoryTransactionWithItems> =
-    entities.values.filter { it.syncStatus == "PENDING" || (it.syncStatus == "FAILED" && it.retryCount < MAX_SYNC_RETRIES) }
+    entities.values.filter {
+      it.syncStatus == "PENDING" || it.syncStatus == "SYNCING" || (it.syncStatus == "FAILED" && it.retryCount < MAX_SYNC_RETRIES)
+    }
       .sortedBy { it.createdAtEpochMillis }
       .map { PendingInventoryTransactionWithItems(it, itemsByPendingId[it.id].orEmpty()) }
 
@@ -343,6 +345,22 @@ class TransactionSyncExecutorTest {
     assertEquals(TransactionSyncOutcome.COMPLETED, outcome)
     assertEquals(0, api.createCallCount)
     assertEquals(MAX_SYNC_RETRIES, pendingDao.entities[row.id]?.retryCount)
+  }
+
+  @Test
+  fun `run picks up and retries a row stuck at SYNCING from a crash mid-sync`() = runTest {
+    // Regression test: syncRow only ever clears SYNCING via a completed network call's result
+    // (SYNCED/FAILED) or a caught IOException (back to PENDING). A row left SYNCING by a process
+    // death/crash between the write and the response used to be excluded from getPendingSync()
+    // forever — a permanent orphan with no retry path.
+    val row = createRow().copy(syncStatus = "SYNCING")
+    pendingDao.upsertWithItems(row, listOf(PendingInventoryTransactionItemEntity(pendingTransactionId = row.id, itemId = "item-1", quantity = 5)))
+
+    val outcome = executor.run()
+
+    assertEquals(TransactionSyncOutcome.COMPLETED, outcome)
+    assertEquals(1, api.createCallCount)
+    assertEquals("SYNCED", pendingDao.entities[row.id]?.syncStatus)
   }
 
   @Test

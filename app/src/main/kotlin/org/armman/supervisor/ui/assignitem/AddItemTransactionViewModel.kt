@@ -80,15 +80,8 @@ class AddItemTransactionViewModel @Inject constructor(
           repository.getTransactions(sakhiId).firstOrNull { id in it.ids }
             ?: error("Unknown transaction id: $id")
         }
-        val itemIdsByName = items.associate { it.name to it.id }
-        val editingQuantitiesByItemId = editing?.items?.associate { entry ->
-          val itemId = itemIdsByName[entry.itemName] ?: error("Unknown item name: ${entry.itemName}")
-          itemId to entry.quantity
-        }.orEmpty()
-        editingRowIdsByItemId = editing?.items?.associate { entry ->
-          val itemId = itemIdsByName[entry.itemName] ?: error("Unknown item name: ${entry.itemName}")
-          itemId to entry.id
-        }.orEmpty()
+        val editingQuantitiesByItemId = editing?.items?.associate { it.itemId to it.quantity }.orEmpty()
+        editingRowIdsByItemId = editing?.items?.associate { it.itemId to it.id }.orEmpty()
 
         _uiState.value = AddItemTransactionUiState.Success(
           sakhiName = detail.sakhiName,
@@ -119,8 +112,9 @@ class AddItemTransactionViewModel @Inject constructor(
   fun onRemarksChanged(remarks: String) = updateSuccess { it.copy(remarks = remarks) }
 
   /** In edit mode, only quantities for the transaction group's existing item lines can be
-   * changed — adding a brand-new item id isn't supported, since there is no API to add/remove
-   * item lines on an existing transaction. */
+   * changed — adding a brand-new item id isn't supported, since there is no API to add an item
+   * line to an existing transaction. Zeroing an existing line's quantity IS supported: [onSubmit]
+   * deletes that line's row instead of updating it. */
   fun onQuantityChanged(itemId: String, quantity: Int) = updateSuccess { state ->
     if (state.isEditing && itemId !in editingRowIdsByItemId) return@updateSuccess state
     val updated = state.quantities.toMutableMap().also {
@@ -153,7 +147,15 @@ class AddItemTransactionViewModel @Inject constructor(
           },
         )
         if (editTransactionId != null) {
-          repository.updateTransaction(submission)
+          // An existing item line the user zeroed out (see onQuantityChanged) drops out of
+          // state.quantities entirely, so it's absent from submission.items — updateTransaction
+          // alone would never touch that row, leaving its old quantity in place server-side while
+          // the UI reports success. Deleting its row explicitly is how "remove this item from the
+          // transaction" actually happens (deleteTransaction operates per-row, same as removing a
+          // whole card — see AssignItemRepository.deleteTransaction).
+          val removedRowIds = editingRowIdsByItemId.filterKeys { it !in state.quantities }.values.toList()
+          if (removedRowIds.isNotEmpty()) repository.deleteTransaction(sakhiId, removedRowIds)
+          if (submission.items.isNotEmpty()) repository.updateTransaction(submission)
         } else {
           repository.submitTransaction(submission)
         }

@@ -4,8 +4,11 @@ package org.armman.supervisor.ui.assignitem
 data class SakhiOption(val id: String, val name: String)
 
 /** One item line within a [TransactionEntry] (e.g. "Sugar strips", quantity 20). [id] is the
- * server-side row id backing this specific item line, needed to target it for edit/delete. */
-data class TransactionItemEntry(val id: String, val itemName: String, val quantity: Int)
+ * server-side row id backing this specific item line, needed to target it for edit/delete.
+ * [itemId] is the catalog item id — kept alongside [itemName] so edit-mode can look up the item
+ * by id rather than reverse-matching on a display name, which could collide if two catalog items
+ * ever shared a name. */
+data class TransactionItemEntry(val id: String, val itemId: String, val itemName: String, val quantity: Int)
 
 /**
  * One transaction card shown on the Assign Item to Sakhi detail screen. The backend creates one

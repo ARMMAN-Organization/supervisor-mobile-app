@@ -46,14 +46,18 @@ interface PendingInventoryTransactionDao {
   @Query("DELETE FROM pending_inventory_transactions WHERE id = :id")
   suspend fun deleteById(id: String)
 
-  /** Rows the sync worker should attempt: never-synced or previously-failed (but not yet past
-   * [MAX_SYNC_RETRIES] attempts — see [PendingInventoryTransactionEntity.retryCount]), oldest
-   * first. Rows that exhaust their retries are left in the FAILED state permanently rather than
-   * retried forever, so a genuine server-side rejection doesn't spam the API indefinitely. */
+  /** Rows the sync worker should attempt: never-synced, previously-failed (but not yet past
+   * [MAX_SYNC_RETRIES] attempts — see [PendingInventoryTransactionEntity.retryCount]), or stuck
+   * mid-sync, oldest first. SYNCING rows are included because [TransactionSyncExecutor] only ever
+   * clears that status once its network call returns — a process death or crash between marking a
+   * row SYNCING and that call completing would otherwise orphan it permanently, with no path back
+   * to PENDING/FAILED/SYNCED. Rows that exhaust their retries are left in the FAILED state
+   * permanently rather than retried forever, so a genuine server-side rejection doesn't spam the
+   * API indefinitely. */
   @Transaction
   @Query(
     "SELECT * FROM pending_inventory_transactions WHERE " +
-      "(syncStatus = 'PENDING' OR (syncStatus = 'FAILED' AND retryCount < $MAX_SYNC_RETRIES)) " +
+      "(syncStatus = 'PENDING' OR syncStatus = 'SYNCING' OR (syncStatus = 'FAILED' AND retryCount < $MAX_SYNC_RETRIES)) " +
       "ORDER BY createdAtEpochMillis ASC",
   )
   suspend fun getPendingSync(): List<PendingInventoryTransactionWithItems>

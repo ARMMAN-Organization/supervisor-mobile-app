@@ -58,6 +58,10 @@ class AddItemTransactionViewModelTest {
       private set
     var updateCallCount = 0
       private set
+    var lastDeletedIds: List<String>? = null
+      private set
+    var deleteCallCount = 0
+      private set
 
     fun failSubmit(fail: Boolean) {
       shouldFailSubmit = fail
@@ -85,7 +89,7 @@ class AddItemTransactionViewModelTest {
         ids,
         submission.transactionDate,
         submission.transactionType,
-        submission.items.mapIndexed { index, item -> TransactionItemEntry(ids[index], item.itemId, item.quantity) },
+        submission.items.mapIndexed { index, item -> TransactionItemEntry(ids[index], item.itemId, item.itemId, item.quantity) },
       )
       return TransactionSubmitResult.Synced(entry)
     }
@@ -100,7 +104,11 @@ class AddItemTransactionViewModelTest {
       return TransactionUpdateResult.Synced(entry)
     }
 
-    override suspend fun deleteTransaction(sakhiId: String, transactionIds: List<String>): TransactionDeleteResult = error("not used")
+    override suspend fun deleteTransaction(sakhiId: String, transactionIds: List<String>): TransactionDeleteResult {
+      deleteCallCount++
+      lastDeletedIds = transactionIds
+      return TransactionDeleteResult.Synced
+    }
   }
 
   // --- Positive ---
@@ -347,7 +355,7 @@ class AddItemTransactionViewModelTest {
             listOf("txn-1"),
             "10 Oct 2025",
             TransactionType.HANDOVER,
-            listOf(TransactionItemEntry("txn-1", "Sugar strips", 15)),
+            listOf(TransactionItemEntry("txn-1", "item-1", "Sugar strips", 15)),
           ),
         ),
       ),
@@ -371,7 +379,7 @@ class AddItemTransactionViewModelTest {
             listOf("txn-1"),
             "10 Oct 2025",
             TransactionType.HANDOVER,
-            listOf(TransactionItemEntry("txn-1", "Sugar strips", 15)),
+            listOf(TransactionItemEntry("txn-1", "item-1", "Sugar strips", 15)),
           ),
         ),
       ),
@@ -409,7 +417,7 @@ class AddItemTransactionViewModelTest {
             listOf("txn-1", "txn-2"),
             "10 Oct 2025",
             TransactionType.HANDOVER,
-            listOf(TransactionItemEntry("txn-1", "Sugar strips", 15), TransactionItemEntry("txn-2", "BP Monitor", 4)),
+            listOf(TransactionItemEntry("txn-1", "item-1", "Sugar strips", 15), TransactionItemEntry("txn-2", "item-2", "BP Monitor", 4)),
           ),
         ),
       ),
@@ -431,7 +439,7 @@ class AddItemTransactionViewModelTest {
               listOf("txn-1", "txn-2"),
               "10 Oct 2025",
               TransactionType.HANDOVER,
-              listOf(TransactionItemEntry("txn-1", "Sugar strips", 15), TransactionItemEntry("txn-2", "BP Monitor", 4)),
+              listOf(TransactionItemEntry("txn-1", "item-1", "Sugar strips", 15), TransactionItemEntry("txn-2", "item-2", "BP Monitor", 4)),
             ),
           ),
         ),
@@ -454,7 +462,7 @@ class AddItemTransactionViewModelTest {
             listOf("txn-1"),
             "10 Oct 2025",
             TransactionType.HANDOVER,
-            listOf(TransactionItemEntry("txn-1", "Sugar strips", 15)),
+            listOf(TransactionItemEntry("txn-1", "item-1", "Sugar strips", 15)),
           ),
         ),
       ),
@@ -478,7 +486,7 @@ class AddItemTransactionViewModelTest {
             listOf("txn-1", "txn-2"),
             "10 Oct 2025",
             TransactionType.HANDOVER,
-            listOf(TransactionItemEntry("txn-1", "Sugar strips", 15), TransactionItemEntry("txn-2", "BP Monitor", 4)),
+            listOf(TransactionItemEntry("txn-1", "item-1", "Sugar strips", 15), TransactionItemEntry("txn-2", "item-2", "BP Monitor", 4)),
           ),
         ),
       ),
@@ -497,6 +505,71 @@ class AddItemTransactionViewModelTest {
     assertEquals(25, submission.items.first { it.itemId == "item-1" }.quantity)
     assertEquals(4, submission.items.first { it.itemId == "item-2" }.quantity)
   }
+
+  @Test
+  fun `edit mode zeroing an existing item line deletes its row instead of silently dropping it`() = runTest(dispatcher) {
+    // Regression test: onQuantityChanged removes a zeroed item from state.quantities entirely, so
+    // it used to be silently absent from the update submission — updateTransaction never touched
+    // that row, leaving its old quantity in place server-side while the form still reported
+    // success. onSubmit must delete that row explicitly instead.
+    val repo = TestRepository(
+      transactions = mapOf(
+        "sakhi-1" to listOf(
+          TransactionEntry(
+            listOf("txn-1", "txn-2"),
+            "10 Oct 2025",
+            TransactionType.HANDOVER,
+            listOf(TransactionItemEntry("txn-1", "item-1", "Sugar strips", 15), TransactionItemEntry("txn-2", "item-2", "BP Monitor", 4)),
+          ),
+        ),
+      ),
+    )
+    val viewModel = AddItemTransactionViewModel(repo, savedStateHandle(editTransactionId = "txn-1"))
+    dispatcher.scheduler.advanceUntilIdle()
+
+    viewModel.onQuantityChanged("item-2", 0)
+    viewModel.onSubmit()
+    dispatcher.scheduler.advanceUntilIdle()
+
+    assertEquals(1, repo.deleteCallCount)
+    assertEquals(listOf("txn-2"), repo.lastDeletedIds)
+    assertEquals(1, repo.updateCallCount)
+    assertEquals(1, repo.lastSubmission?.items?.size)
+    assertEquals("item-1", repo.lastSubmission?.items?.first()?.itemId)
+    val state = viewModel.uiState.value as AddItemTransactionUiState.Success
+    assertTrue(state.submitted)
+  }
+
+  @Test
+  fun `edit mode zeroing the only item line is blocked by NO_ITEMS validation before any repository call`() =
+    runTest(dispatcher) {
+      // Zeroing every item line in a card isn't how removal works — that's the whole-card delete
+      // action on the detail screen — so the pre-existing NO_ITEMS guard should still stop this
+      // submit before onSubmit's delete-then-update logic ever runs.
+      val repo = TestRepository(
+        transactions = mapOf(
+          "sakhi-1" to listOf(
+            TransactionEntry(
+              listOf("txn-1"),
+              "10 Oct 2025",
+              TransactionType.HANDOVER,
+              listOf(TransactionItemEntry("txn-1", "item-1", "Sugar strips", 15)),
+            ),
+          ),
+        ),
+      )
+      val viewModel = AddItemTransactionViewModel(repo, savedStateHandle(editTransactionId = "txn-1"))
+      dispatcher.scheduler.advanceUntilIdle()
+
+      viewModel.onQuantityChanged("item-1", 0)
+      viewModel.onSubmit()
+      dispatcher.scheduler.advanceUntilIdle()
+
+      val state = viewModel.uiState.value as AddItemTransactionUiState.Success
+      assertEquals(TransactionFormError.NO_ITEMS, state.formError)
+      assertEquals(0, repo.deleteCallCount)
+      assertEquals(0, repo.updateCallCount)
+    }
 
   @Test
   fun `create mode is unaffected by edit-mode narrowing and still allows multiple items`() = runTest(dispatcher) {
@@ -520,7 +593,7 @@ class AddItemTransactionViewModelTest {
             listOf("txn-1"),
             "10 Oct 2025",
             TransactionType.HANDOVER,
-            listOf(TransactionItemEntry("txn-1", "Sugar strips", 15)),
+            listOf(TransactionItemEntry("txn-1", "item-1", "Sugar strips", 15)),
           ),
         ),
       ),

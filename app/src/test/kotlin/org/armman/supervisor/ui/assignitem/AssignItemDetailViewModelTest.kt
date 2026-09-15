@@ -41,7 +41,7 @@ class AssignItemDetailViewModelTest {
     ),
     private val transactions: Map<String, List<TransactionEntry>> = mapOf(
       "sakhi-1" to listOf(
-        TransactionEntry(listOf("txn-1"), "10 Oct 2025", TransactionType.CONSUMED, listOf(TransactionItemEntry("txn-1", "Sugar strips", 20))),
+        TransactionEntry(listOf("txn-1"), "10 Oct 2025", TransactionType.CONSUMED, listOf(TransactionItemEntry("txn-1", "item-sugar-strips", "Sugar strips", 20))),
       ),
     ),
     private var shouldFailDelete: Boolean = false,
@@ -159,8 +159,8 @@ class AssignItemDetailViewModelTest {
     val repo = TestRepository(
       transactions = mapOf(
         "sakhi-1" to listOf(
-          TransactionEntry(listOf("txn-1"), "10 Oct 2025", TransactionType.CONSUMED, listOf(TransactionItemEntry("txn-1", "Sugar strips", 20))),
-          TransactionEntry(listOf("txn-2"), "10 Oct 2025", TransactionType.CONSUMED, listOf(TransactionItemEntry("txn-2", "HB strip", 20))),
+          TransactionEntry(listOf("txn-1"), "10 Oct 2025", TransactionType.CONSUMED, listOf(TransactionItemEntry("txn-1", "item-sugar-strips", "Sugar strips", 20))),
+          TransactionEntry(listOf("txn-2"), "10 Oct 2025", TransactionType.CONSUMED, listOf(TransactionItemEntry("txn-2", "item-hb-strip", "HB strip", 20))),
         ),
       ),
     )
@@ -181,7 +181,7 @@ class AssignItemDetailViewModelTest {
             listOf("txn-1", "txn-2"),
             "10 Oct 2025",
             TransactionType.CONSUMED,
-            listOf(TransactionItemEntry("txn-1", "Sugar strips", 20), TransactionItemEntry("txn-2", "HB strip", 20)),
+            listOf(TransactionItemEntry("txn-1", "item-sugar-strips", "Sugar strips", 20), TransactionItemEntry("txn-2", "item-hb-strip", "HB strip", 20)),
           ),
         ),
       ),
