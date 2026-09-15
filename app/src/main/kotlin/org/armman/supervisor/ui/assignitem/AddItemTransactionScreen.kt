@@ -16,7 +16,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -32,8 +31,6 @@ import org.armman.supervisor.ui.theme.DashboardHeaderGreen
 import org.armman.supervisor.ui.theme.Dimens
 import org.armman.supervisor.ui.theme.White
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 /** Add Item Transaction form: program, date, type, remarks and per-item quantities for a Sakhi. */
 @Composable
@@ -90,7 +87,6 @@ private fun ErrorContent(message: String, onRetry: () -> Unit) {
 
 @Composable
 private fun FormContent(state: AddItemTransactionUiState.Success, viewModel: AddItemTransactionViewModel) {
-  val formatter = remember { DateTimeFormatter.ofPattern("dd MMM yyyy", Locale.getDefault()) }
   val transactionTypeLabels = TransactionType.entries.associateWith { stringResource(it.labelRes()) }
 
   Column(modifier = Modifier.fillMaxSize()) {
@@ -102,8 +98,8 @@ private fun FormContent(state: AddItemTransactionUiState.Success, viewModel: Add
       AppDateField(
         label = stringResource(R.string.add_item_transaction_date_label),
         placeholder = stringResource(R.string.add_item_select_date),
-        value = state.transactionDate?.let { runCatching { LocalDate.parse(it, formatter) }.getOrNull() },
-        onDateSelected = { viewModel.onDateSelected(it.format(formatter)) },
+        value = state.transactionDate?.let { runCatching { LocalDate.parse(it, TransactionDateDisplayFormatter) }.getOrNull() },
+        onDateSelected = { viewModel.onDateSelected(it.format(TransactionDateDisplayFormatter)) },
         // A transaction records something that already happened (a handover/return/etc. that took
         // place), so the backend rejects a future date with a bare HTTP 400 — capping the picker
         // here stops that error from being reachable in the first place.

@@ -15,8 +15,6 @@ import org.armman.supervisor.R
 import org.armman.supervisor.model.LocationOption
 import org.armman.supervisor.ui.navigation.Routes
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 import javax.inject.Inject
 
 /** Which form field failed validation on submit, so the screen can show the right message. */
@@ -189,7 +187,7 @@ class AddItemTransactionViewModel @Inject constructor(
   }
 
   private fun parseTransactionDate(date: String): LocalDate? =
-    runCatching { LocalDate.parse(date, DateTimeFormatter.ofPattern("dd MMM yyyy", Locale.getDefault())) }.getOrNull()
+    runCatching { LocalDate.parse(date, TransactionDateDisplayFormatter) }.getOrNull()
 
   private inline fun updateSuccess(transform: (AddItemTransactionUiState.Success) -> AddItemTransactionUiState.Success) {
     _uiState.update { current -> if (current is AddItemTransactionUiState.Success) transform(current) else current }
