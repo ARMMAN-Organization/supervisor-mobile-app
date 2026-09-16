@@ -73,10 +73,20 @@ class AddItemTransactionViewModel @Inject constructor(
       try {
         val detail = repository.getSakhiDetail(sakhiId)
         val programs = repository.getPrograms()
-        val items = repository.getInventoryItems()
+        val catalogItems = repository.getInventoryItems()
         val editing = editTransactionId?.let { id ->
           repository.getTransactions(sakhiId).firstOrNull { id in it.ids }
             ?: error("Unknown transaction id: $id")
+        }
+        // getInventoryItems() dedupes catalog rows that share a (name, category) pair down to one
+        // survivor id (see AssignItemRepositoryImpl.dedupedForSelection). If the transaction being
+        // edited references the itemId that dedup discarded, swap the survivor's row for one
+        // carrying the transaction's real itemId — otherwise the rendered row and
+        // editingRowIdsByItemId disagree on id, and onQuantityChanged rejects every edit.
+        val items = editing?.items.orEmpty().fold(catalogItems) { acc, entry ->
+          val survivor = acc.firstOrNull { it.name == entry.itemName }
+          if (survivor == null || survivor.id == entry.itemId) acc
+          else acc.map { if (it.id == survivor.id) it.copy(id = entry.itemId) else it }
         }
         val editingQuantitiesByItemId = editing?.items?.associate { it.itemId to it.quantity }.orEmpty()
         editingRowIdsByItemId = editing?.items?.associate { it.itemId to it.id }.orEmpty()
@@ -133,6 +143,10 @@ class AddItemTransactionViewModel @Inject constructor(
 
     _uiState.value = state.copy(isSubmitting = true, formError = null)
     viewModelScope.launch {
+      // Tracks whether the delete step below has already completed server-side, so a failure in
+      // the update step that follows it can be reported accurately instead of implying nothing
+      // happened at all (see the comment on the edit-mode branch).
+      var deletedRemovedRows = false
       try {
         val submission = TransactionSubmission(
           sakhiId = sakhiId,
@@ -152,7 +166,10 @@ class AddItemTransactionViewModel @Inject constructor(
           // transaction" actually happens (deleteTransaction operates per-row, same as removing a
           // whole card — see AssignItemRepository.deleteTransaction).
           val removedRowIds = editingRowIdsByItemId.filterKeys { it !in state.quantities }.values.toList()
-          if (removedRowIds.isNotEmpty()) repository.deleteTransaction(sakhiId, removedRowIds)
+          if (removedRowIds.isNotEmpty()) {
+            repository.deleteTransaction(sakhiId, removedRowIds)
+            deletedRemovedRows = true
+          }
           if (submission.items.isNotEmpty()) repository.updateTransaction(submission)
         } else {
           repository.submitTransaction(submission)
@@ -161,7 +178,11 @@ class AddItemTransactionViewModel @Inject constructor(
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {
-        _uiState.value = AddItemTransactionUiState.Error(R.string.add_item_error_submit, e.message)
+        // If the delete already went through before updateTransaction threw, a generic "failed to
+        // submit" message would wrongly suggest none of the edit was applied — the removed rows
+        // are already gone server-side, so say so instead of masking that partial completion.
+        val messageRes = if (deletedRemovedRows) R.string.add_item_error_partial_update else R.string.add_item_error_submit
+        _uiState.value = AddItemTransactionUiState.Error(messageRes, e.message.takeIf { !deletedRemovedRows })
       }
     }
   }

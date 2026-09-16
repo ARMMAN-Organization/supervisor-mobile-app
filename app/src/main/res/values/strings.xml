@@ -100,6 +100,7 @@
   <string name="edit_item_submit">Save</string>
   <string name="add_item_error_load_form">Failed to load transaction form</string>
   <string name="add_item_error_submit">Failed to submit transaction</string>
+  <string name="add_item_error_partial_update">Removed item(s) were saved, but the remaining changes failed to save. Please review this transaction and try again.</string>
 
   <!-- Item categories -->
   <string name="item_category_consumables">Consumables</string>

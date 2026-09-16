@@ -1,6 +1,7 @@
 package org.armman.supervisor.ui.assignitem
 
 import androidx.lifecycle.SavedStateHandle
+import org.armman.supervisor.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -49,6 +50,7 @@ class AddItemTransactionViewModelTest {
     ),
     private val transactions: Map<String, List<TransactionEntry>> = emptyMap(),
     private var shouldFailSubmit: Boolean = false,
+    private var shouldFailUpdate: Boolean = false,
   ) : AssignItemRepository {
     var lastSubmission: TransactionSubmission? = null
       private set
@@ -96,7 +98,7 @@ class AddItemTransactionViewModelTest {
 
     override suspend fun updateTransaction(submission: TransactionSubmission): TransactionUpdateResult {
       updateCallCount++
-      if (shouldFailSubmit) error("update failed")
+      if (shouldFailSubmit || shouldFailUpdate) error("update failed")
       val ids = submission.items.mapNotNull { it.existingRowId }
       lastUpdatedId = ids.firstOrNull()
       lastSubmission = submission
@@ -591,6 +593,70 @@ class AddItemTransactionViewModelTest {
     assertEquals("item-1", repo.lastSubmission?.items?.first()?.itemId)
     val state = viewModel.uiState.value as AddItemTransactionUiState.Success
     assertTrue(state.submitted)
+  }
+
+  @Test
+  fun `edit mode partial failure after a successful delete reports the removed rows were saved`() = runTest(dispatcher) {
+    // Regression test: deleteTransaction and updateTransaction are two independent repository
+    // calls. If delete succeeds and update then throws, a generic "failed to submit" error would
+    // wrongly imply nothing happened, when the removed row is already gone server-side.
+    val repo = TestRepository(
+      transactions = mapOf(
+        "sakhi-1" to listOf(
+          TransactionEntry(
+            listOf("txn-1", "txn-2"),
+            "10 Oct 2025",
+            TransactionType.HANDOVER,
+            listOf(TransactionItemEntry("txn-1", "item-1", "Sugar strips", 15), TransactionItemEntry("txn-2", "item-2", "BP Monitor", 4)),
+          ),
+        ),
+      ),
+      shouldFailUpdate = true,
+    )
+    val viewModel = AddItemTransactionViewModel(repo, savedStateHandle(editTransactionId = "txn-1"))
+    dispatcher.scheduler.advanceUntilIdle()
+
+    viewModel.onQuantityChanged("item-2", 0)
+    viewModel.onSubmit()
+    dispatcher.scheduler.advanceUntilIdle()
+
+    assertEquals(1, repo.deleteCallCount)
+    val state = viewModel.uiState.value as AddItemTransactionUiState.Error
+    assertEquals(R.string.add_item_error_partial_update, state.fallbackMessageRes)
+    assertNull(state.exceptionMessage)
+  }
+
+  @Test
+  fun `edit mode renders the transaction's real item id even if item catalog dedup discarded it`() = runTest(dispatcher) {
+    // Regression test: getInventoryItems() collapses catalog rows sharing (name, category) to one
+    // survivor id (see AssignItemRepositoryImpl.dedupedForSelection) — so a repository already
+    // returns only the survivor, "item-1-dup", for two rows that both used to be named "Sugar
+    // strips". If the transaction being edited references the itemId dedup discarded ("item-1",
+    // the real row on this transaction), the rendered items list must be patched to carry that
+    // real id in place of the survivor's — otherwise editingRowIdsByItemId (keyed by the real id)
+    // never matches a rendered row, and onQuantityChanged rejects every edit.
+    val repo = TestRepository(
+      items = listOf(InventoryItem("item-1-dup", "Sugar strips", ItemCategory.CONSUMABLE)),
+      transactions = mapOf(
+        "sakhi-1" to listOf(
+          TransactionEntry(
+            listOf("txn-1"),
+            "10 Oct 2025",
+            TransactionType.HANDOVER,
+            listOf(TransactionItemEntry("txn-1", "item-1", "Sugar strips", 15)),
+          ),
+        ),
+      ),
+    )
+    val viewModel = AddItemTransactionViewModel(repo, savedStateHandle(editTransactionId = "txn-1"))
+    dispatcher.scheduler.advanceUntilIdle()
+
+    val state = viewModel.uiState.value as AddItemTransactionUiState.Success
+    assertEquals(listOf("item-1"), state.items.map { it.id })
+
+    viewModel.onQuantityChanged("item-1", 30)
+    val updated = viewModel.uiState.value as AddItemTransactionUiState.Success
+    assertEquals(mapOf("item-1" to 30), updated.quantities)
   }
 
   @Test
