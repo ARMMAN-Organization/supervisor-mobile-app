@@ -130,4 +130,44 @@ class BeneficiaryVillageRiskDetailRepositoryImplTest {
       runTest { repository.getVillageRiskDetail(sakhiId = "sakhi-1", villageName = "Semadoh") }
     }
   }
+
+  @Test
+  fun `risk details name matches the worst-graded condition, not list order`() = runTest {
+    api.atRiskCases = listOf(case("m1", "MOTHER", "Semadoh"))
+    api.riskLevelsById = listOf(BeneficiaryWithRiskDto(id = "m1", beneficiaryName = "Name-m1", riskLevel = "high"))
+    api.riskConditionSummariesById = listOf(
+      BeneficiaryRiskConditionSummaryDto(
+        beneficiaryId = "m1",
+        riskConditionSummaries = listOf(
+          RiskConditionSummaryDto(riskConditionId = "rc-1", latestGrade = "mild", conditionName = "Anemia"),
+          RiskConditionSummaryDto(riskConditionId = "rc-2", latestGrade = "high", conditionName = "Hypertension"),
+        ),
+      ),
+    )
+
+    val result = repository.getVillageRiskDetail(sakhiId = "sakhi-1", villageName = "Semadoh")
+
+    assertEquals("Hypertension", result.mothers[0].riskDetails)
+  }
+
+  @Test
+  fun `village filter ignores case and surrounding whitespace drift between calls`() = runTest {
+    api.atRiskCases = listOf(case("m1", "MOTHER", " semadoh "))
+
+    val result = repository.getVillageRiskDetail(sakhiId = "sakhi-1", villageName = "Semadoh")
+
+    assertEquals(1, result.mothers.size)
+  }
+
+  @Test
+  fun `large beneficiary lists are chunked across multiple batch calls`() = runTest {
+    val ids = (1..250).map { "m$it" }
+    api.atRiskCases = ids.map { case(it, "MOTHER", "Semadoh") }
+
+    repository.getVillageRiskDetail(sakhiId = "sakhi-1", villageName = "Semadoh")
+
+    val idsPerCall = api.batchCallIds.map { it.split(",").size }
+    assertEquals(true, idsPerCall.all { it <= 100 })
+    assertEquals(250, idsPerCall.sum() / 2)
+  }
 }

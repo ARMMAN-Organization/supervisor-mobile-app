@@ -207,7 +207,10 @@ private fun BeneficiaryRiskCard(beneficiary: BeneficiaryRiskDetail) {
       Column(modifier = Modifier.padding(horizontal = Dimens.SmallSpacing, vertical = Dimens.SmallSpacing)) {
         Text(text = beneficiary.name, style = SerifTitle, color = NeutralG400)
         HorizontalDivider(color = NeutralG50, modifier = Modifier.padding(vertical = Dimens.TinySpacing))
-        DetailRow(stringResource(R.string.village_risk_detail_label_registration_type), beneficiary.registrationType)
+        DetailRow(
+          stringResource(R.string.village_risk_detail_label_registration_type),
+          registrationTypeLabel(beneficiary.registrationType),
+        )
         DetailRow(stringResource(R.string.village_risk_detail_label_risk_details), beneficiary.riskDetails)
         DetailRow(
           label = stringResource(R.string.village_risk_detail_label_risk_type),
@@ -217,6 +220,16 @@ private fun BeneficiaryRiskCard(beneficiary: BeneficiaryRiskDetail) {
       }
     }
   }
+}
+
+/** Maps beneficiary-service's raw `caseType` ("MOTHER"/"CHILD") to a localized display label,
+ * reusing the same Mother/Child strings as [MotherChildTabRow] rather than showing the API's
+ * raw uppercase value. Falls back to the raw value for any other case type. */
+@Composable
+private fun registrationTypeLabel(registrationType: String): String = when (registrationType) {
+  "MOTHER" -> stringResource(R.string.village_risk_detail_tab_mother)
+  "CHILD" -> stringResource(R.string.village_risk_detail_tab_child)
+  else -> registrationType
 }
 
 @Composable

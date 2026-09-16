@@ -2,7 +2,6 @@ package org.armman.supervisor.ui.dashboard
 
 import android.content.Context
 import android.media.RingtoneManager
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -23,37 +22,28 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.core.app.ComponentActivity
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import kotlinx.coroutines.launch
 import org.armman.supervisor.R
+import org.armman.supervisor.ui.components.ExitOnDoubleBackHandler
 import org.armman.supervisor.ui.components.PrimaryButton
 import org.armman.supervisor.ui.navigation.Routes
 import org.armman.supervisor.ui.theme.Dimens
 import org.armman.supervisor.ui.theme.White
 
-/** Window within which a second back press exits the app (see [DashboardScreen]'s [BackHandler]). */
-private const val EXIT_ON_BACK_WINDOW_MS = 2000L
-
 /**
  * Supervisor landing screen: header/KPIs, quick actions, summary cards and the stale-Sakhi alert.
  *
- * Dashboard is the bottom of the nav back stack (see `AppNavHost`'s `popUpTo(LOGIN_ROUTE)`), so an
- * unhandled back press here would fall through to the Activity's default finish(). A rapid second
- * back press then races that finish/relaunch and can leave a blank window (only fixed by a full app
- * restart). The [BackHandler] below absorbs every back press at this screen with a standard
- * double-tap-to-exit prompt instead, so back presses never reach the Activity uncontrolled.
+ * Dashboard is the bottom of the nav back stack (see `AppNavHost`'s `popUpTo(LOGIN_ROUTE)`), so it
+ * uses [ExitOnDoubleBackHandler] rather than letting an unhandled back press fall through to the
+ * Activity's default finish() (see that composable's doc for why).
  *
  * While this screen is visible, [DashboardViewModel] polls for new notifications (see
  * [DashboardViewModel.startPolling]) and this screen plays the device's default notification
@@ -69,10 +59,6 @@ fun DashboardScreen(
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
   val snackbarHostState = remember { SnackbarHostState() }
-  val scope = rememberCoroutineScope()
-  val activity = LocalContext.current as? ComponentActivity
-  var lastBackPressAtMs by remember { mutableLongStateOf(0L) }
-  val exitMessage = stringResource(R.string.dashboard_press_back_again_to_exit)
   val context = LocalContext.current
 
   LifecycleResumeEffect(Unit) {
@@ -84,15 +70,10 @@ fun DashboardScreen(
     viewModel.newNotificationEvents.collect { playNotificationSound(context) }
   }
 
-  BackHandler {
-    val now = System.currentTimeMillis()
-    if (now - lastBackPressAtMs <= EXIT_ON_BACK_WINDOW_MS) {
-      activity?.finish()
-    } else {
-      lastBackPressAtMs = now
-      scope.launch { snackbarHostState.showSnackbar(exitMessage) }
-    }
-  }
+  ExitOnDoubleBackHandler(
+    exitMessage = stringResource(R.string.dashboard_press_back_again_to_exit),
+    snackbarHostState = snackbarHostState,
+  )
 
   Scaffold(
     modifier = modifier,

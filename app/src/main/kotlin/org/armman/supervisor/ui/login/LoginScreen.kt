@@ -26,6 +26,9 @@ import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -50,6 +53,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.armman.supervisor.R
 import org.armman.supervisor.ui.components.AppTextField
+import org.armman.supervisor.ui.components.ExitOnDoubleBackHandler
 import org.armman.supervisor.ui.components.PrimaryButton
 import org.armman.supervisor.ui.components.StatusBanner
 import org.armman.supervisor.ui.components.StatusBannerVariant
@@ -65,6 +69,10 @@ import org.armman.supervisor.ui.theme.White
  * [Dimens.LoginCardMargin] side margins, holding the Username/Password fields and pill
  * Login button. Colors use this app's [DashboardHeaderGreen] token (not the spec's literal
  * hex) to stay consistent with the Dashboard header.
+ *
+ * Login is also a nav back-stack root — `AppNavHost` resets the stack to here on logout
+ * (`popUpTo(Routes.DASHBOARD) { inclusive = true }`) — so it uses [ExitOnDoubleBackHandler]
+ * for the same reason [org.armman.supervisor.ui.dashboard.DashboardScreen] does.
  */
 @Composable
 fun LoginScreen(
@@ -73,6 +81,7 @@ fun LoginScreen(
   viewModel: LoginViewModel = hiltViewModel(),
 ) {
   val state by viewModel.uiState.collectAsStateWithLifecycle()
+  val snackbarHostState = remember { SnackbarHostState() }
 
   LaunchedEffect(state.loginSucceeded) {
     if (state.loginSucceeded) {
@@ -81,28 +90,38 @@ fun LoginScreen(
     }
   }
 
-  Surface(color = White, modifier = Modifier.fillMaxSize()) {
-    BoxWithConstraints(modifier = Modifier.fillMaxSize().imePadding()) {
-      val isTablet = maxWidth >= Dimens.TabletMinWidthDp.dp
+  ExitOnDoubleBackHandler(
+    exitMessage = stringResource(R.string.dashboard_press_back_again_to_exit),
+    snackbarHostState = snackbarHostState,
+  )
 
-      Column(
-        modifier = Modifier
-          .fillMaxWidth()
-          .verticalScroll(rememberScrollState()),
-      ) {
-        LoginHeader()
-        LoginCard(
-          state = state,
-          showLogoutBanner = showLogoutBanner,
-          onUsernameChanged = viewModel::onUsernameChanged,
-          onPasswordChanged = viewModel::onPasswordChanged,
-          onLoginClicked = viewModel::onLoginClicked,
+  Scaffold(
+    modifier = Modifier.fillMaxSize(),
+    snackbarHost = { SnackbarHost(snackbarHostState) },
+  ) { innerPadding ->
+    Surface(color = White, modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+      BoxWithConstraints(modifier = Modifier.fillMaxSize().imePadding()) {
+        val isTablet = maxWidth >= Dimens.TabletMinWidthDp.dp
+
+        Column(
           modifier = Modifier
-            .align(Alignment.CenterHorizontally)
-            .offset(y = -Dimens.LoginCardOverlap)
-            .widthIn(max = if (isTablet) Dimens.ContentMaxWidthTablet else Dp.Unspecified)
-            .padding(horizontal = Dimens.LoginCardMargin),
-        )
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState()),
+        ) {
+          LoginHeader()
+          LoginCard(
+            state = state,
+            showLogoutBanner = showLogoutBanner,
+            onUsernameChanged = viewModel::onUsernameChanged,
+            onPasswordChanged = viewModel::onPasswordChanged,
+            onLoginClicked = viewModel::onLoginClicked,
+            modifier = Modifier
+              .align(Alignment.CenterHorizontally)
+              .offset(y = -Dimens.LoginCardOverlap)
+              .widthIn(max = if (isTablet) Dimens.ContentMaxWidthTablet else Dp.Unspecified)
+              .padding(horizontal = Dimens.LoginCardMargin),
+          )
+        }
       }
     }
   }

@@ -180,6 +180,16 @@ class VillageRiskDetailViewModelTest {
   }
 
   @Test
+  fun `displayed village name comes from the nav arg, not the repository's value`() = runTest(dispatcher) {
+    val repo = TestRepository(mapOf("sakhi-komal" to VillageRiskDetail("Repo Village", listOf(mother), emptyList())))
+    val vm = viewModel(villageName = "Nav Arg Village", repository = repo)
+    dispatcher.scheduler.advanceUntilIdle()
+
+    val state = vm.uiState.value as VillageRiskDetailUiState.Success
+    assertEquals("Nav Arg Village", state.villageName)
+  }
+
+  @Test
   fun `blank village name arg falls back to the repository's village name`() = runTest(dispatcher) {
     val repo = TestRepository(mapOf("sakhi-komal" to VillageRiskDetail("SushilTest", listOf(mother), emptyList())))
     val vm = viewModel(villageName = "", repository = repo)
