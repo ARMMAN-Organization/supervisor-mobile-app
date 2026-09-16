@@ -4,5 +4,7 @@ package org.armman.supervisor.ui.risksummary
  * table cell — no pill background, no link color — matching every other summary table. */
 data class VillageRiskRow(val villageName: String, val motherCount: Int, val childCount: Int)
 
-/** One Sakhi's card on the Risk Summary screen — her name plus her villages' risk rows. */
-data class SakhiRiskSummary(val sakhiName: String, val villages: List<VillageRiskRow>)
+/** One Sakhi's card on the Risk Summary screen — her name plus her villages' risk rows.
+ * [sakhiId] is carried through (unused for display) so a tapped village row can navigate to
+ * Village Risk Detail with the id the beneficiary APIs require. */
+data class SakhiRiskSummary(val sakhiId: String, val sakhiName: String, val villages: List<VillageRiskRow>)

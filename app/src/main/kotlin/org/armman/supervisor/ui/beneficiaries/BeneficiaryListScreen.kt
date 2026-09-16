@@ -8,11 +8,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -161,20 +163,36 @@ private fun BeneficiaryColumn(beneficiaries: List<BeneficiaryDetail>) {
   }
 }
 
+/**
+ * Tablet layout: [TABLET_GRID_COLUMNS]-per-row cards. A plain [androidx.compose.foundation.lazy.grid.LazyVerticalGrid]
+ * measures each cell independently, so a short Child card next to a taller Mother card wouldn't
+ * line up — rows are built manually here with [IntrinsicSize.Max] + `weight(1f).fillMaxHeight()`
+ * on each card so every card in a row stretches to match the row's tallest card.
+ */
 @Composable
 private fun BeneficiaryGrid(beneficiaries: List<BeneficiaryDetail>) {
-  LazyVerticalGrid(
-    columns = GridCells.Fixed(TABLET_GRID_COLUMNS),
-    horizontalArrangement = Arrangement.spacedBy(Dimens.SmallSpacing),
+  LazyColumn(
     verticalArrangement = Arrangement.spacedBy(Dimens.SmallSpacing),
     modifier = Modifier.fillMaxSize(),
   ) {
-    items(beneficiaries) { beneficiary -> BeneficiaryCard(beneficiary) }
+    items(beneficiaries.chunked(TABLET_GRID_COLUMNS)) { row ->
+      Row(
+        horizontalArrangement = Arrangement.spacedBy(Dimens.SmallSpacing),
+        modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max),
+      ) {
+        row.forEach { beneficiary ->
+          BeneficiaryCard(beneficiary, modifier = Modifier.weight(1f).fillMaxHeight())
+        }
+        if (row.size < TABLET_GRID_COLUMNS) {
+          Spacer(modifier = Modifier.weight(1f))
+        }
+      }
+    }
   }
 }
 
 @Composable
-private fun BeneficiaryCard(beneficiary: BeneficiaryDetail) {
+private fun BeneficiaryCard(beneficiary: BeneficiaryDetail, modifier: Modifier = Modifier) {
   val accentColor = when (beneficiary) {
     is BeneficiaryDetail.Mother -> Primary
     is BeneficiaryDetail.Child -> Secondary
@@ -182,7 +200,7 @@ private fun BeneficiaryCard(beneficiary: BeneficiaryDetail) {
   Surface(
     color = White,
     shape = RoundedCornerShape(Dimens.CardRadius),
-    modifier = Modifier.fillMaxWidth().softShadow(Dimens.CardRadius),
+    modifier = modifier.fillMaxWidth().softShadow(Dimens.CardRadius),
   ) {
     Column {
       Box(

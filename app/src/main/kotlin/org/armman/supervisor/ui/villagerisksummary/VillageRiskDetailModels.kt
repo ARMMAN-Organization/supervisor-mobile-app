@@ -2,24 +2,25 @@ package org.armman.supervisor.ui.villagerisksummary
 
 import androidx.annotation.StringRes
 
-/** Risk severity for a beneficiary risk row — drives the risk-type value's text color. */
+/** Risk severity for a beneficiary risk row — drives the risk-type value's text color. Mirrors
+ * beneficiary-service's 4-bucket `riskLevel` vocabulary (none/mild/moderate/high). */
 enum class BeneficiaryRiskLevel {
-  HIGH,
-  MODERATE,
+  NONE,
   MILD,
-  LOW,
+  MODERATE,
+  HIGH,
 }
 
-/** One beneficiary's risk detail row on the Village Risk Detail screen. */
+/** One beneficiary's risk detail row on the Village Risk Detail screen. [riskDetails] is the
+ * name of the beneficiary's worst-graded risk condition, blank when they have none — visit and
+ * referral status aren't available from any batch-friendly beneficiary-service endpoint, so
+ * they're intentionally not modeled here (see `BeneficiaryVillageRiskDetailRepositoryImpl`). */
 data class BeneficiaryRiskDetail(
   val id: String,
   val name: String,
   val registrationType: String,
   val riskDetails: String,
   val riskType: BeneficiaryRiskLevel,
-  val visit: String,
-  val visitDate: String,
-  val referred: Boolean,
 )
 
 /** Mother/Child tab selector for the Village Risk Detail screen. */

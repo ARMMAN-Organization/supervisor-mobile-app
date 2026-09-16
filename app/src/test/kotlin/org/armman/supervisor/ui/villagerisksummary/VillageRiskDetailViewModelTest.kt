@@ -21,36 +21,30 @@ class VillageRiskDetailViewModelTest {
   private val mother = BeneficiaryRiskDetail(
     id = "beneficiary-sushma-t-test",
     name = "Sushma T Test",
-    registrationType = "Mother",
+    registrationType = "MOTHER",
     riskDetails = "Hypertension",
     riskType = BeneficiaryRiskLevel.HIGH,
-    visit = "ANC2",
-    visitDate = "04-08-2026",
-    referred = true,
   )
   private val child = BeneficiaryRiskDetail(
     id = "beneficiary-child-1-t-test",
     name = "Child 1 T Test",
-    registrationType = "Child",
+    registrationType = "CHILD",
     riskDetails = "Low Birth Weight",
     riskType = BeneficiaryRiskLevel.MILD,
-    visit = "PNC1",
-    visitDate = "10-08-2026",
-    referred = false,
   )
 
   private class TestRepository(
-    private var detailsByVillageId: Map<String, VillageRiskDetail>,
+    private var detailsBySakhiId: Map<String, VillageRiskDetail>,
     private var shouldFail: Boolean = false,
   ) : VillageRiskDetailRepository {
-    fun shouldSucceedNow(detailsByVillageId: Map<String, VillageRiskDetail>) {
+    fun shouldSucceedNow(detailsBySakhiId: Map<String, VillageRiskDetail>) {
       shouldFail = false
-      this.detailsByVillageId = detailsByVillageId
+      this.detailsBySakhiId = detailsBySakhiId
     }
 
-    override suspend fun getVillageRiskDetail(villageId: String): VillageRiskDetail {
+    override suspend fun getVillageRiskDetail(sakhiId: String, villageName: String): VillageRiskDetail {
       if (shouldFail) error("village risk detail failed")
-      return detailsByVillageId[villageId] ?: VillageRiskDetail(villageId, emptyList(), emptyList())
+      return detailsBySakhiId[sakhiId] ?: VillageRiskDetail(villageName, emptyList(), emptyList())
     }
   }
 
@@ -65,17 +59,17 @@ class VillageRiskDetailViewModelTest {
   }
 
   private fun viewModel(
-    villageId: String = "SushilTest",
-    villageName: String = villageId,
+    sakhiId: String = "sakhi-komal",
+    villageName: String = "SushilTest",
     sakhiName: String = "SakhiKomal",
     repository: VillageRiskDetailRepository = TestRepository(
-      mapOf("SushilTest" to VillageRiskDetail("SushilTest", listOf(mother), listOf(child))),
+      mapOf(sakhiId to VillageRiskDetail(villageName, listOf(mother), listOf(child))),
     ),
   ) = VillageRiskDetailViewModel(
     repository,
     SavedStateHandle(
       mapOf(
-        VillageRiskDetailViewModel.VILLAGE_ID_ARG to villageId,
+        VillageRiskDetailViewModel.SAKHI_ID_ARG to sakhiId,
         VillageRiskDetailViewModel.VILLAGE_NAME_ARG to villageName,
         VillageRiskDetailViewModel.SAKHI_NAME_ARG to sakhiName,
       ),
@@ -115,7 +109,7 @@ class VillageRiskDetailViewModelTest {
 
   @Test
   fun `empty mothers for selected tab yields empty visible list without touching children`() = runTest(dispatcher) {
-    val repo = TestRepository(mapOf("SushilTest" to VillageRiskDetail("SushilTest", emptyList(), listOf(child))))
+    val repo = TestRepository(mapOf("sakhi-komal" to VillageRiskDetail("SushilTest", emptyList(), listOf(child))))
     val vm = viewModel(repository = repo)
     dispatcher.scheduler.advanceUntilIdle()
 
@@ -127,7 +121,7 @@ class VillageRiskDetailViewModelTest {
 
   @Test
   fun `both mothers and children empty is the screen-level empty state`() = runTest(dispatcher) {
-    val repo = TestRepository(mapOf("SushilTest" to VillageRiskDetail("SushilTest", emptyList(), emptyList())))
+    val repo = TestRepository(mapOf("sakhi-komal" to VillageRiskDetail("SushilTest", emptyList(), emptyList())))
     val vm = viewModel(repository = repo)
     dispatcher.scheduler.advanceUntilIdle()
 
@@ -136,9 +130,9 @@ class VillageRiskDetailViewModelTest {
   }
 
   @Test
-  fun `unknown village id resolves to empty result without throwing`() = runTest(dispatcher) {
+  fun `unknown sakhi id resolves to empty result without throwing`() = runTest(dispatcher) {
     val repo = TestRepository(emptyMap())
-    val vm = viewModel(villageId = "unknown-village", repository = repo)
+    val vm = viewModel(sakhiId = "unknown-sakhi", repository = repo)
     dispatcher.scheduler.advanceUntilIdle()
 
     val state = vm.uiState.value as VillageRiskDetailUiState.Success
@@ -161,7 +155,7 @@ class VillageRiskDetailViewModelTest {
     dispatcher.scheduler.advanceUntilIdle()
     assertTrue(vm.uiState.value is VillageRiskDetailUiState.Error)
 
-    repo.shouldSucceedNow(mapOf("SushilTest" to VillageRiskDetail("SushilTest", listOf(mother), listOf(child))))
+    repo.shouldSucceedNow(mapOf("sakhi-komal" to VillageRiskDetail("SushilTest", listOf(mother), listOf(child))))
     vm.onRetry()
     dispatcher.scheduler.advanceUntilIdle()
 
@@ -170,10 +164,10 @@ class VillageRiskDetailViewModelTest {
   }
 
   @Test
-  fun `village id, village name and sakhi name are URL-decoded from nav args`() = runTest(dispatcher) {
-    val repo = TestRepository(mapOf("Sushil Test" to VillageRiskDetail("Sushil Test", listOf(mother), emptyList())))
+  fun `sakhi id, village name and sakhi name are URL-decoded from nav args`() = runTest(dispatcher) {
+    val repo = TestRepository(mapOf("sakhi-komal" to VillageRiskDetail("Sushil Test", listOf(mother), emptyList())))
     val vm = viewModel(
-      villageId = "Sushil%20Test",
+      sakhiId = "sakhi-komal",
       villageName = "Sushil%20Test",
       sakhiName = "Sakhi%20Komal",
       repository = repo,
@@ -186,18 +180,18 @@ class VillageRiskDetailViewModelTest {
   }
 
   @Test
-  fun `displayed village name comes from the nav arg, not the opaque village id`() = runTest(dispatcher) {
-    val repo = TestRepository(mapOf("village-42" to VillageRiskDetail("village-42", listOf(mother), emptyList())))
-    val vm = viewModel(villageId = "village-42", villageName = "Sushil Test", repository = repo)
+  fun `displayed village name comes from the nav arg, not the repository's value`() = runTest(dispatcher) {
+    val repo = TestRepository(mapOf("sakhi-komal" to VillageRiskDetail("Repo Village", listOf(mother), emptyList())))
+    val vm = viewModel(villageName = "Nav Arg Village", repository = repo)
     dispatcher.scheduler.advanceUntilIdle()
 
     val state = vm.uiState.value as VillageRiskDetailUiState.Success
-    assertEquals("Sushil Test", state.villageName)
+    assertEquals("Nav Arg Village", state.villageName)
   }
 
   @Test
   fun `blank village name arg falls back to the repository's village name`() = runTest(dispatcher) {
-    val repo = TestRepository(mapOf("SushilTest" to VillageRiskDetail("SushilTest", listOf(mother), emptyList())))
+    val repo = TestRepository(mapOf("sakhi-komal" to VillageRiskDetail("SushilTest", listOf(mother), emptyList())))
     val vm = viewModel(villageName = "", repository = repo)
     dispatcher.scheduler.advanceUntilIdle()
 

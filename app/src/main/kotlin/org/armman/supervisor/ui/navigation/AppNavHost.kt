@@ -63,11 +63,11 @@ object Routes {
   const val REGISTRATIONS = "registrations"
   const val SAKHI_BENEFICIARIES_SAKHI_ID_ARG = "sakhiId"
   const val SAKHI_BENEFICIARIES = "sakhi_beneficiaries/{$SAKHI_BENEFICIARIES_SAKHI_ID_ARG}"
-  const val VILLAGE_RISK_DETAIL_VILLAGE_ID_ARG = "villageId"
+  const val VILLAGE_RISK_DETAIL_SAKHI_ID_ARG = "sakhiId"
   const val VILLAGE_RISK_DETAIL_VILLAGE_NAME_ARG = "villageName"
   const val VILLAGE_RISK_DETAIL_SAKHI_NAME_ARG = "sakhiName"
   const val VILLAGE_RISK_DETAIL =
-    "village_risk_detail/{$VILLAGE_RISK_DETAIL_VILLAGE_ID_ARG}/{$VILLAGE_RISK_DETAIL_VILLAGE_NAME_ARG}" +
+    "village_risk_detail/{$VILLAGE_RISK_DETAIL_SAKHI_ID_ARG}/{$VILLAGE_RISK_DETAIL_VILLAGE_NAME_ARG}" +
       "/{$VILLAGE_RISK_DETAIL_SAKHI_NAME_ARG}"
   const val ITEMS = "items"
   const val ASSIGN_ITEM_DETAIL_SAKHI_ID_ARG = "sakhiId"
@@ -115,11 +115,11 @@ object Routes {
 
   fun sakhiBeneficiaries(sakhiId: String) = "sakhi_beneficiaries/$sakhiId"
 
-  fun villageRiskDetail(villageId: String, villageName: String, sakhiName: String): String {
-    val encodedVillageId = URLEncoder.encode(villageId, Charsets.UTF_8.name())
+  fun villageRiskDetail(sakhiId: String, villageName: String, sakhiName: String): String {
+    val encodedSakhiId = URLEncoder.encode(sakhiId, Charsets.UTF_8.name())
     val encodedVillageName = URLEncoder.encode(villageName, Charsets.UTF_8.name())
     val encodedSakhiName = URLEncoder.encode(sakhiName, Charsets.UTF_8.name())
-    return "village_risk_detail/$encodedVillageId/$encodedVillageName/$encodedSakhiName"
+    return "village_risk_detail/$encodedSakhiId/$encodedVillageName/$encodedSakhiName"
   }
 
   fun assignItemDetail(sakhiId: String) = "assign_item_detail/$sakhiId"
@@ -196,15 +196,15 @@ fun AppNavHost() {
     composable(Routes.RISK_SUMMARY) {
       RiskSummaryScreen(
         onBack = { navController.popBackStack() },
-        onVillageSelected = { villageId, villageName, sakhiName ->
-          navController.navigate(Routes.villageRiskDetail(villageId, villageName, sakhiName))
+        onVillageSelected = { sakhiId, villageName, sakhiName ->
+          navController.navigate(Routes.villageRiskDetail(sakhiId, villageName, sakhiName))
         },
       )
     }
     composable(
       Routes.VILLAGE_RISK_DETAIL,
       arguments = listOf(
-        navArgument(Routes.VILLAGE_RISK_DETAIL_VILLAGE_ID_ARG) { type = NavType.StringType },
+        navArgument(Routes.VILLAGE_RISK_DETAIL_SAKHI_ID_ARG) { type = NavType.StringType },
         navArgument(Routes.VILLAGE_RISK_DETAIL_VILLAGE_NAME_ARG) { type = NavType.StringType },
         navArgument(Routes.VILLAGE_RISK_DETAIL_SAKHI_NAME_ARG) { type = NavType.StringType },
       ),

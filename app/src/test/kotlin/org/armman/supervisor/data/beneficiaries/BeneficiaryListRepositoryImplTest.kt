@@ -68,6 +68,13 @@ private class FakeBeneficiaryListApi : BeneficiaryListApi {
     atRiskOnly: Boolean,
     cursor: String?,
   ): Response<BeneficiaryListEnvelopeDto> = error("not used")
+
+  override suspend fun getBeneficiariesWithRisk(ids: String): Response<BeneficiaryWithRiskEnvelopeDto> =
+    error("not used")
+
+  override suspend fun getRiskConditionSummaries(
+    beneficiaryIds: String,
+  ): Response<BeneficiaryRiskConditionSummaryEnvelopeDto> = error("not used")
 }
 
 private class FakeProjectsRepository : ProjectsRepository {

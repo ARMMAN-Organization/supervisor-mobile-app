@@ -37,7 +37,7 @@ class RiskSummaryRepositoryImpl @Inject constructor(
       .map { sakhi -> sakhi to async { runCatching { fetchAtRiskCases(sakhi.id) } } }
       .mapNotNull { (sakhi, deferredCases) ->
         val cases = deferredCases.await().getOrNull() ?: return@mapNotNull null
-        SakhiRiskSummary(sakhiName = sakhi.name, villages = groupByVillage(cases))
+        SakhiRiskSummary(sakhiId = sakhi.id, sakhiName = sakhi.name, villages = groupByVillage(cases))
       }
   }
 

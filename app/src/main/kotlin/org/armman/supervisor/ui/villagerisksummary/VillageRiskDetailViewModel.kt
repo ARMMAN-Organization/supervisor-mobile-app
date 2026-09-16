@@ -19,7 +19,7 @@ class VillageRiskDetailViewModel @Inject constructor(
   private val repository: VillageRiskDetailRepository,
   savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
-  private val villageId: String = decode(checkNotNull(savedStateHandle[VILLAGE_ID_ARG]))
+  private val sakhiId: String = decode(checkNotNull(savedStateHandle[SAKHI_ID_ARG]))
   private val villageName: String = decode(checkNotNull(savedStateHandle[VILLAGE_NAME_ARG]))
   private val sakhiName: String = decode(checkNotNull(savedStateHandle[SAKHI_NAME_ARG]))
 
@@ -46,7 +46,7 @@ class VillageRiskDetailViewModel @Inject constructor(
     loadJob?.cancel()
     loadJob = viewModelScope.launch {
       try {
-        val detail = repository.getVillageRiskDetail(villageId)
+        val detail = repository.getVillageRiskDetail(sakhiId = sakhiId, villageName = villageName)
         _uiState.value = VillageRiskDetailUiState.Success(
           villageName = villageName.ifBlank { detail.villageName },
           sakhiName = sakhiName,
@@ -63,7 +63,7 @@ class VillageRiskDetailViewModel @Inject constructor(
   }
 
   companion object {
-    const val VILLAGE_ID_ARG = "villageId"
+    const val SAKHI_ID_ARG = "sakhiId"
     const val VILLAGE_NAME_ARG = "villageName"
     const val SAKHI_NAME_ARG = "sakhiName"
 

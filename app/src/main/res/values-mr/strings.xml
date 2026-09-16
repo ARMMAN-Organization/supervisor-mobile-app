@@ -335,6 +335,7 @@
 
   <!-- Dashboard state -->
   <string name="dashboard_error_generic">काहीतरी चुकले. कृपया पुन्हा प्रयत्न करा.</string>
+  <string name="dashboard_press_back_again_to_exit">बाहेर पडण्यासाठी पुन्हा बॅक दाबा</string>
   <string name="retry">पुन्हा प्रयत्न करा</string>
   <string name="cancel">रद्द करा</string>
 
@@ -364,15 +365,10 @@
   <string name="village_risk_detail_label_registration_type">नोंदणी प्रकार</string>
   <string name="village_risk_detail_label_risk_details">जोखीम तपशील</string>
   <string name="village_risk_detail_label_risk_type">जोखीम प्रकार</string>
-  <string name="village_risk_detail_label_visit">भेट</string>
-  <string name="village_risk_detail_label_visit_date">भेट तारीख</string>
-  <string name="village_risk_detail_label_referred">संदर्भित</string>
-  <string name="village_risk_detail_referred_yes">संदर्भित</string>
-  <string name="village_risk_detail_referred_no">संदर्भित नाही</string>
   <string name="village_risk_detail_risk_level_high">उच्च</string>
   <string name="village_risk_detail_risk_level_moderate">मध्यम</string>
   <string name="village_risk_detail_risk_level_mild">सौम्य</string>
-  <string name="village_risk_detail_risk_level_low">कमी</string>
+  <string name="village_risk_detail_risk_level_none">काहीही नाही</string>
   <string name="village_risk_detail_empty">या गावासाठी कोणतेही लाभार्थी आढळले नाहीत</string>
   <string name="village_risk_detail_empty_mothers">या गावासाठी कोणतीही माता आढळली नाही</string>
   <string name="village_risk_detail_empty_children">या गावासाठी कोणतेही बालक आढळले नाही</string>
@@ -386,8 +382,8 @@
   <string name="quick_response_type_closure_review">क्लोजर पुनरावलोकन</string>
   <string name="quick_response_type_reopen">पुन्हा उघडण्याची विनंती</string>
   <string name="quick_response_type_accompanied_referral">सोबतीने रेफरल</string>
-  <string name="quick_response_action_approve">मंजूर करा</string>
-  <string name="quick_response_action_reject">नामंजूर करा</string>
+  <string name="quick_response_action_approve">सहमती द्या</string>
+  <string name="quick_response_action_reject">असहमती द्या</string>
   <string name="quick_response_error_decision_conflict">या विनंतीवर आधीच निर्णय घेतला गेला आहे</string>
   <string name="quick_response_error_decision_failed">निर्णय सबमिट करता आला नाही</string>
   <string name="quick_response_field_closure_reason">क्लोजरचे कारण:</string>
@@ -417,8 +413,8 @@
   <string name="quick_response_type_data_restore">डेटा रिस्टोर विनंती</string>
   <string name="quick_response_type_missed_visit_escalation">चुकलेली भेट अपस्केलेशन</string>
   <string name="quick_response_type_edd_nearing">EDD जवळ येत आहे</string>
-  <string name="quick_response_action_transfer">स्थानांतरण करा</string>
-  <string name="quick_response_action_close">बंद करा</string>
+  <string name="quick_response_action_transfer">लाभार्थ्याचे हस्तांतरण</string>
+  <string name="quick_response_action_close">लाभार्थी बंद करा</string>
   <string name="quick_response_action_okay">ठीक आहे</string>
   <string name="quick_response_error_transfer_unavailable">स्थानांतरण अद्याप उपलब्ध नाही</string>
   <string name="quick_response_field_visit_type">चुकलेल्या भेटीचा प्रकार:</string>

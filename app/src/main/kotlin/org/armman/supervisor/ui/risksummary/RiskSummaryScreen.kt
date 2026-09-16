@@ -40,7 +40,7 @@ import org.armman.supervisor.ui.theme.White
 @Composable
 fun RiskSummaryScreen(
   onBack: () -> Unit,
-  onVillageSelected: (villageId: String, villageName: String, sakhiName: String) -> Unit,
+  onVillageSelected: (sakhiId: String, villageName: String, sakhiName: String) -> Unit,
   modifier: Modifier = Modifier,
   viewModel: RiskSummaryViewModel = hiltViewModel(),
 ) {
@@ -94,7 +94,7 @@ private fun SuccessContent(
   state: RiskSummaryUiState.Success,
   isTablet: Boolean,
   onLocationSelected: (String) -> Unit,
-  onVillageSelected: (villageId: String, villageName: String, sakhiName: String) -> Unit,
+  onVillageSelected: (sakhiId: String, villageName: String, sakhiName: String) -> Unit,
 ) {
   Column(
     modifier = Modifier
@@ -130,7 +130,7 @@ private fun SuccessContent(
           badgeText = stringResource(R.string.current_month_label),
           badgeBackgroundColor = DashboardPillNeutral,
           badgeTextColor = NeutralG400,
-          onRowClick = { row -> onVillageSelected(row.label, row.label, sakhi.sakhiName) },
+          onRowClick = { row -> onVillageSelected(sakhi.sakhiId, row.label, sakhi.sakhiName) },
         )
       }
     }

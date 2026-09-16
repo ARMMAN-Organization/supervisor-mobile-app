@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -120,7 +121,7 @@ private fun SuccessContent(state: VillageRiskDetailUiState.Success, onTabSelecte
         },
       )
     } else {
-      LazyColumn(verticalArrangement = Arrangement.spacedBy(Dimens.SmallSpacing)) {
+      LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Dimens.SmallSpacing)) {
         items(state.visibleBeneficiaries, key = BeneficiaryRiskDetail::id) { beneficiary ->
           BeneficiaryRiskCard(beneficiary)
         }
@@ -203,36 +204,32 @@ private fun BeneficiaryRiskCard(beneficiary: BeneficiaryRiskDetail) {
           .height(Dimens.CardAccentHeight)
           .background(accentColor, RoundedCornerShape(topStart = Dimens.CardRadius, topEnd = Dimens.CardRadius)),
       )
-      Column(
-        modifier = Modifier.padding(horizontal = Dimens.SmallSpacing, vertical = Dimens.TinySpacing),
-        verticalArrangement = Arrangement.spacedBy(Dimens.TinySpacing),
-      ) {
-        Text(
-          text = beneficiary.name,
-          style = SerifTitle,
-          color = NeutralG400,
-          modifier = Modifier.padding(top = Dimens.TinySpacing),
+      Column(modifier = Modifier.padding(horizontal = Dimens.SmallSpacing, vertical = Dimens.SmallSpacing)) {
+        Text(text = beneficiary.name, style = SerifTitle, color = NeutralG400)
+        HorizontalDivider(color = NeutralG50, modifier = Modifier.padding(vertical = Dimens.TinySpacing))
+        DetailRow(
+          stringResource(R.string.village_risk_detail_label_registration_type),
+          registrationTypeLabel(beneficiary.registrationType),
         )
-        DetailRow(stringResource(R.string.village_risk_detail_label_registration_type), beneficiary.registrationType)
         DetailRow(stringResource(R.string.village_risk_detail_label_risk_details), beneficiary.riskDetails)
         DetailRow(
           label = stringResource(R.string.village_risk_detail_label_risk_type),
           value = riskLevelLabel(beneficiary.riskType),
           valueColor = accentColor,
         )
-        DetailRow(stringResource(R.string.village_risk_detail_label_visit), beneficiary.visit)
-        DetailRow(stringResource(R.string.village_risk_detail_label_visit_date), beneficiary.visitDate)
-        DetailRow(
-          label = stringResource(R.string.village_risk_detail_label_referred),
-          value = if (beneficiary.referred) {
-            stringResource(R.string.village_risk_detail_referred_yes)
-          } else {
-            stringResource(R.string.village_risk_detail_referred_no)
-          },
-        )
       }
     }
   }
+}
+
+/** Maps beneficiary-service's raw `caseType` ("MOTHER"/"CHILD") to a localized display label,
+ * reusing the same Mother/Child strings as [MotherChildTabRow] rather than showing the API's
+ * raw uppercase value. Falls back to the raw value for any other case type. */
+@Composable
+private fun registrationTypeLabel(registrationType: String): String = when (registrationType) {
+  "MOTHER" -> stringResource(R.string.village_risk_detail_tab_mother)
+  "CHILD" -> stringResource(R.string.village_risk_detail_tab_child)
+  else -> registrationType
 }
 
 @Composable
@@ -240,14 +237,14 @@ private fun riskLevelLabel(riskType: BeneficiaryRiskLevel): String = when (riskT
   BeneficiaryRiskLevel.HIGH -> stringResource(R.string.village_risk_detail_risk_level_high)
   BeneficiaryRiskLevel.MODERATE -> stringResource(R.string.village_risk_detail_risk_level_moderate)
   BeneficiaryRiskLevel.MILD -> stringResource(R.string.village_risk_detail_risk_level_mild)
-  BeneficiaryRiskLevel.LOW -> stringResource(R.string.village_risk_detail_risk_level_low)
+  BeneficiaryRiskLevel.NONE -> stringResource(R.string.village_risk_detail_risk_level_none)
 }
 
 private fun riskColor(riskType: BeneficiaryRiskLevel) = when (riskType) {
   BeneficiaryRiskLevel.HIGH -> RiskHigh
   BeneficiaryRiskLevel.MODERATE -> RiskModerate
   BeneficiaryRiskLevel.MILD -> RiskMild
-  BeneficiaryRiskLevel.LOW -> RiskLow
+  BeneficiaryRiskLevel.NONE -> RiskLow
 }
 
 @Composable

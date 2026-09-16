@@ -335,6 +335,7 @@
 
   <!-- Dashboard state -->
   <string name="dashboard_error_generic">Something went wrong. Please try again.</string>
+  <string name="dashboard_press_back_again_to_exit">Press back again to exit</string>
   <string name="retry">Retry</string>
   <string name="cancel">Cancel</string>
 
@@ -364,15 +365,10 @@
   <string name="village_risk_detail_label_registration_type">Registration Type</string>
   <string name="village_risk_detail_label_risk_details">Risk Details</string>
   <string name="village_risk_detail_label_risk_type">Risk Type</string>
-  <string name="village_risk_detail_label_visit">Visit</string>
-  <string name="village_risk_detail_label_visit_date">Visit Date</string>
-  <string name="village_risk_detail_label_referred">Referred</string>
-  <string name="village_risk_detail_referred_yes">Referred</string>
-  <string name="village_risk_detail_referred_no">Not referred</string>
   <string name="village_risk_detail_risk_level_high">High</string>
   <string name="village_risk_detail_risk_level_moderate">Moderate</string>
   <string name="village_risk_detail_risk_level_mild">Mild</string>
-  <string name="village_risk_detail_risk_level_low">Low</string>
+  <string name="village_risk_detail_risk_level_none">None</string>
   <string name="village_risk_detail_empty">No beneficiaries found for this village</string>
   <string name="village_risk_detail_empty_mothers">No mothers found for this village</string>
   <string name="village_risk_detail_empty_children">No children found for this village</string>
@@ -417,8 +413,8 @@
   <string name="quick_response_type_data_restore">Data Restore Request</string>
   <string name="quick_response_type_missed_visit_escalation">Missed Visit Escalation</string>
   <string name="quick_response_type_edd_nearing">EDD Nearing</string>
-  <string name="quick_response_action_transfer">Transfer</string>
-  <string name="quick_response_action_close">Close</string>
+  <string name="quick_response_action_transfer">Transfer beneficiary</string>
+  <string name="quick_response_action_close">Close beneficiary</string>
   <string name="quick_response_action_okay">Okay</string>
   <string name="quick_response_error_transfer_unavailable">Transfer isn\'t available yet</string>
   <string name="quick_response_field_visit_type">Type of Visit Missed:</string>

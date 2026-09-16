@@ -14,11 +14,15 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -28,17 +32,25 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.armman.supervisor.R
+import org.armman.supervisor.ui.components.ExitOnDoubleBackHandler
 import org.armman.supervisor.ui.components.PrimaryButton
 import org.armman.supervisor.ui.navigation.Routes
 import org.armman.supervisor.ui.theme.Dimens
 import org.armman.supervisor.ui.theme.White
 
-/** Supervisor landing screen: header/KPIs, quick actions, summary cards and the stale-Sakhi alert.
+/**
+ * Supervisor landing screen: header/KPIs, quick actions, summary cards and the stale-Sakhi alert.
+ *
+ * Dashboard is the bottom of the nav back stack (see `AppNavHost`'s `popUpTo(LOGIN_ROUTE)`), so it
+ * uses [ExitOnDoubleBackHandler] rather than letting an unhandled back press fall through to the
+ * Activity's default finish() (see that composable's doc for why).
+ *
  * While this screen is visible, [DashboardViewModel] polls for new notifications (see
  * [DashboardViewModel.startPolling]) and this screen plays the device's default notification
  * sound for each one detected (see [DashboardViewModel.newNotificationEvents]) — there is no
  * separate popup/banner UI; the bell icon's badge and the Notifications screen's list are the
- * only visible surfaces for notification content. */
+ * only visible surfaces for notification content.
+ */
 @Composable
 fun DashboardScreen(
   onNavigate: (String) -> Unit,
@@ -46,6 +58,7 @@ fun DashboardScreen(
   viewModel: DashboardViewModel = hiltViewModel(),
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+  val snackbarHostState = remember { SnackbarHostState() }
   val context = LocalContext.current
 
   LifecycleResumeEffect(Unit) {
@@ -57,20 +70,30 @@ fun DashboardScreen(
     viewModel.newNotificationEvents.collect { playNotificationSound(context) }
   }
 
-  BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-    val isTablet = maxWidth >= Dimens.TabletMinWidthDp.dp
-    val isLandscape = maxWidth > maxHeight
+  ExitOnDoubleBackHandler(
+    exitMessage = stringResource(R.string.dashboard_press_back_again_to_exit),
+    snackbarHostState = snackbarHostState,
+  )
 
-    when (val state = uiState) {
-      is DashboardUiState.Loading -> LoadingContent()
-      is DashboardUiState.Error -> ErrorContent(onRetry = viewModel::onRetry)
-      is DashboardUiState.Success -> SuccessContent(
-        state = state,
-        isTablet = isTablet,
-        isLandscape = isLandscape,
-        onNavigate = onNavigate,
-        onLocationSelected = viewModel::onLocationSelected,
-      )
+  Scaffold(
+    modifier = modifier,
+    snackbarHost = { SnackbarHost(snackbarHostState) },
+  ) { innerPadding ->
+    BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+      val isTablet = maxWidth >= Dimens.TabletMinWidthDp.dp
+      val isLandscape = maxWidth > maxHeight
+
+      when (val state = uiState) {
+        is DashboardUiState.Loading -> LoadingContent()
+        is DashboardUiState.Error -> ErrorContent(onRetry = viewModel::onRetry)
+        is DashboardUiState.Success -> SuccessContent(
+          state = state,
+          isTablet = isTablet,
+          isLandscape = isLandscape,
+          onNavigate = onNavigate,
+          onLocationSelected = viewModel::onLocationSelected,
+        )
+      }
     }
   }
 }

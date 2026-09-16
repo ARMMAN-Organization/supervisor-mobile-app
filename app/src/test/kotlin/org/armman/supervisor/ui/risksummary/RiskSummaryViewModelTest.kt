@@ -31,10 +31,10 @@ class RiskSummaryViewModelTest {
     private val locations: List<LocationOption> = listOf(LocationOption("loc-1", "Zone A"), LocationOption("loc-2", "Zone B")),
     private val sakhisByLocation: Map<String, List<SakhiRiskSummary>> = mapOf(
       "loc-1" to listOf(
-        SakhiRiskSummary("SakhiKomal", listOf(VillageRiskRow("SushilTest", 1, 0))),
-        SakhiRiskSummary("SakhiMeera", listOf(VillageRiskRow("SushilTest1", 1, 0))),
+        SakhiRiskSummary("sakhi-komal", "SakhiKomal", listOf(VillageRiskRow("SushilTest", 1, 0))),
+        SakhiRiskSummary("sakhi-meera", "SakhiMeera", listOf(VillageRiskRow("SushilTest1", 1, 0))),
       ),
-      "loc-2" to listOf(SakhiRiskSummary("SakhiAsha", listOf(VillageRiskRow("Village2", 2, 1)))),
+      "loc-2" to listOf(SakhiRiskSummary("sakhi-asha", "SakhiAsha", listOf(VillageRiskRow("Village2", 2, 1)))),
     ),
     private var shouldFail: Boolean = false,
   ) : RiskSummaryRepository {
@@ -104,7 +104,7 @@ class RiskSummaryViewModelTest {
 
   @Test
   fun `large number of sakhi groups is not truncated`() = runTest(dispatcher) {
-    val many = (1..20).map { SakhiRiskSummary("Sakhi$it", listOf(VillageRiskRow("Village$it", it, 0))) }
+    val many = (1..20).map { SakhiRiskSummary("sakhi-$it", "Sakhi$it", listOf(VillageRiskRow("Village$it", it, 0))) }
     val viewModel = RiskSummaryViewModel(TestRepository(sakhisByLocation = mapOf("loc-1" to many)))
     dispatcher.scheduler.advanceUntilIdle()
 
