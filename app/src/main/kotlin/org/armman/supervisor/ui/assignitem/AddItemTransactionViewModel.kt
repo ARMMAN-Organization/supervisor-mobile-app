@@ -15,8 +15,6 @@ import org.armman.supervisor.R
 import org.armman.supervisor.model.LocationOption
 import org.armman.supervisor.ui.navigation.Routes
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 import javax.inject.Inject
 
 /** Which form field failed validation on submit, so the screen can show the right message. */
@@ -75,20 +73,23 @@ class AddItemTransactionViewModel @Inject constructor(
       try {
         val detail = repository.getSakhiDetail(sakhiId)
         val programs = repository.getPrograms()
-        val items = repository.getInventoryItems()
+        val catalogItems = repository.getInventoryItems()
         val editing = editTransactionId?.let { id ->
           repository.getTransactions(sakhiId).firstOrNull { id in it.ids }
             ?: error("Unknown transaction id: $id")
         }
-        val itemIdsByName = items.associate { it.name to it.id }
-        val editingQuantitiesByItemId = editing?.items?.associate { entry ->
-          val itemId = itemIdsByName[entry.itemName] ?: error("Unknown item name: ${entry.itemName}")
-          itemId to entry.quantity
-        }.orEmpty()
-        editingRowIdsByItemId = editing?.items?.associate { entry ->
-          val itemId = itemIdsByName[entry.itemName] ?: error("Unknown item name: ${entry.itemName}")
-          itemId to entry.id
-        }.orEmpty()
+        // getInventoryItems() dedupes catalog rows that share a (name, category) pair down to one
+        // survivor id (see AssignItemRepositoryImpl.dedupedForSelection). If the transaction being
+        // edited references the itemId that dedup discarded, swap the survivor's row for one
+        // carrying the transaction's real itemId — otherwise the rendered row and
+        // editingRowIdsByItemId disagree on id, and onQuantityChanged rejects every edit.
+        val items = editing?.items.orEmpty().fold(catalogItems) { acc, entry ->
+          val survivor = acc.firstOrNull { it.name == entry.itemName }
+          if (survivor == null || survivor.id == entry.itemId) acc
+          else acc.map { if (it.id == survivor.id) it.copy(id = entry.itemId) else it }
+        }
+        val editingQuantitiesByItemId = editing?.items?.associate { it.itemId to it.quantity }.orEmpty()
+        editingRowIdsByItemId = editing?.items?.associate { it.itemId to it.id }.orEmpty()
 
         _uiState.value = AddItemTransactionUiState.Success(
           sakhiName = detail.sakhiName,
@@ -96,7 +97,7 @@ class AddItemTransactionViewModel @Inject constructor(
           items = items,
           selectedProgramId = programs.firstOrNull { it.name == detail.projectName }?.id ?: programs.firstOrNull()?.id,
           selectedType = editing?.transactionType,
-          transactionDate = editing?.date,
+          transactionDate = editing?.date?.toTransactionDisplayDate(),
           remarks = "",
           quantities = editingQuantitiesByItemId,
           formError = null,
@@ -119,8 +120,9 @@ class AddItemTransactionViewModel @Inject constructor(
   fun onRemarksChanged(remarks: String) = updateSuccess { it.copy(remarks = remarks) }
 
   /** In edit mode, only quantities for the transaction group's existing item lines can be
-   * changed — adding a brand-new item id isn't supported, since there is no API to add/remove
-   * item lines on an existing transaction. */
+   * changed — adding a brand-new item id isn't supported, since there is no API to add an item
+   * line to an existing transaction. Zeroing an existing line's quantity IS supported: [onSubmit]
+   * deletes that line's row instead of updating it. */
   fun onQuantityChanged(itemId: String, quantity: Int) = updateSuccess { state ->
     if (state.isEditing && itemId !in editingRowIdsByItemId) return@updateSuccess state
     val updated = state.quantities.toMutableMap().also {
@@ -141,6 +143,10 @@ class AddItemTransactionViewModel @Inject constructor(
 
     _uiState.value = state.copy(isSubmitting = true, formError = null)
     viewModelScope.launch {
+      // Tracks whether the delete step below has already completed server-side, so a failure in
+      // the update step that follows it can be reported accurately instead of implying nothing
+      // happened at all (see the comment on the edit-mode branch).
+      var deletedRemovedRows = false
       try {
         val submission = TransactionSubmission(
           sakhiId = sakhiId,
@@ -153,7 +159,18 @@ class AddItemTransactionViewModel @Inject constructor(
           },
         )
         if (editTransactionId != null) {
-          repository.updateTransaction(submission)
+          // An existing item line the user zeroed out (see onQuantityChanged) drops out of
+          // state.quantities entirely, so it's absent from submission.items — updateTransaction
+          // alone would never touch that row, leaving its old quantity in place server-side while
+          // the UI reports success. Deleting its row explicitly is how "remove this item from the
+          // transaction" actually happens (deleteTransaction operates per-row, same as removing a
+          // whole card — see AssignItemRepository.deleteTransaction).
+          val removedRowIds = editingRowIdsByItemId.filterKeys { it !in state.quantities }.values.toList()
+          if (removedRowIds.isNotEmpty()) {
+            repository.deleteTransaction(sakhiId, removedRowIds)
+            deletedRemovedRows = true
+          }
+          if (submission.items.isNotEmpty()) repository.updateTransaction(submission)
         } else {
           repository.submitTransaction(submission)
         }
@@ -161,7 +178,11 @@ class AddItemTransactionViewModel @Inject constructor(
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {
-        _uiState.value = AddItemTransactionUiState.Error(R.string.add_item_error_submit, e.message)
+        // If the delete already went through before updateTransaction threw, a generic "failed to
+        // submit" message would wrongly suggest none of the edit was applied — the removed rows
+        // are already gone server-side, so say so instead of masking that partial completion.
+        val messageRes = if (deletedRemovedRows) R.string.add_item_error_partial_update else R.string.add_item_error_submit
+        _uiState.value = AddItemTransactionUiState.Error(messageRes, e.message.takeIf { !deletedRemovedRows })
       }
     }
   }
@@ -170,17 +191,24 @@ class AddItemTransactionViewModel @Inject constructor(
    * place) — the backend rejects a future [AddItemTransactionUiState.Success.transactionDate]
    * with a bare HTTP 400, so it's checked client-side for a clear message instead. The date
    * picker itself is already capped at today (see [org.armman.supervisor.ui.assignitem.AddItemTransactionScreen]),
-   * but this still guards a stale edit-mode date or a device clock change landing here. */
-  private fun validate(state: AddItemTransactionUiState.Success): TransactionFormError? = when {
-    state.transactionDate.isNullOrBlank() -> TransactionFormError.DATE_REQUIRED
-    parseTransactionDate(state.transactionDate).isAfter(LocalDate.now()) -> TransactionFormError.DATE_IN_FUTURE
-    state.selectedType == null -> TransactionFormError.TYPE_REQUIRED
-    state.quantities.values.none { it > 0 } -> TransactionFormError.NO_ITEMS
-    else -> null
+   * but this still guards a stale edit-mode date or a device clock change landing here.
+   * [parseTransactionDate] returning null (an unparseable date somehow reached this state) is
+   * surfaced as DATE_REQUIRED rather than crashing or being misreported as DATE_IN_FUTURE — see
+   * [toTransactionDisplayDate] for why a raw server date can't just be assumed to already be in
+   * the "dd MMM yyyy" display format. */
+  private fun validate(state: AddItemTransactionUiState.Success): TransactionFormError? {
+    if (state.transactionDate.isNullOrBlank()) return TransactionFormError.DATE_REQUIRED
+    val parsedDate = parseTransactionDate(state.transactionDate) ?: return TransactionFormError.DATE_REQUIRED
+    return when {
+      parsedDate.isAfter(LocalDate.now()) -> TransactionFormError.DATE_IN_FUTURE
+      state.selectedType == null -> TransactionFormError.TYPE_REQUIRED
+      state.quantities.values.none { it > 0 } -> TransactionFormError.NO_ITEMS
+      else -> null
+    }
   }
 
-  private fun parseTransactionDate(date: String): LocalDate =
-    LocalDate.parse(date, DateTimeFormatter.ofPattern("dd MMM yyyy", Locale.getDefault()))
+  private fun parseTransactionDate(date: String): LocalDate? =
+    runCatching { LocalDate.parse(date, TransactionDateDisplayFormatter) }.getOrNull()
 
   private inline fun updateSuccess(transform: (AddItemTransactionUiState.Success) -> AddItemTransactionUiState.Success) {
     _uiState.update { current -> if (current is AddItemTransactionUiState.Success) transform(current) else current }

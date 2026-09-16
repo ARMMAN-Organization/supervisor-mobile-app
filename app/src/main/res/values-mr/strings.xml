@@ -100,6 +100,7 @@
   <string name="edit_item_submit">जतन करा</string>
   <string name="add_item_error_load_form">व्यवहार फॉर्म लोड करण्यात अयशस्वी</string>
   <string name="add_item_error_submit">व्यवहार सबमिट करण्यात अयशस्वी</string>
+  <string name="add_item_error_partial_update">काढलेल्या वस्तू जतन झाल्या, पण उर्वरित बदल जतन करण्यात अयशस्वी झाले. कृपया हा व्यवहार तपासा आणि पुन्हा प्रयत्न करा.</string>
 
   <!-- Item categories -->
   <string name="item_category_consumables">उपभोग्य वस्तू</string>

@@ -73,7 +73,7 @@ class AssignItemRepositoryImpl @Inject constructor(
 
   override suspend fun getInventoryItems(): List<InventoryItem> {
     if (!connectivityChecker.isOnline()) {
-      return inventoryItemCacheDao.getAll().map { it.toDomain() }
+      return inventoryItemCacheDao.getAll().map { it.toDomain() }.dedupedForSelection()
     }
     return try {
       val response = inventoryApi.getInventoryItems()
@@ -81,12 +81,28 @@ class AssignItemRepositoryImpl @Inject constructor(
       val body = response.body() ?: error("Empty inventory items response")
       if (!body.success) error(body.message ?: "Failed to load inventory items")
       val items = body.data.orEmpty()
+      // Cache every row as-is (not deduped) — a past InventoryTransaction can reference any of
+      // these ids via itemId, and itemCacheById() needs every id present to resolve a historical
+      // transaction's item name, even one belonging to a since-hidden duplicate catalog row.
       inventoryItemCacheDao.replaceAll(items.map { it.toCacheEntity() })
-      items.map { it.toDomain() }
+      items.map { it.toDomain() }.dedupedForSelection()
     } catch (e: IOException) {
-      inventoryItemCacheDao.getAll().map { it.toDomain() }
+      inventoryItemCacheDao.getAll().map { it.toDomain() }.dedupedForSelection()
     }
   }
+
+  /** Collapses items that share a (name, category) pair to the first one encountered — a
+   * defensive guard for the item-selection list only (never the cache, see [getInventoryItems]).
+   * itemCode is the only uniqueness the backend enforces on inventory_items (Prisma @unique);
+   * itemName has none, so two rows can legitimately exist for what's really one catalog entry
+   * (e.g. leftover demo/seed data under a different itemCode). Left unguarded, both duplicates
+   * render as identical-looking rows on the Add Item Transaction screen, and editing a
+   * transaction whose real itemId belongs to the OTHER duplicate silently rejects every quantity
+   * keystroke (AddItemTransactionViewModel.onQuantityChanged only accepts edits for the item id
+   * actually on the transaction being edited). This is a client-side safety net, not a fix for
+   * the underlying duplicate data — see the backend follow-up to add real uniqueness there. */
+  private fun List<InventoryItem>.dedupedForSelection(): List<InventoryItem> =
+    distinctBy { it.name to it.category }
 
   // KNOWN LIMITATION (PR #25 review): this only reads transactionDao, the synced cache — a
   // transaction that's still queued in pendingDao (submitted/updated/deleted while offline, or
@@ -322,17 +338,23 @@ class AssignItemRepositoryImpl @Inject constructor(
    * submission — see the class doc comment for why matching on this composite key (including the
    * exact [TransactionEntity.createdAt] millisecond) is safe to rely on. Order is preserved:
    * groups appear in the order their first row was encountered, and rows within a group keep
-   * their original relative order. */
+   * their original relative order.
+   *
+   * Deliberately excludes [TransactionEntity.date] from the key even though it's part of a
+   * submission's identity conceptually: [updateTransaction] lets a supervisor edit one row's date
+   * independently of its siblings, and [TransactionEntity.createdAt] never changes on update — so
+   * keying on `date` would silently split an edited row out of its original card into a new
+   * one-item card (looking like a duplicate) the next time transactions are (re)grouped. */
   private fun List<TransactionWithItems>.toGroupedEntries(): List<TransactionEntry> =
     groupBy {
-      listOf(it.transaction.sakhiId, it.transaction.projectId, it.transaction.transactionType, it.transaction.date, it.transaction.createdAt)
+      listOf(it.transaction.sakhiId, it.transaction.projectId, it.transaction.transactionType, it.transaction.createdAt)
     }.values.map { group ->
       TransactionEntry(
         ids = group.map { it.transaction.id },
         date = group.first().transaction.date,
         transactionType = TransactionType.valueOf(group.first().transaction.transactionType),
         items = group.flatMap { withItems ->
-          withItems.items.map { TransactionItemEntry(withItems.transaction.id, it.itemName, it.quantity) }
+          withItems.items.map { TransactionItemEntry(withItems.transaction.id, it.itemId, it.itemName, it.quantity) }
         },
       )
     }

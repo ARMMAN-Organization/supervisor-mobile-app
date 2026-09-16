@@ -357,7 +357,32 @@ class AssignItemRepositoryImplTest {
 
     assertTrue(items.any { it.category == ItemCategory.CONSUMABLE })
     assertTrue(items.any { it.category == ItemCategory.INSTRUMENT })
-    assertEquals(items.size, itemCacheDao.getAll().size)
+    // The cache mirrors every server row verbatim (undeduped) so itemCacheById() can still
+    // resolve a historical transaction's itemId even if that row's a since-hidden duplicate — see
+    // the next test for the returned list's own dedup behavior.
+    assertEquals(api.items.size, itemCacheDao.getAll().size)
+  }
+
+  @Test
+  fun `getInventoryItems collapses same name+category duplicates but keeps every row in the cache`() = runTest {
+    // Regression test: itemCode is the only uniqueness the backend enforces on inventory_items —
+    // itemName has none, so two rows can exist for what's really one catalog entry. Unguarded,
+    // both render as identical-looking rows on the Add Item Transaction screen, and editing a
+    // transaction whose real itemId belongs to the OTHER duplicate silently rejects every
+    // quantity keystroke.
+    api.items = listOf(
+      InventoryItemDto("item-1", "BP-1", "BP Monitor", "INSTRUMENT", "unit", "ACTIVE"),
+      InventoryItemDto("item-1-dup", "BP-2", "BP Monitor", "INSTRUMENT", "unit", "ACTIVE"),
+      InventoryItemDto("item-3", "PEN-1", "Pencil", "CONSUMABLE", "piece", "ACTIVE"),
+    )
+
+    val items = repository.getInventoryItems()
+
+    assertEquals(2, items.size)
+    assertEquals("item-1", items.first { it.name == "BP Monitor" }.id)
+    // The cache still holds both BP Monitor rows — a transaction referencing "item-1-dup" must
+    // still resolve to a real item name, not fall back to the raw id.
+    assertEquals(3, itemCacheDao.getAll().size)
   }
 
   @Test(expected = IllegalStateException::class)
@@ -600,6 +625,34 @@ class AssignItemRepositoryImplTest {
 
     assertEquals(2, result.entry.items.size)
     assertEquals(setOf(7, 9), result.entry.items.map { it.quantity }.toSet())
+  }
+
+  @Test
+  fun `updateTransaction changing one row's date does not split its multi-item group into two entries`() = runTest {
+    // Regression test: toGroupedEntries() used to key on (..., date, createdAt). Editing one row's
+    // date changed only that row's key, silently splitting it out of its original card into a new
+    // one-item entry on the next fetch — surfacing as a duplicate item card in the UI.
+    repository.getInventoryItems()
+    val created = (
+      repository.submitTransaction(
+        TransactionSubmission(
+          "sakhi-1", "loc-1", TransactionType.CONSUMED, "10 Oct 2025", null,
+          listOf(TransactionItemQuantity("item-1", 20), TransactionItemQuantity("item-2", 20)),
+        ),
+      ) as TransactionSubmitResult.Synced
+    ).entry
+    val rowIdByItemId = created.items.associate { it.itemName to it.id }
+
+    repository.updateTransaction(
+      TransactionSubmission(
+        "sakhi-1", "loc-1", TransactionType.CONSUMED, "12 Oct 2025", null,
+        listOf(TransactionItemQuantity("item-1", 20, existingRowId = rowIdByItemId["Sugar strips"])),
+      ),
+    )
+
+    val entries = repository.getTransactions("sakhi-1").filter { created.ids.toSet().intersect(it.ids.toSet()).isNotEmpty() }
+    assertEquals(1, entries.size)
+    assertEquals(2, entries.first().items.size)
   }
 
   @Test(expected = IllegalStateException::class)
